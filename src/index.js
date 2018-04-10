@@ -10,7 +10,6 @@ import userReducer from 'app/core/reducers/userReducer'
 
 import App from 'app/App';
 import registerServiceWorker from './registerServiceWorker';
-import userAction from './app/core/actions/userAction';
 
 /**
  * Entry-point class.
@@ -27,7 +26,6 @@ class Index {
         window.app = {
             store: this._configureStore()
         };
-        window.app.store.dispatch(userAction.setUsername('hoh'));
         this._render();
     }
 

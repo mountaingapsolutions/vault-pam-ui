@@ -5,6 +5,7 @@ import {Link, Redirect, Route, Switch, withRouter} from 'react-router-dom';
 
 import About from 'app/routes/About';
 import Chat from 'app/routes/Chat';
+import NotFound from 'app/routes/NotFound';
 
 /**
  * The main app container.
@@ -38,6 +39,7 @@ class App extends Component {
                     <Route exact path='/' component={About}/>
                     <Route exact path='/chat' component={Chat}/>
                     <Redirect from='/about' to='/'/>
+                    <Route component={NotFound}/>
                 </Switch>
             </main>
         </div>;
