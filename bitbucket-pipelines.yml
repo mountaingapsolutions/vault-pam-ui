@@ -9,4 +9,4 @@ pipelines:
         script:
           - npm install
           - npm run lint
-          - npm test -- -- coverage
+          - npm test -- --coverage
