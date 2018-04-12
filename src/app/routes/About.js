@@ -49,7 +49,9 @@ class About extends Component {
     _confirmUsername() {
         const {username} = this.state;
         if (!username) {
+            /* eslint-disable no-alert */
             alert('Username cannot be empty!');
+            /* eslint-enable no-alert */
         } else {
             this.props.dispatch(userAction.setUsername(username));
         }
@@ -65,7 +67,7 @@ class About extends Component {
         const {name, value} = event.target;
         this.setState({
             [name]: value
-        })
+        });
     }
 
     /**
@@ -91,7 +93,7 @@ class About extends Component {
                                 <TextField name='username' value={this.state.username} onChange={this._setFieldValue}>Username...</TextField>
                             </div>
                             <div className='mdl-card__actions mdl-card--border'>
-                                <Button disabled={user.inProgress} onClick={this._confirmUsername}>Save Username</Button>
+                                <Button disabled={user.inProgress} onClick={this._confirmUsername}>Start Session</Button>
                                 <Button disabled={user.inProgress} onClick={this._clearUsername}>Clear</Button>
                             </div>
                         </div>
@@ -110,14 +112,22 @@ About.defaultProps = {
 };
 
 About.propTypes = {
+    dispatch: PropTypes.func.isRequired,
     user: PropTypes.object
 };
 
-const mapStateToProps = (state = {}) => {
+/**
+ * Returns the Redux store's state that is relevant to this class as props.
+ *
+ * @private
+ * @param {Object} state - The initial state.
+ * @returns {Object}
+ */
+const _mapStateToProps = (state = {}) => {
     const {user} = state.userReducer;
     return {
         user
     };
 };
 
-export default connect(mapStateToProps)(About);
+export default connect(_mapStateToProps)(About);

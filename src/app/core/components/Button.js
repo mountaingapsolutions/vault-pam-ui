@@ -17,7 +17,7 @@ export default class Button extends Component {
 
         this.state = {
             buttonProps: this._getButtonProps(props)
-        }
+        };
     }
 
     /**

@@ -1,5 +1,5 @@
 # react-scaffold
-Simple scaffolding for a React project.
+Simple scaffolding for a React project. This scaffolding was created using Facebook's official [create-react-app](https://github.com/facebook/create-react-app) tool, ejected, and subsequently modified.
 
 ## Application stack
 - [React](https://facebook.github.io/react/docs/why-react.html) - JavaScript library for building user interfaces.
@@ -33,7 +33,4 @@ Simple scaffolding for a React project.
 - Abstract/base classes should be prefixed with an underscore.
 
 ## TODOs
-- Add linting.
-- Add chat.
-- Verify build.
-- Improve this README.
+- Add chat...

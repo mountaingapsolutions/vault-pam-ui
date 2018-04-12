@@ -36,8 +36,8 @@ class App extends Component {
             </div>
             <main className='mdl-layout__content'>
                 <Switch>
-                    <Route exact path='/' component={About}/>
-                    <Route exact path='/chat' component={Chat}/>
+                    <Route exact component={About} path='/'/>
+                    <Route exact component={Chat} path='/chat'/>
                     <Redirect from='/about' to='/'/>
                     <Route component={NotFound}/>
                 </Switch>
@@ -51,11 +51,18 @@ App.propTypes = {
     user: PropTypes.object
 };
 
-const mapStateToProps = (state = {}) => {
+/**
+ * Returns the Redux store's state that is relevant to this class as props.
+ *
+ * @private
+ * @param {Object} state - The initial state.
+ * @returns {Object}
+ */
+const _mapStateToProps = (state = {}) => {
     const {user} = state.userReducer;
     return {
         user
     };
 };
 
-export default withRouter(connect(mapStateToProps)(App));
+export default withRouter(connect(_mapStateToProps)(App));

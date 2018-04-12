@@ -20,4 +20,4 @@ export default (previousState = {}, action) => {
         default:
             return {...previousState};
     }
-}
+};

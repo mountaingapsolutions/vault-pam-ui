@@ -42,25 +42,16 @@ const DEFAULT_PORT = parseInt(process.env.PORT, 10) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
 if (process.env.HOST) {
-    console.log(
-        chalk.cyan(
-            `Attempting to bind to HOST environment variable: ${chalk.yellow(
-                chalk.bold(process.env.HOST)
-            )}`
-        )
-    );
-    console.log(
-        `If this was unintentional, check that you haven't mistakenly set it in your shell.`
-    );
+    console.log(chalk.cyan(`Attempting to bind to HOST environment variable: ${chalk.yellow(chalk.bold(process.env.HOST))}`));
+    console.log('If this was unintentional, check that you haven\'t mistakenly set it in your shell.');
     console.log(`Learn more here: ${chalk.yellow('http://bit.ly/2mwWSwH')}`);
-    console.log();
 }
 
 // We attempt to use the default port but if it is busy, we offer the user to
 // run on a different port. `choosePort()` Promise resolves to the next free port.
 choosePort(HOST, DEFAULT_PORT)
     .then(port => {
-        if (port == null) {
+        if (port === null) {
             // We have not found a port.
             return;
         }
@@ -81,13 +72,15 @@ choosePort(HOST, DEFAULT_PORT)
         devServer.app.use(require('body-parser').json());
         devServer.app.use('/user', (req, res) => {
             // Add a fake delay.
-            setTimeout(() => res.json(req.body).end(), 500);
+            setTimeout(() => res.json({
+                username: _toProperCase(req.body.username)
+            }).end(), 500);
         });
 
         // Launch WebpackDevServer.
         devServer.listen(port, HOST, err => {
             if (err) {
-                return console.log(err);
+                console.log(err);
             }
             if (isInteractive) {
                 clearConsole();
@@ -109,3 +102,14 @@ choosePort(HOST, DEFAULT_PORT)
         }
         process.exit(1);
     });
+
+/**
+ * Takes the input string and outputs the return string in proper case form.
+ *
+ * @private
+ * @param {string} string - The string to convert.
+ * @returns {string}
+ */
+const _toProperCase = (string = '') => {
+    return string.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+};

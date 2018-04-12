@@ -6,7 +6,7 @@ import {Router} from 'react-router-dom';
 import {applyMiddleware, combineReducers, createStore} from 'redux';
 import reduxThunk from 'redux-thunk';
 
-import userReducer from 'app/core/reducers/userReducer'
+import userReducer from 'app/core/reducers/userReducer';
 
 import App from 'app/App';
 import registerServiceWorker from './registerServiceWorker';
