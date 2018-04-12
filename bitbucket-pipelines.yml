@@ -1,0 +1,13 @@
+# Simple build configuration to run lint. For additional features, check out the Bitbucket guides at https://confluence.atlassian.com/x/14UWN for more examples.
+image: node:9.3.0
+
+pipelines:
+  default:
+    - step:
+        caches:
+          - node
+        script:
+          - npm install
+          - npm run lint
+          - npm test -- -- coverage
+          - npm run build
