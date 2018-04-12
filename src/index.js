@@ -4,7 +4,7 @@ import {render} from 'react-dom';
 import {Provider} from 'react-redux';
 import {Router} from 'react-router-dom';
 import {applyMiddleware, combineReducers, createStore} from 'redux';
-import thunkMiddleware from 'redux-thunk';
+import reduxThunk from 'redux-thunk';
 
 import userReducer from 'app/core/reducers/userReducer'
 
@@ -42,7 +42,7 @@ class Index {
                 userReducer
             }),
             initialState,
-            applyMiddleware(thunkMiddleware)
+            applyMiddleware(reduxThunk)
         );
     }
 

@@ -16,7 +16,7 @@ import userAction from 'app/core/actions/userAction';
 export default (previousState = {}, action) => {
     switch (action.type) {
         case userAction.ACTION_TYPES.SET_USERNAME:
-            return {...previousState, user: userAction.injectMetaData(action.data || {}, action)};
+            return {...previousState, user: action};
         default:
             return {...previousState};
     }

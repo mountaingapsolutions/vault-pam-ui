@@ -4,7 +4,7 @@ import React, {Component} from 'react';
 /**
  * Generic text field component.
  */
-class TextField extends Component {
+export default class TextField extends Component {
 
     /**
      * React Component lifecycle method. Invoked immediately after the component's updates are flushed to the DOM. This method is not called for the initial render.
@@ -49,5 +49,3 @@ TextField.propTypes = {
     onChange: PropTypes.func,
     value: PropTypes.string
 };
-
-export default TextField;

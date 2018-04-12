@@ -79,7 +79,10 @@ choosePort(HOST, DEFAULT_PORT)
         );
         const devServer = new WebpackDevServer(compiler, serverConfig);
         devServer.app.use(require('body-parser').json());
-        devServer.app.use('/user', (req, res) => res.json(req.body).end());
+        devServer.app.use('/user', (req, res) => {
+            // Add a fake delay.
+            setTimeout(() => res.json(req.body).end(), 500);
+        });
 
         // Launch WebpackDevServer.
         devServer.listen(port, HOST, err => {

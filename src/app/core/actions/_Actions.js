@@ -14,13 +14,6 @@ export default class _Actions {
     constructor(namespace, actionTypes) {
 
         /**
-         * The default XHR timeout.
-         *
-         * @protected
-         */
-        this.DEFAULT_TIMEOUT = 60000;
-
-        /**
          * Action types map to be set by the extending concrete Action class.
          *
          * @public
@@ -43,7 +36,7 @@ export default class _Actions {
      * @returns {function} Redux dispatch function.
      */
     _dispatchGet(type, url, data) {
-        return this._handleXhr('GET', type, url, data);
+        return this._orchestrateRequest('GET', type, url, data);
     }
 
     /**
@@ -56,7 +49,7 @@ export default class _Actions {
      * @returns {function} Redux dispatch function.
      */
     _dispatchPost(type, url, data) {
-        return this._handleXhr('POST', type, url, data);
+        return this._orchestrateRequest('POST', type, url, data);
     }
 
     /**
@@ -69,7 +62,7 @@ export default class _Actions {
      * @returns {function} Redux dispatch function.
      */
     _dispatchPut(type, url, data) {
-        return this._handleXhr('PUT', type, url, data);
+        return this._orchestrateRequest('PUT', type, url, data);
     }
 
     /**
@@ -82,11 +75,11 @@ export default class _Actions {
      * @returns {function} Redux dispatch function.
      */
     _dispatchDelete(type, url, data) {
-        return this._handleXhr('DELETE', type, url, data);
+        return this._orchestrateRequest('DELETE', type, url, data);
     }
 
     /**
-     * Base handler for all XHR calls.
+     * Orchestrates the REST call by dispatching the initial request, followed up by dispatching the response.
      *
      * @private
      * @param {string} method - The HTTP method.
@@ -95,12 +88,16 @@ export default class _Actions {
      * @param {Object} data - The data to post or query by.
      * @returns {function} Redux dispatch function.
      */
-    _handleXhr(method, type, url, data) {
+    _orchestrateRequest(method, type, url, data) {
         return dispatch => {
             // Kickoff the initial inProgress dispatch.
-            dispatch(this._createRequest(type));
+            dispatch(this._createResourceData(type, undefined, undefined, true));
 
-            this._xhrRequest(method, url, data).then(res => dispatch(this._createResponse(type, undefined, res))).catch(err => dispatch(this._createResponse(type, err)));
+            this._fetch(method, url, data).then(res => {
+                dispatch(this._createResourceData(type, undefined, res, false));
+            }).catch(err => {
+                dispatch(this._createResourceData(type, err, undefined, false));
+            });
         };
     }
 
@@ -111,22 +108,10 @@ export default class _Actions {
      * @param {string} method - The HTTP method.
      * @param {string} url - The XHR url.
      * @param {Object} data - The data to post or query by.
-     * @param {boolean} [withoutTimeout] - Flag to avoid timeout (intended for calls that are known to be long running).
      * @returns {Promise}
      */
-    _xhrRequest(method, url, data, withoutTimeout) {
+    _fetch(method, url, data) {
         return new Promise((resolve, reject) => {
-            let isTimeout = false;
-            let timeoutId;
-            if (!withoutTimeout) {
-                timeoutId = setTimeout(() => {
-                    reject({
-                        error: `Client timeout from: ${url}`
-                    });
-                    isTimeout = true;
-                }, this.DEFAULT_TIMEOUT);
-            }
-
             let postData = {
                 method
             };
@@ -144,7 +129,6 @@ export default class _Actions {
                     };
                 }
             }
-
             let ok;
             /* global fetch */
             fetch(url, postData).then(res => {
@@ -153,83 +137,28 @@ export default class _Actions {
             }).then(response => {
                 // If response data is already an object, resolve with the data object. Otherwise, wrap it in an object with "response" as the key.
                 const responseData = typeof response === 'object' ? response : {response};
-                if (!isTimeout) {
-                    // Reject the promise if response status is not OK, but still pass the response data.
-                    if (ok) {
-                        resolve(responseData);
-                    } else {
-                        reject(responseData);
-                    }
-                    // Make sure to clear the timeout if we have a response.
-                    clearTimeout(timeoutId);
-                }
+                // Reject the promise if response status is not OK, but still pass the response data.
+                ok ? resolve(responseData) : reject(responseData);
             }).catch(err => reject(err));
         });
     }
 
     /**
-     * Creates the request resource data.
-     *
-     * @protected
-     * @param {string} actionType - Specified action type from the ACTION_TYPES constant.
-     * @returns {Object} Resource data.
-     */
-    _createRequest(actionType) {
-        return this._createResourceData(actionType, undefined, undefined, true);
-    }
-
-    /**
      * Creates the response resource data.
-     *
-     * @protected
-     * @param {string} actionType - Specified action type from the ACTION_TYPES constant.
-     * @param {Object} [err] - The error data field if the REST call returned with an error.
-     * @param {Object} [res] - The response data field if the REST call was successful.
-     * @returns {Object} Resource data.
-     */
-    _createResponse(actionType, err, res) {
-        return this._createResourceData(actionType, err, res, false);
-    }
-
-    /**
-     * Helper method to create the common resource data object.
      *
      * @private
      * @param {string} type - Specified action type from the ACTION_TYPES constant.
-     * @param {Object} [error] - The error data from an unsuccessful response.
-     * @param {Object} [data] - The response data from a successful response.
-     * @param {Object} [inProgress] - Indicator for whether or not this is an in-flight response.
+     * @param {Object} error - The error data field if the REST call returned with an error.
+     * @param {Object} data - The response data field if the REST call was successful.
+     * @param {Object} inProgress - Indicator if the REST call is in-flight.
      * @returns {Object} Resource data.
      */
-    _createResourceData(type, error, data, inProgress = false) {
+    _createResourceData(type, error, data, inProgress) {
         return {
-            _meta: {
-                error,
-                inProgress,
-                timestamp: Date.now()
-            },
             type,
-            data
+            error,
+            data,
+            inProgress
         };
-    }
-
-    /**
-     * Injects meta data into the provided response data.
-     *
-     * @public
-     * @param {*} data - The concrete response data to inject the meta data into.
-     * @param {Object} action - Action type.
-     * @returns {Object} The updated data.
-     */
-    injectMetaData(data, action) {
-        if (data && action) {
-            return {
-                _meta: {
-                    ...action._meta
-                },
-                ...data
-            }
-        }
-        return data;
     }
 }

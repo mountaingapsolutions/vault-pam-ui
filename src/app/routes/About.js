@@ -3,6 +3,7 @@ import React, {Component} from 'react';
 import {connect} from 'react-redux';
 
 import userAction from 'app/core/actions/userAction';
+import Button from 'app/core/components/Button';
 import TextField from 'app/core/components/TextField';
 
 /**
@@ -75,6 +76,7 @@ class About extends Component {
      * @returns {ReactElement}
      */
     render() {
+        const {user} = this.props;
         return <section className='mdl-layout__tab-panel is-active'>
             <div className='page-content'>
                 <div className='mdl-grid'>
@@ -82,19 +84,15 @@ class About extends Component {
                     <div className='mdl-cell mdl-cell--8-col'>
                         <div className='demo-card-wide mdl-card mdl-shadow--2dp' style={{width: 'auto'}}>
                             <div className='mdl-card__title'>
-                                <h2 className='mdl-card__title-text'>Welcome, {this.props.user.username || 'Guest'}!</h2>
+                                <h2 className='mdl-card__title-text'>Welcome, {(this.props.user.data || {}).username || 'Guest'}!</h2>
                             </div>
                             <div className='mdl-card__supporting-text'>
                                 <p>Please enter your username to continue:</p>
                                 <TextField name='username' value={this.state.username} onChange={this._setFieldValue}>Username...</TextField>
                             </div>
                             <div className='mdl-card__actions mdl-card--border'>
-                                <a className='mdl-button mdl-button--colored mdl-js-button mdl-js-ripple-effect' onClick={this._confirmUsername}>
-                                    Save Username
-                                </a>
-                                <a className='mdl-button mdl-button--colored mdl-js-button mdl-js-ripple-effect' onClick={this._clearUsername}>
-                                    Clear
-                                </a>
+                                <Button disabled={user.inProgress} onClick={this._confirmUsername}>Save Username</Button>
+                                <Button disabled={user.inProgress} onClick={this._clearUsername}>Clear</Button>
                             </div>
                         </div>
                     </div>
@@ -106,7 +104,9 @@ class About extends Component {
 }
 
 About.defaultProps = {
-    user: {}
+    user: {
+        data: {}
+    }
 };
 
 About.propTypes = {
