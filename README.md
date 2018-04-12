@@ -1,6 +1,11 @@
 # react-scaffold
 Simple scaffolding for a React project. This scaffolding was created using Facebook's official [create-react-app](https://github.com/facebook/create-react-app) tool, ejected, and subsequently modified.
 
+## Quick start guide
+1. Install [Node.js](https://nodejs.org).
+2. Run `npm install`.
+3. Run `npm start`.
+
 ## Application stack
 - [React](https://facebook.github.io/react/docs/why-react.html) - JavaScript library for building user interfaces.
 - [React Redux](http://redux.js.org/index.html) - Application state container.
@@ -31,6 +36,11 @@ Simple scaffolding for a React project. This scaffolding was created using Faceb
 - All variables names should be camel-cased.
 - Singleton classes should be **lower camel cased**.
 - Abstract/base classes should be prefixed with an underscore.
+
+## Code delivery standards
+- Prior to delivering _any_ code changes, be sure to run:
+    - `npm run lint`
+    - `npm test`
 
 ## TODOs
 - Add chat...

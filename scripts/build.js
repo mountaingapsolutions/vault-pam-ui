@@ -99,7 +99,12 @@ measureFileSizesBeforeBuild(paths.appBuild)
         }
     );
 
-// Create the production build and print the deployment instructions.
+/**
+ * Create the production build and print the deployment instructions.
+ *
+ * @param {Array} previousFileSizes - The previous file sizes.
+ * @returns {Promise}
+ */
 function build(previousFileSizes) {
     console.log('Creating an optimized production build...');
 
@@ -141,6 +146,9 @@ function build(previousFileSizes) {
     });
 }
 
+/**
+ * Copies over the public folder.
+ */
 function copyPublicFolder() {
     fs.copySync(paths.appPublic, paths.appBuild, {
         dereference: true,

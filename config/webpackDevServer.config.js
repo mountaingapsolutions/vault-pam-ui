@@ -9,7 +9,14 @@ const paths = require('./paths');
 const protocol = process.env.HTTPS === 'true' ? 'https' : 'http';
 const host = process.env.HOST || '0.0.0.0';
 
-module.exports = function (proxy, allowedHost) {
+/**
+ * Returns the dev server config.
+ *
+ * @param {boolean} proxy - The proxy indicator.
+ * @param {boolean} allowedHost - Allowed public host.
+ * @returns {Object}
+ */
+module.exports = (proxy, allowedHost) => {
     return {
         // WebpackDevServer 2.4.3 introduced a security fix that prevents remote
         // websites from potentially accessing local content through DNS rebinding:
@@ -81,6 +88,11 @@ module.exports = function (proxy, allowedHost) {
         },
         public: allowedHost,
         proxy,
+        /**
+         * Executes before the app.
+         *
+         * @param {Object} app - The app.
+         */
         before(app) {
             // This lets us open files from the runtime error overlay.
             app.use(errorOverlayMiddleware());

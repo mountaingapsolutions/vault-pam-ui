@@ -20,6 +20,9 @@ const isLocalhost = Boolean(
     )
 );
 
+/**
+ * The main service worker registration method.
+ */
 export default function register() {
     if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
         // The URL constructor is available in all browsers that support SW.
@@ -54,6 +57,11 @@ export default function register() {
     }
 }
 
+/**
+ * Registers a valid service worker.
+ *
+ * @param {string} swUrl - The service worker URL.
+ */
 function registerValidSW(swUrl) {
     navigator.serviceWorker
         .register(swUrl)
@@ -83,6 +91,11 @@ function registerValidSW(swUrl) {
         });
 }
 
+/**
+ * Checks for a valid service worker.
+ *
+ * @param {string} swUrl - The service worker URL.
+ */
 function checkValidServiceWorker(swUrl) {
     // Check if the service worker can be found. If it can't reload the page.
     fetch(swUrl)
@@ -110,6 +123,9 @@ function checkValidServiceWorker(swUrl) {
         });
 }
 
+/**
+ * Unregisters.
+ */
 export function unregister() {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.ready.then(registration => {
