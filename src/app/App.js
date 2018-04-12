@@ -46,6 +46,12 @@ class App extends Component {
     }
 }
 
+About.defaultProps = {
+    user: {
+        data: {}
+    }
+};
+
 App.propTypes = {
     location: PropTypes.object.isRequired,
     user: PropTypes.object

@@ -1,4 +1,4 @@
-/* global require */
+/* global module, require */
 
 const fs = require('fs');
 const path = require('path');
@@ -60,7 +60,14 @@ process.env.NODE_PATH = (process.env.NODE_PATH || '')
 // injected into the application via DefinePlugin in Webpack configuration.
 const REACT_APP = /^REACT_APP_/i;
 
-function getClientEnvironment(publicUrl) {
+/**
+ * Returns the client environment.
+ *
+ * @public
+ * @param {string} publicUrl - The public URL.
+ * @returns {Object}
+ */
+const getClientEnvironment = publicUrl => {
     const raw = Object.keys(process.env)
         .filter(key => REACT_APP.test(key))
         .reduce(
@@ -88,6 +95,6 @@ function getClientEnvironment(publicUrl) {
     };
 
     return {raw, stringified};
-}
+};
 
 module.exports = getClientEnvironment;
