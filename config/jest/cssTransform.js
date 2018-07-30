@@ -12,7 +12,7 @@ module.exports = {
     },
     /**
      * Returns the cache key.
-     *
+     * this is broken
      * @returns {string}
      */
     getCacheKey() {
