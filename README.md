@@ -1,5 +1,5 @@
-# react-scaffold
-Simple scaffolding for a React project. This scaffolding was created using Facebook's official [create-react-app](https://github.com/facebook/create-react-app) tool, ejected, and subsequently modified.
+# vault-web-ui
+A web client to connect to an existing Vault server.
 
 ## Quick start guide
 1. Install [Node.js](https://nodejs.org).
@@ -42,5 +42,3 @@ Simple scaffolding for a React project. This scaffolding was created using Faceb
     - `npm run lint`
     - `npm test`
 
-## TODOs
-- Add chat...
