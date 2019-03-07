@@ -6,11 +6,14 @@ import withRoot from 'app/withRoot';
 
 //ADD CUSTOM STYLES HERE
 const styles = () => ({
+    root: {
+        display: 'flex',
+        justifyContent: 'center',
+        padding: 40
+    },
     card: {
         width: 400,
-        padding: 10,
-        justifyContent: 'center',
-        alignItems: 'center'
+        padding: 10
     },
     textField: {
         width: '100%'
@@ -45,51 +48,45 @@ class Login extends Component {
     render() {
         const { classes } = this.props;
         return (
-            <section className='mdl-layout__tab-panel is-active'>
-                <div className='page-content'>
-                    <div className='mdl-grid'>
-                        <div className='mdl-cell mdl-cell--8-col'>
-                            <Card className={classes.card}>
-                                <Typography variant="title">
-                                    LOGIN
-                                </Typography>
-                                <div>
-                                    <TextField
-                                        className={classes.textField}
-                                        label='Token'
-                                        margin='normal'
-                                        variant='outlined'/>
-                                    <TextField
-                                        select
-                                        className={classes.textField}
-                                        label='Select'
-                                        margin='normal'
-                                        value={this.state.loginType}
-                                        variant='outlined'
-                                        onChange={event => this._handleChange(event)}>
-                                        {
-                                            LOGIN_OPTIONS.map(option => {
-                                                return (
-                                                    <MenuItem key={option}>
-                                                        {option.label}
-                                                    </MenuItem>
-                                                );
-                                            })
-                                        }
-                                    </TextField>
-                                </div>
-                                <div className='mdl-card__actions mdl-card--border'>
-                                    <Button
-                                        color='primary'
-                                        variant='contained'>
-                                        Login
-                                    </Button>
-                                </div>
-                            </Card>
-                        </div>
+            <div className={classes.root}>
+                <Card className={classes.card}>
+                    <Typography variant='title'>
+                        LOGIN
+                    </Typography>
+                    <div>
+                        <TextField
+                            className={classes.textField}
+                            label='Token'
+                            margin='normal'
+                            variant='outlined'/>
+                        <TextField
+                            select
+                            className={classes.textField}
+                            label='Select Authentication Method'
+                            margin='normal'
+                            value={this.state.loginType}
+                            variant='outlined'
+                            onChange={event => this._handleChange(event)}>
+                            {
+                                LOGIN_OPTIONS.map(option => {
+                                    return (
+                                        <MenuItem key={option}>
+                                            {option.label}
+                                        </MenuItem>
+                                    );
+                                })
+                            }
+                        </TextField>
                     </div>
-                </div>
-            </section>
+                    <div className='mdl-card__actions mdl-card--border'>
+                        <Button
+                            color='primary'
+                            variant='contained'>
+                            Login
+                        </Button>
+                    </div>
+                </Card>
+            </div>
         );
     }
 }
