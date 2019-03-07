@@ -5,6 +5,7 @@ import {Link, Redirect, Route, Switch, withRouter} from 'react-router-dom';
 
 import About from 'app/routes/About';
 import Chat from 'app/routes/Chat';
+import Login from 'app/routes/login/Login';
 import NotFound from 'app/routes/NotFound';
 
 /**
@@ -29,6 +30,7 @@ class App extends Component {
                 <div className='mdl-layout__tab-bar mdl-js-ripple-effect'>
                     <Link className={`mdl-layout__tab${['/', '/about'].indexOf(pathname) >= 0 ? ' is-active' : ''}`} to='/'>About</Link>
                     <Link className={`mdl-layout__tab${pathname === '/chat' ? ' is-active' : ''}`} to='/chat'>Chat</Link>
+                    <Link className={`mdl-layout__tab${pathname === '/login' ? ' is-active' : ''}`} to='/login'>Login</Link>
                 </div>
             </header>
             <div className='mdl-layout__drawer'>
@@ -38,6 +40,7 @@ class App extends Component {
                 <Switch>
                     <Route exact component={About} path='/'/>
                     <Route exact component={Chat} path='/chat'/>
+                    <Route exact component={Login} path='/login'/>
                     <Redirect from='/about' to='/'/>
                     <Route component={NotFound}/>
                 </Switch>
