@@ -16,7 +16,7 @@ export default class Button extends Component {
         super(props);
 
         this.state = {
-            buttonProps: this._getButtonProps(props)
+            buttonProps: Button._getButtonProps(props)
         };
     }
 
@@ -27,7 +27,7 @@ export default class Button extends Component {
      * @param {Object} props - The props to use.
      * @returns {Object}
      */
-    _getButtonProps(props = this.props) {
+    static _getButtonProps(props = this.props) {
         const buttonProps = {...props};
         buttonProps.className = 'mdl-button mdl-button--colored mdl-js-button mdl-js-ripple-effect';
         delete buttonProps.children;
@@ -35,16 +35,16 @@ export default class Button extends Component {
     }
 
     /**
-     * Required React Component lifecycle method. Invoked when a component is receiving new props. This method is not called for the initial render.
+     * Required React Component lifecycle method. invoked right before calling the render method, both on the initial mount and on subsequent updates.
      *
      * @protected
      * @override
      * @param {Object} nextProps - Next set of updated props.
      */
-    componentWillReceiveProps(nextProps) {
-        this.setState({
-            buttonProps: this._getButtonProps(nextProps)
-        });
+    static getDerivedStateFromProps(nextProps) {
+        return {
+            buttonProps: Button._getButtonProps(nextProps)
+        };
     }
 
     /**

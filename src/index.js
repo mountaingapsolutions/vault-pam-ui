@@ -9,7 +9,7 @@ import reduxThunk from 'redux-thunk';
 import userReducer from 'app/core/reducers/userReducer';
 
 import App from 'app/App';
-import registerServiceWorker from './registerServiceWorker';
+import * as serviceWorker from './serviceWorker';
 
 /**
  * Entry-point class.
@@ -61,7 +61,10 @@ class Index {
             </Router>
         </Provider>, document.getElementById('root'));
 
-        registerServiceWorker();
+        // If you want your app to work offline and load faster, you can change
+        // unregister() to register() below. Note this comes with some pitfalls.
+        // Learn more about service workers: https://bit.ly/CRA-PWA
+        serviceWorker.unregister();
     }
 }
 
