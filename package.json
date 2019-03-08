@@ -63,6 +63,7 @@
   "scripts": {
     "start": "node scripts/start.js",
     "build": "node scripts/build.js",
+    "lint": "eslint --ext .js,.jsx --format table .",
     "test": "node scripts/test.js"
   },
   "eslintConfig": {
@@ -98,6 +99,7 @@
       "[/\\\\]node_modules[/\\\\].+\\.(js|jsx|ts|tsx)$",
       "^.+\\.module\\.(css|sass|scss)$"
     ],
+    "moduleDirectories": ["node_modules", "src"],
     "moduleNameMapper": {
       "^react-native$": "react-native-web",
       "^.+\\.module\\.(css|sass|scss)$": "identity-obj-proxy"
@@ -115,8 +117,8 @@
       "node"
     ],
     "watchPlugins": [
-      "/Users/johnho/Work/create-react-app/node_modules/jest-watch-typeahead/filename.js",
-      "/Users/johnho/Work/create-react-app/node_modules/jest-watch-typeahead/testname.js"
+      "<rootDir>/node_modules/jest-watch-typeahead/filename.js",
+      "<rootDir>/node_modules/jest-watch-typeahead/testname.js"
     ]
   },
   "babel": {
