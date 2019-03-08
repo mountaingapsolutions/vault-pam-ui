@@ -51,6 +51,7 @@
     "postcss-safe-parser": "4.0.1",
     "react-app-polyfill": "^0.2.2",
     "react-dev-utils": "^8.0.0",
+    "request": "^2.88.0",
     "resolve": "1.10.0",
     "sass-loader": "7.1.0",
     "terser-webpack-plugin": "1.2.2",
@@ -99,7 +100,10 @@
       "[/\\\\]node_modules[/\\\\].+\\.(js|jsx|ts|tsx)$",
       "^.+\\.module\\.(css|sass|scss)$"
     ],
-    "moduleDirectories": ["node_modules", "src"],
+    "moduleDirectories": [
+      "node_modules",
+      "src"
+    ],
     "moduleNameMapper": {
       "^react-native$": "react-native-web",
       "^.+\\.module\\.(css|sass|scss)$": "identity-obj-proxy"
