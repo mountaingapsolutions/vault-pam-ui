@@ -4,14 +4,13 @@ import {connect} from 'react-redux';
 import {Link, Redirect, Route, Switch, withRouter} from 'react-router-dom';
 
 import About from 'app/routes/About';
-import Chat from 'app/routes/Chat';
 import Login from 'app/routes/login/Login';
 import NotFound from 'app/routes/NotFound';
 
 /**
  * The main app container.
  */
-class App extends Component {
+class Main extends Component {
 
     /**
      * Required React Component lifecycle method. Returns a tree of React components that will render to HTML.
@@ -25,7 +24,7 @@ class App extends Component {
         return <div className='mdl-layout mdl-js-layout mdl-layout--fixed-header'>
             <header className='mdl-layout__header'>
                 <div className='mdl-layout__header-row'>
-                    <span className='mdl-layout-title'>React Demo / Scaffold</span>
+                    <span className='mdl-layout-title'>Vault Web UI</span>
                 </div>
                 <div className='mdl-layout__tab-bar mdl-js-ripple-effect'>
                     <Link className={`mdl-layout__tab${['/', '/about'].indexOf(pathname) >= 0 ? ' is-active' : ''}`} to='/'>About</Link>
@@ -39,7 +38,6 @@ class App extends Component {
             <main className='mdl-layout__content'>
                 <Switch>
                     <Route exact component={About} path='/'/>
-                    <Route exact component={Chat} path='/chat'/>
                     <Route exact component={Login} path='/login'/>
                     <Redirect from='/about' to='/'/>
                     <Route component={NotFound}/>
@@ -49,13 +47,13 @@ class App extends Component {
     }
 }
 
-About.defaultProps = {
+Main.defaultProps = {
     user: {
         data: {}
     }
 };
 
-App.propTypes = {
+Main.propTypes = {
     location: PropTypes.object.isRequired,
     user: PropTypes.object
 };
@@ -74,4 +72,4 @@ const _mapStateToProps = (state = {}) => {
     };
 };
 
-export default withRouter(connect(_mapStateToProps)(App));
+export default withRouter(connect(_mapStateToProps)(Main));

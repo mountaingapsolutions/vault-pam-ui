@@ -1,3 +1,6 @@
+import loadable from '@loadable/component';
+import {blue, indigo} from '@material-ui/core/colors';
+import {createMuiTheme, MuiThemeProvider} from '@material-ui/core/styles';
 import {createBrowserHistory} from 'history';
 import React from 'react';
 import {render} from 'react-dom';
@@ -8,8 +11,14 @@ import reduxThunk from 'redux-thunk';
 
 import userReducer from 'app/core/reducers/userReducer';
 
-import App from 'app/App';
 import * as serviceWorker from './serviceWorker';
+
+const theme = createMuiTheme({
+    palette: {
+        primary: blue,
+        secondary: indigo
+    },
+});
 
 /**
  * Entry-point class.
@@ -26,7 +35,11 @@ class Index {
         window.app = {
             store: this._configureStore()
         };
-        this._render();
+        const requiresAuthentication = true;
+        const AppComponent = requiresAuthentication ? loadable(() => import('app/routes/Auth')) : loadable(() => import('app/routes/Main'));
+        console.warn('AppComponent: ', AppComponent);
+
+        this._render(<AppComponent/>);
     }
 
     /**
@@ -49,15 +62,18 @@ class Index {
     /**
      * Required React Component lifecycle method. Returns a tree of React components that will render to HTML.
      *
+     * @param {Object} appComponent The component to render.
      * @private
      */
-    _render() {
+    _render(appComponent) {
         const history = createBrowserHistory({
             basename: '/'
         });
         render(<Provider store={window.app.store}>
             <Router history={history}>
-                <App/>
+                <MuiThemeProvider theme={theme}>
+                    {appComponent}
+                </MuiThemeProvider>
             </Router>
         </Provider>, document.getElementById('root'));
 

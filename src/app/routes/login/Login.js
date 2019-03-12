@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
-import React, { Component } from 'react';
-import { Button, Card, MenuItem, TextField, Typography } from '@material-ui/core';
-import { withStyles } from '@material-ui/core/styles';
+import React, {Component} from 'react';
+import {Button, Card, MenuItem, TextField, Typography} from '@material-ui/core';
+import {withStyles} from '@material-ui/core/styles';
 import withRoot from 'app/withRoot';
 
 //ADD CUSTOM STYLES HERE
@@ -46,7 +46,7 @@ class Login extends Component {
     };
 
     render() {
-        const { classes } = this.props;
+        const {classes} = this.props;
         return (
             <div className={classes.root}>
                 <Card className={classes.card}>

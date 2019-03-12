@@ -8,7 +8,7 @@ import {Router} from 'react-router-dom';
 
 import userReducer from 'app/core/reducers/userReducer';
 
-import App from './App';
+import Main from './Main';
 
 /**
  * Configures the application store by invoking Redux's createStore method.
@@ -30,7 +30,7 @@ it('renders without crashing', () => {
     const div = document.createElement('div');
     ReactDOM.render(<Provider store={_configureStore()}>
         <Router history={createMemoryHistory()}>
-            <App/>
+            <Main/>
         </Router>
     </Provider>, div);
     ReactDOM.unmountComponentAtNode(div);
