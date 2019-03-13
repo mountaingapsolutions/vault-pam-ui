@@ -6,7 +6,7 @@ import {combineReducers, createStore} from 'redux';
 import {Provider} from 'react-redux';
 import {Router} from 'react-router-dom';
 
-import userReducer from 'app/core/reducers/userReducer';
+import sessionReducer from 'app/core/reducers/sessionReducer';
 
 import Main from './Main';
 
@@ -20,7 +20,7 @@ import Main from './Main';
 const _configureStore = (initialState) => {
     return createStore(
         combineReducers({
-            userReducer
+            sessionReducer
         }),
         initialState
     );

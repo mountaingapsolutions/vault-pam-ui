@@ -2,6 +2,8 @@
  * Base action creator class that all concrete action creator classes should extend from.
  *
  */
+import localStorageUtil from 'app/util/localStorageUtil';
+
 export default class _Actions {
 
     /**
@@ -32,7 +34,7 @@ export default class _Actions {
      * @protected
      * @param {string} type - The action type.
      * @param {string} url - The XHR url.
-     * @param {Object} data - The data to query by.
+     * @param {Object} [data] - The data to query by.
      * @returns {function} Redux dispatch function.
      */
     _dispatchGet(type, url, data) {
@@ -45,7 +47,7 @@ export default class _Actions {
      * @protected
      * @param {string} type - The action type.
      * @param {string} url - The XHR url.
-     * @param {Object} data - The data to post.
+     * @param {Object} [data] - The data to post.
      * @returns {function} Redux dispatch function.
      */
     _dispatchPost(type, url, data) {
@@ -58,7 +60,7 @@ export default class _Actions {
      * @protected
      * @param {string} type - The action type.
      * @param {string} url - The XHR url.
-     * @param {Object} data - The data to post.
+     * @param {Object} [data] - The data to post.
      * @returns {function} Redux dispatch function.
      */
     _dispatchPut(type, url, data) {
@@ -71,7 +73,7 @@ export default class _Actions {
      * @protected
      * @param {string} type - The action type.
      * @param {string} url - The XHR url.
-     * @param {Object} data - The data to query by.
+     * @param {Object} [data] - The data to query by.
      * @returns {function} Redux dispatch function.
      */
     _dispatchDelete(type, url, data) {
@@ -93,10 +95,14 @@ export default class _Actions {
             // Kickoff the initial inProgress dispatch.
             dispatch(this._createResourceData(type, undefined, undefined, true));
 
-            this._fetch(method, url, data).then(res => {
-                dispatch(this._createResourceData(type, undefined, res, false));
-            }).catch(err => {
-                dispatch(this._createResourceData(type, err, undefined, false));
+            return new Promise((resolve, reject) => {
+                this._fetch(method, url, data).then(res => {
+                    dispatch(this._createResourceData(type, undefined, res, false));
+                    resolve();
+                }).catch(err => {
+                    dispatch(this._createResourceData(type, err.errors || [err], undefined, false));
+                    reject();
+                });
             });
         };
     }
@@ -112,26 +118,36 @@ export default class _Actions {
      */
     _fetch(method, url, data) {
         return new Promise((resolve, reject) => {
-            let postData = {
-                method
+            let initData = { // Refer to https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch for full init data documentation.
+                method,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             };
             if (data) {
                 // If method is GET or DELETE, convert the data to query params.
                 if (method === 'GET' || method === 'DELETE') {
                     url = `${url}?${Object.keys(data).map(key => `${encodeURIComponent(key)}=${encodeURIComponent(data[key])}`).join('&')}`;
                 } else {
-                    postData = {
-                        ...postData,
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                    initData = {
+                        ...initData,
                         body: JSON.stringify(data)
                     };
                 }
             }
+            // Must pass the Vault domain and token if in local storage data.
+            const vaultDomain = localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_DOMAIN);
+            if (vaultDomain) {
+                initData.headers['X-Vault-Domain'] = vaultDomain;
+            }
+            const vaultToken = localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
+            if (vaultToken) {
+                initData.headers['X-Vault-Token'] = vaultToken;
+            }
+            console.warn('initData: ', initData);
             let ok;
             /* global fetch */
-            fetch(url, postData).then(res => {
+            fetch(url, initData).then(res => {
                 ok = res.ok;
                 return res.headers.get('content-type').includes('application/json') ? res.json() : res.text();
             }).then(response => {
@@ -146,17 +162,17 @@ export default class _Actions {
     /**
      * Creates the response resource data.
      *
-     * @private
+     * @protected
      * @param {string} type - Specified action type from the ACTION_TYPES constant.
-     * @param {Object} error - The error data field if the REST call returned with an error.
+     * @param {Array} errors - The error data field of the REST call returned with an array of errors.
      * @param {Object} data - The response data field if the REST call was successful.
      * @param {Object} inProgress - Indicator if the REST call is in-flight.
      * @returns {Object} Resource data.
      */
-    _createResourceData(type, error, data, inProgress) {
+    _createResourceData(type, errors, data, inProgress) {
         return {
             type,
-            error,
+            errors,
             data,
             inProgress
         };

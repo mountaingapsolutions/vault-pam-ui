@@ -1,14 +1,12 @@
+import {withStyles} from '@material-ui/core/styles';
+import {AppBar, Button, Card, CardActionArea, CardActions, CardContent, Grid, Toolbar, Typography} from '@material-ui/core';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
-import {Link, Redirect, Route, Switch, withRouter} from 'react-router-dom';
-
-import About from 'app/routes/About';
-import Login from 'app/routes/login/Login';
-import NotFound from 'app/routes/NotFound';
+import {Redirect, Route, Switch, withRouter} from 'react-router-dom';
 
 /**
- * The main app container.
+ * The main container.
  */
 class Main extends Component {
 
@@ -20,42 +18,50 @@ class Main extends Component {
      * @returns {ReactElement}
      */
     render() {
-        const {pathname} = this.props.location;
-        return <div className='mdl-layout mdl-js-layout mdl-layout--fixed-header'>
-            <header className='mdl-layout__header'>
-                <div className='mdl-layout__header-row'>
-                    <span className='mdl-layout-title'>Vault Web UI</span>
-                </div>
-                <div className='mdl-layout__tab-bar mdl-js-ripple-effect'>
-                    <Link className={`mdl-layout__tab${['/', '/about'].indexOf(pathname) >= 0 ? ' is-active' : ''}`} to='/'>About</Link>
-                    <Link className={`mdl-layout__tab${pathname === '/chat' ? ' is-active' : ''}`} to='/chat'>Chat</Link>
-                    <Link className={`mdl-layout__tab${pathname === '/login' ? ' is-active' : ''}`} to='/login'>Login</Link>
-                </div>
-            </header>
-            <div className='mdl-layout__drawer'>
-                <span className='mdl-layout-title'>Nothing here yet</span>
-            </div>
-            <main className='mdl-layout__content'>
+        const {classes} = this.props;
+        return <div className={classes.root}>
+            <AppBar position='static'>
+                <Toolbar>
+                    <img alt='logo' className={classes['mr-1']} src='/assets/vault-dark.svg'/>
+                    <Typography noWrap className={classes.title} color='inherit' variant='h6'>
+                        Vault Web UI
+                    </Typography>
+                </Toolbar>
+            </AppBar>
+            <Grid container className={classes['mt-1']} justify='center'>
                 <Switch>
-                    <Route exact component={About} path='/'/>
-                    <Route exact component={Login} path='/login'/>
-                    <Redirect from='/about' to='/'/>
-                    <Route component={NotFound}/>
+                    <Route exact path='/'>
+                        <Card className={classes.card}>
+                            <CardActionArea>
+                                <img alt='Homer' src='/assets/success.png'/>
+                                <CardContent>
+                                    <Typography gutterBottom className={classes.textCenter} component='h5' variant='h5'>
+                                        Success!
+                                    </Typography>
+                                    <Typography component='p'>
+                                        Unfortunately this is as far as we have for functionality. More to come soon.
+                                    </Typography>
+                                </CardContent>
+                            </CardActionArea>
+                            <CardActions>
+                                <Button color='primary' size='small'>
+                                    Log Out
+                                </Button>
+                            </CardActions>
+                        </Card>
+                    </Route>
+                    <Redirect to='/'/>
                 </Switch>
-            </main>
+            </Grid>
         </div>;
     }
 }
 
-Main.defaultProps = {
-    user: {
-        data: {}
-    }
-};
-
 Main.propTypes = {
+    classes: PropTypes.object.isRequired,
+    history: PropTypes.object.isRequired,
     location: PropTypes.object.isRequired,
-    user: PropTypes.object
+    vaultDomain: PropTypes.object.isRequired
 };
 
 /**
@@ -65,11 +71,31 @@ Main.propTypes = {
  * @param {Object} state - The initial state.
  * @returns {Object}
  */
-const _mapStateToProps = (state = {}) => {
-    const {user} = state.userReducer;
+const _mapStateToProps = (state) => {
     return {
-        user
+        ...state.sessionReducer
     };
 };
 
-export default withRouter(connect(_mapStateToProps)(Main));
+/**
+ * Returns custom style overrides.
+ *
+ * @private
+ * @returns {Object}
+ */
+const _styles = () => ({
+    card: {
+        width: '600px'
+    },
+    'mr-1': {
+        marginRight: '1em'
+    },
+    'mt-1': {
+        marginTop: '1em'
+    },
+    textCenter: {
+        textAlign: 'center'
+    }
+});
+
+export default withRouter(connect(_mapStateToProps)(withStyles(_styles)(Main)));

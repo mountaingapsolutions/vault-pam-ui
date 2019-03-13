@@ -9,9 +9,10 @@ import {Router} from 'react-router-dom';
 import {applyMiddleware, combineReducers, createStore} from 'redux';
 import reduxThunk from 'redux-thunk';
 
-import userReducer from 'app/core/reducers/userReducer';
+import sessionReducer from 'app/core/reducers/sessionReducer';
 
 import * as serviceWorker from './serviceWorker';
+import localStorageUtil from './app/util/localStorageUtil';
 
 const theme = createMuiTheme({
     palette: {
@@ -32,12 +33,14 @@ class Index {
      * @public
      */
     constructor() {
+        const hasDomain = localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_DOMAIN);
+        const hasToken = localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
+        const requiresAuthentication = !hasDomain || !hasToken;
         window.app = {
             store: this._configureStore()
         };
-        const requiresAuthentication = true;
+        console.warn('requiresAuthentication: ', requiresAuthentication);
         const AppComponent = requiresAuthentication ? loadable(() => import('app/routes/Auth')) : loadable(() => import('app/routes/Main'));
-        console.warn('AppComponent: ', AppComponent);
 
         this._render(<AppComponent/>);
     }
@@ -52,7 +55,7 @@ class Index {
     _configureStore(initialState) {
         return createStore(
             combineReducers({
-                userReducer
+                sessionReducer
             }),
             initialState,
             applyMiddleware(reduxThunk)

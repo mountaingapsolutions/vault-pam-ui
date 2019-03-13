@@ -21,7 +21,11 @@ class Auth extends Component {
      * @returns {ReactElement}
      */
     render() {
-        const {classes} = this.props;
+        const {classes, history, location, vaultDomain} = this.props;
+        // If attempting to go to the token page with no domain set, go back to the initial set domain page.
+        if (location.pathname === '/auth/token' && !vaultDomain.data) {
+            history.push('/auth/server');
+        }
         return <div className={classes.root}>
             <AppBar position='static'>
                 <Toolbar>
@@ -47,7 +51,9 @@ class Auth extends Component {
 
 Auth.propTypes = {
     classes: PropTypes.object.isRequired,
-    location: PropTypes.object.isRequired
+    history: PropTypes.object.isRequired,
+    location: PropTypes.object.isRequired,
+    vaultDomain: PropTypes.object.isRequired
 };
 
 /**
@@ -57,9 +63,9 @@ Auth.propTypes = {
  * @param {Object} state - The initial state.
  * @returns {Object}
  */
-const _mapStateToProps = (state = {}) => {
+const _mapStateToProps = (state) => {
     return {
-        ...state
+        ...state.sessionReducer
     };
 };
 
