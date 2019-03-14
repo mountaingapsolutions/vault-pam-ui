@@ -48,7 +48,7 @@ class Server extends Component {
      * Handle for submitting the form.
      *
      * @private
-     * @param {SyntheticMouseEvent} event - The event.
+     * @param {SyntheticMouseEvent} event The event.
      */
     _onSubmit(event) {
         event.preventDefault();

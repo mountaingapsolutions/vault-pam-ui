@@ -1,3 +1,5 @@
+/* global window */
+
 import {withStyles} from '@material-ui/core/styles';
 import {AppBar, Button, Card, CardActionArea, CardActions, CardContent, Grid, Toolbar, Typography} from '@material-ui/core';
 import PropTypes from 'prop-types';
@@ -5,10 +7,36 @@ import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import {Redirect, Route, Switch, withRouter} from 'react-router-dom';
 
+import localStorageUtil from 'app/util/localStorageUtil';
+
 /**
  * The main container.
  */
 class Main extends Component {
+
+    /**
+     * The constructor method. Executed upon class instantiation.
+     *
+     * @public
+     * @param {Object} props - Props to initialize with.
+     */
+    constructor(props) {
+        super(props);
+
+        this._onLogOut = this._onLogOut.bind(this);
+    }
+
+    /**
+     * Handle for when value change is triggered.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _onLogOut(event) {
+        event.preventDefault();
+        localStorageUtil.clear();
+        window.location.href = '/';
+    }
 
     /**
      * Required React Component lifecycle method. Returns a tree of React components that will render to HTML.
@@ -35,7 +63,7 @@ class Main extends Component {
                             <CardActionArea>
                                 <img alt='Homer' src='/assets/success.png'/>
                                 <CardContent>
-                                    <Typography gutterBottom className={classes.textCenter} component='h5' variant='h5'>
+                                    <Typography gutterBottom className={classes.textCenter} component='h5' variant='h6'>
                                         Success!
                                     </Typography>
                                     <Typography component='p'>
@@ -44,7 +72,7 @@ class Main extends Component {
                                 </CardContent>
                             </CardActionArea>
                             <CardActions>
-                                <Button color='primary' size='small'>
+                                <Button color='primary' size='small' onClick={this._onLogOut}>
                                     Log Out
                                 </Button>
                             </CardActions>

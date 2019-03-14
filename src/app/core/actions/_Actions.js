@@ -144,7 +144,6 @@ export default class _Actions {
             if (vaultToken) {
                 initData.headers['X-Vault-Token'] = vaultToken;
             }
-            console.warn('initData: ', initData);
             let ok;
             /* global fetch */
             fetch(url, initData).then(res => {

@@ -19,6 +19,9 @@ const theme = createMuiTheme({
         primary: blue,
         secondary: indigo
     },
+    typography: {
+        useNextVariants: true
+    },
 });
 
 /**
@@ -39,7 +42,6 @@ class Index {
         window.app = {
             store: this._configureStore()
         };
-        console.warn('requiresAuthentication: ', requiresAuthentication);
         const AppComponent = requiresAuthentication ? loadable(() => import('app/routes/Auth')) : loadable(() => import('app/routes/Main'));
 
         this._render(<AppComponent/>);
