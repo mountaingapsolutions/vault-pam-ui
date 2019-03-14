@@ -3,8 +3,6 @@ import _Actions from 'app/core/actions/_Actions';
 /**
  * Actions class responsible for handling session management such as authentication and client configuration.
  *
- * @author Mountain Gap Solutions
- * @copyright ©2019 Shorelight Education
  */
 class SessionAction extends _Actions {
 

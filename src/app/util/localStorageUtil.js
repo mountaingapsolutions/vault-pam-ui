@@ -3,9 +3,6 @@
 /**
  * Utility class to handle localStorage operations.
  *
- * @author Mountain Gap Solutions
- * @author Shorelight Education
- * @copyright ©2019 Shorelight Education
  */
 class LocalStorageUtil {
 
@@ -76,7 +73,9 @@ class LocalStorageUtil {
     _validate(keyName) {
         if (!this._keyValues.includes(keyName)) {
             const message = `Invalid key: ${keyName}.`;
+            /* eslint-disable no-console */
             console.error(message);
+            /* eslint-enable no-console */
             throw new Error(message);
         }
     }
