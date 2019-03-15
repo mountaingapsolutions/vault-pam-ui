@@ -2,13 +2,14 @@
 import {createMemoryHistory} from 'history';
 import React from 'react';
 import ReactDOM from 'react-dom';
-import {combineReducers, createStore} from 'redux';
+import {applyMiddleware, combineReducers, createStore} from 'redux';
 import {Provider} from 'react-redux';
 import {Router} from 'react-router-dom';
 
 import sessionReducer from 'app/core/reducers/sessionReducer';
 
 import Main from './Main';
+import reduxThunk from 'redux-thunk';
 
 /**
  * Configures the application store by invoking Redux's createStore method.
@@ -22,7 +23,8 @@ const _configureStore = (initialState) => {
         combineReducers({
             sessionReducer
         }),
-        initialState
+        initialState,
+        applyMiddleware(reduxThunk)
     );
 };
 
