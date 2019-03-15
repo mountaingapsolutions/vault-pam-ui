@@ -9,6 +9,7 @@ import {Router} from 'react-router-dom';
 import {applyMiddleware, combineReducers, createStore} from 'redux';
 import reduxThunk from 'redux-thunk';
 
+import kvReducer from 'app/core/reducers/kvReducer.js';
 import sessionReducer from 'app/core/reducers/sessionReducer';
 
 import * as serviceWorker from './serviceWorker';
@@ -57,6 +58,7 @@ class Index {
     _configureStore(initialState) {
         return createStore(
             combineReducers({
+                kvReducer,
                 sessionReducer
             }),
             initialState,

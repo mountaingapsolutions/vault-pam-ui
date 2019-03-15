@@ -7,6 +7,7 @@ import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import {Redirect, Route, Switch, withRouter} from 'react-router-dom';
+import kvAction from 'app/core/actions/kvAction';
 import sessionAction from 'app/core/actions/sessionAction';
 import localStorageUtil from 'app/util/localStorageUtil';
 
@@ -69,11 +70,15 @@ class Main extends Component {
     componentDidMount() {
         const {checkSession} = this.props;
         checkSession().then(() => {
-            const {vaultLookupSelf} = this.props;
+            const {listSecrets, vaultLookupSelf} = this.props;
+
             if (vaultLookupSelf.data.data.policies.includes('root')) {
-                localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
-                this.setState({
-                    showRootWarning: true
+                // TODO Display the result of listSecrets
+                listSecrets().then(() => {
+                    localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
+                    this.setState({
+                        showRootWarning: true
+                    });
                 });
             }
         });
@@ -141,7 +146,9 @@ Main.propTypes = {
     checkSession: PropTypes.func.isRequired,
     classes: PropTypes.object.isRequired,
     history: PropTypes.object.isRequired,
+    listSecrets: PropTypes.func.isRequired,
     location: PropTypes.object.isRequired,
+    secretsPaths: PropTypes.array,
     vaultDomain: PropTypes.object.isRequired,
     vaultLookupSelf: PropTypes.object.isRequired
 };
@@ -155,7 +162,8 @@ Main.propTypes = {
  */
 const _mapStateToProps = (state) => {
     return {
-        ...state.sessionReducer
+        ...state.sessionReducer,
+        ...state.kvReducer
     };
 };
 
@@ -168,7 +176,8 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        checkSession: () => dispatch(sessionAction.validateToken())
+        checkSession: () => dispatch(sessionAction.validateToken()),
+        listSecrets: (path) => dispatch(kvAction.listSecrets(path))
     };
 };
 
