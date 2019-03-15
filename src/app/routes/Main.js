@@ -167,7 +167,6 @@ const _mapStateToProps = (state) => {
  * @returns {Object}
  */
 const _mapDispatchToProps = (dispatch) => {
-    console.warn('sessionAction.validateToken: ', sessionAction.validateToken);
     return {
         checkSession: () => dispatch(sessionAction.validateToken())
     };
