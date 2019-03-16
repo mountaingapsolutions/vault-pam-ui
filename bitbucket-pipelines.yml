@@ -4,6 +4,7 @@ image: node:10.15.3
 pipelines:
   default:
     - step:
+        name: "Validate, test, and build"
         caches:
           - node
         script:
@@ -15,7 +16,7 @@ pipelines:
         artifacts:
           - vault-web-ui.zip
     - step:
-        name: "Deploy to Dev Environment"
+        name: "Deploy to Elastic Beanstalk"
         deployment: test
         script:
         - pipe: atlassian/aws-elasticbeanstalk-deploy:0.2.5
@@ -24,6 +25,7 @@ pipelines:
             AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
             AWS_DEFAULT_REGION: "us-east-1"
             APPLICATION_NAME: "vault-web-ui"
+            ENVIRONMENT_NAME: "test"
             ZIP_FILE: "vault-web-ui.zip"
             S3_BUCKET: "elasticbeanstalk-us-east-1-163714151155"
-            VERSION_LABEL: "${ENVIRONMENT_NAME}_${BITBUCKET_COMMIT:0:8}_YYYY-mm-dd_HHMMSS"
+            VERSION_LABEL: "v.${BITBUCKET_COMMIT:0:8}.YYYY-mm-dd_HHMMSS"
