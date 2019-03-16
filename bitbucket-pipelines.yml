@@ -28,4 +28,4 @@ pipelines:
             ENVIRONMENT_NAME: "test"
             ZIP_FILE: "vault-web-ui.zip"
             S3_BUCKET: "elasticbeanstalk-us-east-1-163714151155"
-            VERSION_LABEL: "v.${BITBUCKET_COMMIT:0:8}._YYYY-mm-dd_HHMMSS)"
+            VERSION_LABEL: "v.0.${BITBUCKET_BUILD_NUMBER}"
