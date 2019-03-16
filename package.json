@@ -17,6 +17,7 @@
   "devDependencies": {
     "@babel/core": "7.2.2",
     "@svgr/webpack": "4.1.0",
+    "archiver": "^3.0.0",
     "babel-core": "7.0.0-bridge.0",
     "babel-eslint": "9.0.0",
     "babel-jest": "23.6.0",
@@ -66,7 +67,7 @@
     "start": "node scripts/start.js",
     "prebuild": "rm -rf dist && rm -f vault-web-ui.zip",
     "build": "GENERATE_SOURCEMAP=false node scripts/build.js",
-    "postbuild": "mkdir dist && mv build dist/build && cp package.production.json dist/package.json && cp src/restServiceMethods.js dist/restServiceMethods.js && cp src/productionServer.js dist/productionServer.js && cd dist && zip -r ../vault-web-ui.zip * && cd ..",
+    "postbuild": "mkdir dist && mv build dist/build && cp package.production.json dist/package.json && cp src/restServiceMethods.js dist/restServiceMethods.js && cp src/productionServer.js dist/productionServer.js && cp robots.txt dist/robots.txt && node scripts/dist.js",
     "lint": "eslint --ext .js,.jsx --format table .",
     "test": "node scripts/test.js"
   },
