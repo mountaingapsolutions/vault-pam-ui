@@ -18,7 +18,7 @@ pipelines:
         name: "Deploy to Dev Environment"
         deployment: test
         script:
-        - pipe: atlassian/aws-elasticbeanstalk-deploy:0.2.1
+        - pipe: atlassian/aws-elasticbeanstalk-deploy:0.2.5
           variables:
             AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
             AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
@@ -26,4 +26,4 @@ pipelines:
             APPLICATION_NAME: "vault-web-ui"
             ZIP_FILE: "vault-web-ui.zip"
             S3_BUCKET: "elasticbeanstalk-us-east-1-163714151155"
-            VERSION_LABEL: "v-$BITBUCKET_BUILD_NUMBER-multiple"
+            #VERSION_LABEL: "v-$BITBUCKET_BUILD_NUMBER-multiple"
