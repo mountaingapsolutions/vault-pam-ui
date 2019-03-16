@@ -6,6 +6,15 @@ A web client to connect to an existing Vault server.
 2. Run `npm install`.
 3. Run `npm start`.
 
+## Running the built application
+To run the client with built code locally, execute the following:
+```
+$ npm run build
+$ cd dist
+$ npm install
+$ PORT=8080 npm start
+```
+
 ## Application stack
 - [React](https://facebook.github.io/react/docs/why-react.html) - JavaScript library for building user interfaces.
 - [React Redux](http://redux.js.org/index.html) - Application state container.

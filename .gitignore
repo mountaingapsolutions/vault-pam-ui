@@ -8,6 +8,8 @@
 
 # production
 /build
+/dist
+vault-web-ui.zip
 
 # misc
 .DS_Store

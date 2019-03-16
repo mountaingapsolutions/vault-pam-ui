@@ -96,13 +96,6 @@ checkBrowsers(paths.appPath, isInteractive)
             urls.lanUrlForConfig
         );
         const devServer = new WebpackDevServer(compiler, serverConfig);
-        devServer.app.use(require('body-parser').json());
-        devServer.app.use('/user', (req, res) => {
-            // Add a fake delay.
-            setTimeout(() => res.json({
-                username: _toProperCase(req.body.username)
-            }).end(), 500);
-        });
         // Launch WebpackDevServer.
         devServer.listen(port, HOST, err => {
             if (err) {
@@ -129,14 +122,3 @@ checkBrowsers(paths.appPath, isInteractive)
         }
         process.exit(1);
     });
-
-/**
- * Takes the input string and outputs the return string in proper case form.
- *
- * @private
- * @param {string} string - The string to convert.
- * @returns {string}
- */
-const _toProperCase = (string = '') => {
-    return string.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
-};
