@@ -10,6 +10,7 @@ pipelines:
           - npm install
           - npm run lint
           - npm test -- --coverage
+          - unset CI
           - npm run build
         artifacts:
           - vault-web-ui.zip
