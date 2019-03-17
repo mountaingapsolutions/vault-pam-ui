@@ -9,6 +9,9 @@ const path = require('path');
 const hsts = require('hsts');
 const {api, validate} = require('./restServiceMethods');
 
+// Overcome the DEPTH_ZERO_SELF_SIGNED_CERT error.
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 const useHsts = process.env.USE_HSTS !== null && process.env.USE_HSTS !== undefined ? !!process.env.USE_HSTS && process.env.USE_HSTS !== 'false' : true;
 console.log(`Starting server on port ${chalk.yellow(port)}...`);
 
