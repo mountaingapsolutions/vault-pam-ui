@@ -1,9 +1,11 @@
 import {withStyles} from '@material-ui/core/styles';
-import {Button, CardActions, CardContent, TextField, Typography} from '@material-ui/core';
+import {Button, CardActions, CardContent, ExpansionPanel, ExpansionPanelSummary, ExpansionPanelDetails, MenuList, MenuItem, TextField, Typography} from '@material-ui/core';
+import {ExpandMore} from '@material-ui/icons';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
 
+import localStorageAction from 'app/core/actions/localStorageAction';
 import sessionAction from 'app/core/actions/sessionAction';
 import localStorageUtil from 'app/util/localStorageUtil';
 
@@ -16,17 +18,19 @@ class Server extends Component {
      * The constructor method. Executed upon class instantiation.
      *
      * @public
-     * @param {Object} props - Props to initialize with.
+     * @param {Object} props Props to initialize with.
      */
     constructor(props) {
         super(props);
 
         this.state = {
             error: '',
+            isDirty: false,
             url: ''
         };
 
         this._onChange = this._onChange.bind(this);
+        this._onClick = this._onClick.bind(this);
         this._onSubmit = this._onSubmit.bind(this);
     }
 
@@ -34,14 +38,51 @@ class Server extends Component {
      * Handle for when value change is triggered.
      *
      * @private
-     * @param {SyntheticMouseEvent} event - The event.
+     * @param {SyntheticMouseEvent} event The event.
      */
     _onChange(event) {
         event.preventDefault();
         this.setState({
             error: '',
+            isDirty: true,
             url: event.target.value
         });
+    }
+
+    /**
+     * Handle for when the server textfield has been clicked.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _onClick(event) {
+        event.stopPropagation();
+    }
+
+    /**
+     * Handle the menu item click.
+     *
+     * @private
+     * @param {string} value The value.
+     */
+    _onMenuItemClick(value) {
+        this.setState({
+            url: value
+        });
+    }
+
+    /**
+     * Handle the menu item click.
+     *
+     * @private
+     * @param {string} value The value.
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _onRemoveMenuItem(value, event) {
+        event.stopPropagation();
+
+        const {removeVaultDomain} = this.props;
+        removeVaultDomain(value);
     }
 
     /**
@@ -73,6 +114,38 @@ class Server extends Component {
     }
 
     /**
+     * Required React Component lifecycle method. Invoked once, only on the client (not on the server), immediately after the initial rendering occurs.
+     *
+     * @protected
+     * @override
+     */
+    componentDidMount() {
+        const {getVaultDomains} = this.props;
+        getVaultDomains();
+    }
+
+    /**
+     * Required React Component lifecycle method. Invoked right before calling the render method, both on the initial mount and on subsequent updates.
+     *
+     * @protected
+     * @override
+     * @param {Object} props - Next set of updated props.
+     * @param {Object} state - The current state.
+     * @returns {Object}
+     */
+    static getDerivedStateFromProps(props, state) {
+        const {activeVaultDomain} = props;
+        const {isDirty} = state;
+        if (!isDirty && activeVaultDomain) {
+            return {
+                isDirty: true,
+                url: activeVaultDomain
+            };
+        }
+        return null;
+    }
+
+    /**
      * Required React Component lifecycle method. Returns a tree of React components that will render to HTML.
      *
      * @override
@@ -80,17 +153,47 @@ class Server extends Component {
      * @returns {ReactElement}
      */
     render() {
-        const {classes} = this.props;
-        const {error} = this.state;
+        const {classes, vaultDomains} = this.props;
+        const {error, url} = this.state;
         const helperText = error || 'e.g. https://vault.mycompany.com:8200';
         return <form onSubmit={this._onSubmit}>
             <CardContent>
-                <Typography gutterBottom className={classes.title} color='textSecondary' variant='h6'>
+                <Typography gutterBottom color='textSecondary' variant='h6'>
                     Initial Configuration
                 </Typography>
-                <TextField fullWidth required className={classes.textField} error={!!error} helperText={helperText} label='Vault Server URL' margin='normal' variant='outlined' onChange={this._onChange}/>
+                <ExpansionPanel>
+                    <ExpansionPanelSummary expandIcon={<ExpandMore/>}>
+                        <TextField
+                            fullWidth
+                            required
+                            className={classes.textField}
+                            error={!!error}
+                            helperText={helperText}
+                            label='Vault Server URL'
+                            margin='normal'
+                            value={url}
+                            variant='outlined'
+                            onChange={this._onChange}
+                            onClick={this._onClick}/>
+                    </ExpansionPanelSummary>
+                    <ExpansionPanelDetails className={classes.flexDirection}>
+                        <Typography className='w-100' color='textSecondary'>
+                            Saved Vault Domains
+                        </Typography>
+                        <MenuList className='w-100'>{
+                            vaultDomains.map((domain, i) => <MenuItem key={`vault-domain-${i}`} onClick={this._onMenuItemClick.bind(this, domain)}>
+                                <div className={classes.menuListContainer}>
+                                    <div className={classes.menuListLabel}>{domain}</div>
+                                    <Button color='primary' onClick={this._onRemoveMenuItem.bind(this, domain)}>
+                                        Remove
+                                    </Button>
+                                </div>
+                            </MenuItem>)
+                        }</MenuList>
+                    </ExpansionPanelDetails>
+                </ExpansionPanel>
             </CardContent>
-            <CardActions className={classes['card-action']}>
+            <CardActions className={classes.cardAction}>
                 <Button className={classes.button} color='primary' variant='contained' onClick={this._onSubmit}>
                     Next
                 </Button>
@@ -100,10 +203,18 @@ class Server extends Component {
 }
 
 Server.propTypes = {
+    activeVaultDomain: PropTypes.string,
     classes: PropTypes.object.isRequired,
+    getActiveVaultDomain: PropTypes.func.isRequired,
+    getVaultDomains: PropTypes.func.isRequired,
     history: PropTypes.object.isRequired,
-    vaultSealStatus: PropTypes.object.isRequired,
-    setVaultDomain: PropTypes.func.isRequired
+    location: PropTypes.object.isRequired,
+    removeVaultDomain: PropTypes.func.isRequired,
+    setVaultDomain: PropTypes.func.isRequired,
+    vaultDomain: PropTypes.object.isRequired,
+    vaultDomains: PropTypes.array.isRequired,
+    vaultLookupSelf: PropTypes.object.isRequired,
+    vaultSealStatus: PropTypes.object.isRequired
 };
 
 /**
@@ -115,6 +226,7 @@ Server.propTypes = {
  */
 const _mapStateToProps = (state) => {
     return {
+        ...state.localStorageReducer,
         ...state.sessionReducer
     };
 };
@@ -128,10 +240,17 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
+        getActiveVaultDomain: () => dispatch(localStorageAction.getActiveVaultDomain()),
+        getVaultDomains: () => {
+            dispatch(localStorageAction.getActiveVaultDomain());
+            dispatch(localStorageAction.getVaultDomains());
+        },
+        removeVaultDomain: (url) => dispatch(localStorageAction.removeVaultDomain(url)),
         setVaultDomain: (url) => {
             return new Promise((resolve, reject) => {
                 dispatch(sessionAction.validateServer(url)).then(() => {
                     localStorageUtil.setItem(localStorageUtil.KEY_NAMES.VAULT_DOMAIN, url);
+                    dispatch(localStorageAction.addVaultDomain(url));
                     dispatch(sessionAction.setDomain(url));
                     resolve();
                 }).catch(reject);
@@ -147,8 +266,19 @@ const _mapDispatchToProps = (dispatch) => {
  * @returns {Object}
  */
 const _styles = () => ({
-    'card-action': {
+    cardAction: {
         justifyContent: 'flex-end'
+    },
+    flexDirection: {
+        flexDirection: 'column'
+    },
+    menuListContainer: {
+        display: 'flex',
+        width: '100%'
+    },
+    menuListLabel: {
+        flex: 'auto',
+        padding: '6px 0'
     }
 });
 

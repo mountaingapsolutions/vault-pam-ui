@@ -10,6 +10,7 @@ import {applyMiddleware, combineReducers, createStore} from 'redux';
 import reduxThunk from 'redux-thunk';
 
 import kvReducer from 'app/core/reducers/kvReducer.js';
+import localStorageReducer from 'app/core/reducers/localStorageReducer';
 import sessionReducer from 'app/core/reducers/sessionReducer';
 
 import * as serviceWorker from './serviceWorker';
@@ -59,6 +60,7 @@ class Index {
         return createStore(
             combineReducers({
                 kvReducer,
+                localStorageReducer,
                 sessionReducer
             }),
             initialState,

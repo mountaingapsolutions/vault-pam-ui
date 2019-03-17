@@ -98,13 +98,13 @@ class Main extends Component {
         return <div className={classes.root}>
             <AppBar position='static'>
                 <Toolbar>
-                    <img alt='logo' className={classes['mr-1']} src='/assets/vault-dark.svg'/>
+                    <img alt='logo' className='mr-1' src='/assets/vault-dark.svg'/>
                     <Typography noWrap className={classes.title} color='inherit' variant='h6'>
                         Vault Web UI
                     </Typography>
                 </Toolbar>
             </AppBar>
-            <Grid container className={classes['mt-1']} justify='center'>
+            <Grid container className='mt-1' justify='center'>
                 <Switch>
                     <Route exact path='/'>
                         <Card className={classes.card}>
@@ -162,6 +162,7 @@ Main.propTypes = {
  */
 const _mapStateToProps = (state) => {
     return {
+        ...state.localStorageReducer,
         ...state.sessionReducer,
         ...state.kvReducer
     };
@@ -190,12 +191,6 @@ const _mapDispatchToProps = (dispatch) => {
 const _styles = () => ({
     card: {
         width: '600px'
-    },
-    'mr-1': {
-        marginRight: '1em'
-    },
-    'mt-1': {
-        marginTop: '1em'
     },
     textCenter: {
         textAlign: 'center'

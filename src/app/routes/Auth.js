@@ -26,16 +26,16 @@ class Auth extends Component {
         if (location.pathname === '/auth/token' && !vaultDomain.data) {
             history.push('/auth/server');
         }
-        return <div className={classes.root}>
+        return <div>
             <AppBar position='static'>
                 <Toolbar>
-                    <img alt='logo' className={classes['mr-1']} src='/assets/vault-dark.svg'/>
-                    <Typography noWrap className={classes.title} color='inherit' variant='h6'>
+                    <img alt='logo' className='mr-1' src='/assets/vault-dark.svg'/>
+                    <Typography noWrap color='inherit' variant='h6'>
                         Vault Web UI
                     </Typography>
                 </Toolbar>
             </AppBar>
-            <Grid container className={classes['mt-1']} justify='center'>
+            <Grid container className='mt-1' justify='center'>
                 <Card className={classes.card}>
                     <Switch>
                         <Redirect exact from='/' to='/auth/server'/>
@@ -77,13 +77,7 @@ const _mapStateToProps = (state) => {
  */
 const _styles = () => ({
     card: {
-        width: '500px'
-    },
-    'mr-1': {
-        marginRight: '1em'
-    },
-    'mt-1': {
-        marginTop: '1em'
+        width: '800px'
     }
 });
 
