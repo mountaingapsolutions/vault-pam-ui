@@ -13,10 +13,25 @@ class SessionAction extends _Actions {
      */
     constructor() {
         super('SessionAction', {
+            AUTHENTICATE_USER_PASS: 'AUTHENTICATE_USER_PASS',
             SET_DOMAIN: 'SET_DOMAIN',
             SET_TOKEN: 'SET_TOKEN',
             VALIDATE_DOMAIN: 'VALIDATE_DOMAIN',
             VALIDATE_TOKEN: 'VALIDATE_TOKEN'
+        });
+    }
+
+    /**
+     * Authenticates the specified Vault username and password.
+     *
+     *
+     * @param {string} username The username to set.
+     * @param {string} password The password to set.
+     * @returns {function} Redux dispatch function.
+     */
+    authenticateUserPass(username, password) {
+        return this._dispatchPost(this.ACTION_TYPES.AUTHENTICATE_USER_PASS, `/api/v1/auth/userpass/login/${username}`, {
+            password
         });
     }
 

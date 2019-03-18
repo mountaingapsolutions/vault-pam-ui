@@ -57,7 +57,7 @@ class Main extends Component {
      */
     _onLogOut(event) {
         event.preventDefault();
-        localStorageUtil.clear();
+        localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
         window.location.href = '/';
     }
 

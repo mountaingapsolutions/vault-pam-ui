@@ -97,11 +97,13 @@ export default class _Actions {
 
             return new Promise((resolve, reject) => {
                 this._fetch(method, url, data).then(res => {
-                    dispatch(this._createResourceData(type, undefined, res, false));
-                    resolve();
+                    const responseData = this._createResourceData(type, undefined, res, false);
+                    dispatch(responseData);
+                    resolve(responseData);
                 }).catch(err => {
-                    dispatch(this._createResourceData(type, err.errors || [err], undefined, false));
-                    reject();
+                    const errorData = this._createResourceData(type, err.errors || [err], undefined, false);
+                    dispatch(errorData);
+                    reject(errorData);
                 });
             });
         };

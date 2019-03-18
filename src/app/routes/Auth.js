@@ -6,7 +6,7 @@ import {connect} from 'react-redux';
 import {Redirect, Route, Switch, withRouter} from 'react-router-dom';
 
 import Server from 'app/routes/auth/Server';
-import Token from 'app/routes/auth/Token';
+import Login from 'app/routes/auth/Login';
 
 /**
  * The authentication container.
@@ -22,8 +22,8 @@ class Auth extends Component {
      */
     render() {
         const {classes, history, location, vaultDomain} = this.props;
-        // If attempting to go to the token page with no domain set, go back to the initial set domain page.
-        if (location.pathname === '/auth/token' && !vaultDomain.data) {
+        // If attempting to go to the login page with no domain set, go back to the initial set domain page.
+        if (location.pathname === '/auth/login' && !vaultDomain.data) {
             history.push('/auth/server');
         }
         return <div>
@@ -40,7 +40,7 @@ class Auth extends Component {
                     <Switch>
                         <Redirect exact from='/' to='/auth/server'/>
                         <Route exact component={Server} path='/auth/server'/>
-                        <Route exact component={Token} path='/auth/token'/>
+                        <Route exact component={Login} path='/auth/login'/>
                         <Redirect to='/auth/server'/>
                     </Switch>
                 </Card>

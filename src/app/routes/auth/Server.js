@@ -101,7 +101,7 @@ class Server extends Component {
             });
         } else {
             setVaultDomain(url).then(() => {
-                history.push('/auth/token');
+                history.push('/auth/login');
             }).catch(() => {
                 const {vaultSealStatus} = this.props;
                 if (vaultSealStatus.errors) {
@@ -159,14 +159,14 @@ class Server extends Component {
         return <form onSubmit={this._onSubmit}>
             <CardContent>
                 <Typography gutterBottom color='textSecondary' variant='h6'>
-                    Initial Configuration
+                    Connect to a Vault server
                 </Typography>
                 <ExpansionPanel>
                     <ExpansionPanelSummary expandIcon={<ExpandMore/>}>
                         <TextField
                             fullWidth
                             required
-                            className={classes.textField}
+                            className='m-1'
                             error={!!error}
                             helperText={helperText}
                             label='Vault Server URL'
@@ -194,7 +194,7 @@ class Server extends Component {
                 </ExpansionPanel>
             </CardContent>
             <CardActions className={classes.cardAction}>
-                <Button className={classes.button} color='primary' variant='contained' onClick={this._onSubmit}>
+                <Button className={classes.button} color='primary' type='submit' variant='contained' onClick={this._onSubmit}>
                     Next
                 </Button>
             </CardActions>
