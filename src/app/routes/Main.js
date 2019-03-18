@@ -9,6 +9,7 @@ import {connect} from 'react-redux';
 import {Redirect, Route, Switch, withRouter} from 'react-router-dom';
 import kvAction from 'app/core/actions/kvAction';
 import sessionAction from 'app/core/actions/sessionAction';
+import userAction from 'app/core/actions/userAction';
 import localStorageUtil from 'app/util/localStorageUtil';
 
 /**
@@ -68,7 +69,7 @@ class Main extends Component {
     componentDidMount() {
         const {checkSession} = this.props;
         checkSession().then(() => {
-            const {listSecrets, vaultLookupSelf} = this.props;
+            const {listSecrets, listUsers, vaultLookupSelf} = this.props;
 
             if (vaultLookupSelf.data.data.policies.includes('root')) {
                 localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
@@ -80,6 +81,11 @@ class Main extends Component {
             listSecrets().then(() => {
                 const {secretsPaths} = this.props;
                 console.log('Secrets returned: ', secretsPaths);
+            });
+            // TODO Display the result of listUsers
+            listUsers().then(() => {
+                const {users} = this.props;
+                console.log('Users returned: ', users);
             });
         });
     }
@@ -147,10 +153,12 @@ Main.propTypes = {
     classes: PropTypes.object.isRequired,
     history: PropTypes.object.isRequired,
     listSecrets: PropTypes.func.isRequired,
+    listUsers: PropTypes.func.isRequired,
     location: PropTypes.object.isRequired,
     secretsPaths: PropTypes.array,
     vaultDomain: PropTypes.object.isRequired,
-    vaultLookupSelf: PropTypes.object.isRequired
+    vaultLookupSelf: PropTypes.object.isRequired,
+    users: PropTypes.array
 };
 
 /**
@@ -164,7 +172,8 @@ const _mapStateToProps = (state) => {
     return {
         ...state.localStorageReducer,
         ...state.sessionReducer,
-        ...state.kvReducer
+        ...state.kvReducer,
+        ...state.userReducer
     };
 };
 
@@ -178,7 +187,8 @@ const _mapStateToProps = (state) => {
 const _mapDispatchToProps = (dispatch) => {
     return {
         checkSession: () => dispatch(sessionAction.validateToken()),
-        listSecrets: (path) => dispatch(kvAction.listSecrets(path))
+        listSecrets: (path) => dispatch(kvAction.listSecrets(path)),
+        listUsers: () => dispatch(userAction.listUsers())
     };
 };
 

@@ -6,13 +6,6 @@ import React from 'react';
 import {render} from 'react-dom';
 import {Provider} from 'react-redux';
 import {Router} from 'react-router-dom';
-import {applyMiddleware, combineReducers, createStore} from 'redux';
-import reduxThunk from 'redux-thunk';
-
-import kvReducer from 'app/core/reducers/kvReducer.js';
-import localStorageReducer from 'app/core/reducers/localStorageReducer';
-import sessionReducer from 'app/core/reducers/sessionReducer';
-
 import * as serviceWorker from './serviceWorker';
 import localStorageUtil from './app/util/localStorageUtil';
 
@@ -41,31 +34,23 @@ class Index {
         const hasDomain = localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_DOMAIN);
         const hasToken = localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
         const requiresAuthentication = !hasDomain || !hasToken;
-        window.app = {
-            store: this._configureStore()
-        };
-        const AppComponent = requiresAuthentication ? loadable(() => import('app/routes/Auth')) : loadable(() => import('app/routes/Main'));
-
-        this._render(<AppComponent/>);
-    }
-
-    /**
-     * Configures the application store by invoking Redux's createStore method.
-     *
-     * @private
-     * @param {Object} [initialState] = The initial state.
-     * @returns {Object}
-     */
-    _configureStore(initialState) {
-        return createStore(
-            combineReducers({
-                kvReducer,
-                localStorageReducer,
-                sessionReducer
-            }),
-            initialState,
-            applyMiddleware(reduxThunk)
-        );
+        if (requiresAuthentication) {
+            const Auth = loadable(() => import('app/routes/Auth'));
+            import('app/core/stores/configureAuthStore').then(store => {
+                window.app = {
+                    store: store.default()
+                };
+                this._render(<Auth/>);
+            });
+        } else {
+            const Main = loadable(() => import('app/routes/Main'));
+            import('app/core/stores/configureMainStore').then(store => {
+                window.app = {
+                    store: store.default()
+                };
+                this._render(<Main/>);
+            });
+        }
     }
 
     /**
