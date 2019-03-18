@@ -291,6 +291,7 @@ const _mapDispatchToProps = (dispatch) => {
                     dispatch(sessionAction.authenticateUserPass(username, password)).then((response) => {
                         const {client_token: clientToken} = response.data.auth;
                         localStorageUtil.setItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN, clientToken);
+                        dispatch(sessionAction.setToken(clientToken));
                         dispatch(sessionAction.validateToken()).then(resolve).catch(reject);
                     }).catch(reject);
                 });
