@@ -40,9 +40,7 @@ class Main extends Component {
      * @param {string} reason The close reason.
      */
     _onClose(event, reason) {
-        if (reason === 'clickaway') {
-            return;
-        } else {
+        if (reason !== 'clickaway') {
             this.setState({
                 showRootWarning: false
             });
@@ -73,14 +71,16 @@ class Main extends Component {
             const {listSecrets, vaultLookupSelf} = this.props;
 
             if (vaultLookupSelf.data.data.policies.includes('root')) {
-                // TODO Display the result of listSecrets
-                listSecrets().then(() => {
-                    localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
-                    this.setState({
-                        showRootWarning: true
-                    });
+                localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
+                this.setState({
+                    showRootWarning: true
                 });
             }
+            // TODO Display the result of listSecrets
+            listSecrets().then(() => {
+                const {secretsPaths} = this.props;
+                console.log('Secrets returned: ', secretsPaths);
+            });
         });
     }
 
