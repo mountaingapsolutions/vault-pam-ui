@@ -7,6 +7,7 @@ import {Redirect, Route, Switch, withRouter} from 'react-router-dom';
 
 import Server from 'app/routes/auth/Server';
 import Login from 'app/routes/auth/Login';
+import Constants from 'app/core/util/Constants';
 
 /**
  * The authentication container.
@@ -31,7 +32,7 @@ class Auth extends Component {
                 <Toolbar>
                     <img alt='logo' className='mr-1' src='/assets/vault-dark.svg'/>
                     <Typography noWrap color='inherit' variant='h6'>
-                        Vault Web UI
+                        {Constants.APP_TITLE}
                     </Typography>
                 </Toolbar>
             </AppBar>

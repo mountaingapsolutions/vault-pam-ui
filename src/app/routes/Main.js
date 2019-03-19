@@ -12,6 +12,7 @@ import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import {Link, Redirect, Route, Switch, withRouter} from 'react-router-dom';
+import Constants from 'app/core/util/Constants';
 import kvAction from 'app/core/actions/kvAction';
 import sessionAction from 'app/core/actions/sessionAction';
 import userAction from 'app/core/actions/userAction';
@@ -109,7 +110,7 @@ class Main extends Component {
                 <Toolbar>
                     <img alt='logo' className='mr-1' src='/assets/vault-dark.svg'/>
                     <Typography noWrap className={classes.title} color='inherit' variant='h6'>
-                        Vault Web UI
+                        {Constants.APP_TITLE}
                     </Typography>
                     <div className={classes.grow} />
                     <div className={classes.sectionDesktop}>
