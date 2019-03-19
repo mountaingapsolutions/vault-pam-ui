@@ -9,10 +9,11 @@ import LockOpenIcon from '@material-ui/icons/LockOpen';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
-import {Redirect, Route, Switch, withRouter} from 'react-router-dom';
+import {Link, Redirect, Route, Switch, withRouter} from 'react-router-dom';
 import kvAction from 'app/core/actions/kvAction';
 import sessionAction from 'app/core/actions/sessionAction';
 import userAction from 'app/core/actions/userAction';
+import SecretsList from 'app/routes/secrets/SecretsList';
 import localStorageUtil from 'app/util/localStorageUtil';
 
 /**
@@ -33,7 +34,6 @@ class Main extends Component {
             showRootWarning: false
         };
         this._onClose = this._onClose.bind(this);
-        this._onListItemClick = this._onListItemClick.bind(this);
         this._onLogOut = this._onLogOut.bind(this);
     }
 
@@ -48,27 +48,6 @@ class Main extends Component {
         if (reason !== 'clickaway') {
             this.setState({
                 showRootWarning: false
-            });
-        }
-    }
-
-    /**
-     * Handle for the list item click.
-     *
-     * @private
-     * @param {SyntheticMouseEvent} event The event.
-     */
-    _onListItemClick(event) {
-        event.preventDefault();
-        // Get the name of the item.
-        const closestNamedElement = event.target.closest('[name]');
-        if (closestNamedElement) {
-            const {secretsMounts, listSecrets} = this.props;
-            const name = closestNamedElement.getAttribute('name');
-            const {path} = secretsMounts.find(mount => mount.name === name) || {};
-            listSecrets(path).then(() => {
-                const {secretsPaths} = this.props;
-                console.log(`Secrets from ${path} returned: `, secretsPaths);
             });
         }
     }
@@ -140,15 +119,15 @@ class Main extends Component {
                                     Secrets Engines
                                 </Typography>
                             </CardContent>
-                            <List onClick={this._onListItemClick}>{
+                            <List>{
                                 secretsMounts.map(mount => {
                                     const {description, name, type} = mount;
-                                    return <ListItem button key={name} name={name}>
+                                    return <ListItem button component={(props) => <Link to={`secrets/${name}list`} {...props}/>} key={name}>
                                         <ListItemIcon>
                                             {type === 'cubbyhole' ? <LockOpenIcon/> : <ListIcon/>}
                                         </ListItemIcon>
                                         <ListItemText primary={name} secondary={description}/>
-                                        <ListItemSecondaryAction name={name}>
+                                        <ListItemSecondaryAction>
                                             <IconButton>
                                                 <KeyboardArrowRightIcon/>
                                             </IconButton>
@@ -163,6 +142,7 @@ class Main extends Component {
                             </CardActions>
                         </Card>
                     </Route>
+                    <Route exact component={SecretsList} path='/secrets/:mount/list'/>
                     <Redirect to='/'/>
                 </Switch>
             </Grid>
@@ -182,13 +162,9 @@ class Main extends Component {
 Main.propTypes = {
     checkSession: PropTypes.func.isRequired,
     classes: PropTypes.object.isRequired,
-    history: PropTypes.object.isRequired,
     listMounts: PropTypes.func.isRequired,
-    listSecrets: PropTypes.func.isRequired,
     listUsers: PropTypes.func.isRequired,
-    location: PropTypes.object.isRequired,
     secretsMounts: PropTypes.array,
-    secretsPaths: PropTypes.array,
     vaultDomain: PropTypes.object.isRequired,
     vaultLookupSelf: PropTypes.object.isRequired,
     users: PropTypes.array
@@ -228,7 +204,6 @@ const _mapDispatchToProps = (dispatch) => {
             });
         },
         listMounts: () => dispatch(kvAction.listMounts()),
-        listSecrets: (path) => dispatch(kvAction.listSecrets(path)),
         listUsers: () => dispatch(userAction.listUsers())
     };
 };
