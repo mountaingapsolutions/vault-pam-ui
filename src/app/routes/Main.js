@@ -1,11 +1,13 @@
 /* global window */
 
 import {withStyles} from '@material-ui/core/styles';
-import {AppBar, Button, Card, CardActions, CardContent, Grid, IconButton, List, ListItem, ListItemIcon, ListItemSecondaryAction, ListItemText, Snackbar, Toolbar, Typography} from '@material-ui/core';
+import {AppBar, Badge, Button, Card, CardActions, CardContent, Grid, IconButton, List, ListItem, ListItemIcon, ListItemSecondaryAction, ListItemText, Snackbar, Toolbar, Typography} from '@material-ui/core';
+import AccountCircle from '@material-ui/icons/AccountCircle';
 import CloseIcon from '@material-ui/icons/Close';
 import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
 import ListIcon from '@material-ui/icons/List';
 import LockOpenIcon from '@material-ui/icons/LockOpen';
+import NotificationsIcon from '@material-ui/icons/Notifications';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
@@ -31,6 +33,7 @@ class Main extends Component {
         super(props);
 
         this.state = {
+            isMenuOpen: false,
             showRootWarning: false
         };
         this._onClose = this._onClose.bind(this);
@@ -99,7 +102,7 @@ class Main extends Component {
      */
     render() {
         const {classes, secretsMounts = []} = this.props;
-        const {showRootWarning} = this.state;
+        const {isMenuOpen, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
         return <div className={classes.root}>
             <AppBar position='static'>
@@ -108,6 +111,17 @@ class Main extends Component {
                     <Typography noWrap className={classes.title} color='inherit' variant='h6'>
                         Vault Web UI
                     </Typography>
+                    <div className={classes.grow} />
+                    <div className={classes.sectionDesktop}>
+                        <IconButton color='inherit'>
+                            <Badge badgeContent={17} color='secondary'>
+                                <NotificationsIcon />
+                            </Badge>
+                        </IconButton>
+                        <IconButton aria-haspopup='true' aria-owns={isMenuOpen ? 'material-appbar' : undefined} color='inherit' onClick={event => event.preventDefault()}>
+                            <AccountCircle />
+                        </IconButton>
+                    </div>
                 </Toolbar>
             </AppBar>
             <Grid container className='mt-1' justify='center'>
@@ -217,6 +231,12 @@ const _mapDispatchToProps = (dispatch) => {
 const _styles = () => ({
     card: {
         width: '800px'
+    },
+    grow: {
+        flexGrow: 1,
+    },
+    sectionDesktop: {
+        display: 'flex'
     },
     textCenter: {
         textAlign: 'center'
