@@ -1,6 +1,10 @@
 import _Actions from 'app/core/actions/_Actions';
 
+/**
+ * Actions class responsible for handling the various /v1/sys Vault endpoints.
+ */
 class SystemAction extends _Actions {
+
     /**
      * The constructor method. Executed upon class instantiation.
      *

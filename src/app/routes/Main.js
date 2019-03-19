@@ -79,7 +79,7 @@ class Main extends Component {
     componentDidMount() {
         const {checkSession} = this.props;
         checkSession().then(() => {
-            const {listMounts, getVaultSealStatus, listUsers, vaultLookupSelf} = this.props;
+            const {listMounts, getVaultSealStatus, vaultLookupSelf} = this.props;
 
             if (vaultLookupSelf.data.data.policies.includes('root')) {
                 localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
@@ -90,10 +90,10 @@ class Main extends Component {
             getVaultSealStatus();
             listMounts();
             // TODO Display the result of listUsers
-            listUsers().then(() => {
-                const {users} = this.props;
-                console.log('Users returned: ', users);
-            });
+            // listUsers().then(() => {
+            //     const {users} = this.props;
+            //     console.log('Users returned: ', users);
+            // });
         });
     }
 

@@ -2,7 +2,6 @@ import _Actions from 'app/core/actions/_Actions';
 
 /**
  * Actions class responsible for handling session management such as authentication and client configuration.
- *
  */
 class SessionAction extends _Actions {
 
@@ -24,13 +23,13 @@ class SessionAction extends _Actions {
     /**
      * Authenticates the specified Vault username and password.
      *
-     *
      * @param {string} username The username to set.
      * @param {string} password The password to set.
+     * @param {string} [authType] The authentication type. Defaults to userpass.
      * @returns {function} Redux dispatch function.
      */
-    authenticateUserPass(username, password) {
-        return this._dispatchPost(this.ACTION_TYPES.AUTHENTICATE_USER_PASS, `/api/v1/auth/userpass/login/${username}`, {
+    authenticateUserPass(username, password, authType = 'userpass') {
+        return this._dispatchPost(this.ACTION_TYPES.AUTHENTICATE_USER_PASS, `/api/v1/auth/${authType}/login/${username}`, {
             password
         });
     }
