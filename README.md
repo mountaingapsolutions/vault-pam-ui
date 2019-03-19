@@ -11,14 +11,15 @@ To run the client with built code locally, execute the following:
 ```
 $ npm run build
 $ cd dist
-$ npm install
-$ PORT=8080 npm start
+$ npm install --production
+$ USE_HSTS=false PORT=8080 npm run startprod
 ```
 
 ## Application stack
 - [React](https://facebook.github.io/react/docs/why-react.html) - JavaScript library for building user interfaces.
 - [React Redux](http://redux.js.org/index.html) - Application state container.
 - [React Router](https://reacttraining.com/react-router) - Declarative routing library for React.
+- [Material UI](https://material-ui.com/) - React components that implement Google's Material Design.
 - For the exhaustive list of libraries leveraged by the application, refer to the list of `dependencies` in the [package.json](../package.json) manifest file.
 
 ## Application dependencies
