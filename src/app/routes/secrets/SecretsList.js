@@ -29,11 +29,20 @@ class SecretsList extends Component {
      * @override
      */
     componentDidMount() {
-        const {listSecrets, match, secretsMounts} = this.props;
+        const {listMounts, listSecrets, match, secretsMounts} = this.props;
         const {params} = match;
         const {mount: mountName} = params;
-        const {path} = secretsMounts.find(mount => mount.name === `${mountName}/`) || {};
-        listSecrets(path);
+        // If no mounts, try fetching again. Typically this means coming from a refresh scenario.
+        if (secretsMounts.length === 0) {
+            listMounts().then(() => {
+                const {secretsMounts: newSecretMounts} = this.props;
+                const {path} = newSecretMounts.find(mount => mount.name === `${mountName}/`) || {};
+                listSecrets(path);
+            });
+        } else {
+            const {path} = secretsMounts.find(mount => mount.name === `${mountName}/`) || {};
+            listSecrets(path);
+        }
     }
 
     /**
@@ -77,6 +86,7 @@ class SecretsList extends Component {
 SecretsList.propTypes = {
     classes: PropTypes.object.isRequired,
     history: PropTypes.object.isRequired,
+    listMounts: PropTypes.func.isRequired,
     listSecrets: PropTypes.func.isRequired,
     match: PropTypes.object.isRequired,
     secretsMounts: PropTypes.array,
@@ -108,6 +118,7 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
+        listMounts: () => dispatch(kvAction.listMounts()),
         listSecrets: (path) => dispatch(kvAction.listSecrets(path))
     };
 };
