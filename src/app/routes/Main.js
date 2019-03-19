@@ -4,6 +4,7 @@ import {withStyles} from '@material-ui/core/styles';
 import {AppBar, Badge, Button, Card, CardActions, CardContent, Grid, IconButton, List, ListItem, ListItemIcon, ListItemSecondaryAction, ListItemText, Snackbar, Toolbar, Typography} from '@material-ui/core';
 import AccountCircle from '@material-ui/icons/AccountCircle';
 import CloseIcon from '@material-ui/icons/Close';
+import LockIcon from '@material-ui/icons/Lock';
 import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
 import ListIcon from '@material-ui/icons/List';
 import LockOpenIcon from '@material-ui/icons/LockOpen';
@@ -15,6 +16,7 @@ import {Link, Redirect, Route, Switch, withRouter} from 'react-router-dom';
 import Constants from 'app/core/util/Constants';
 import kvAction from 'app/core/actions/kvAction';
 import sessionAction from 'app/core/actions/sessionAction';
+import systemAction from 'app/core/actions/systemAction';
 import userAction from 'app/core/actions/userAction';
 import SecretsList from 'app/routes/secrets/SecretsList';
 import localStorageUtil from 'app/util/localStorageUtil';
@@ -77,7 +79,7 @@ class Main extends Component {
     componentDidMount() {
         const {checkSession} = this.props;
         checkSession().then(() => {
-            const {listMounts, listUsers, vaultLookupSelf} = this.props;
+            const {listMounts, getVaultSealStatus, listUsers, vaultLookupSelf} = this.props;
 
             if (vaultLookupSelf.data.data.policies.includes('root')) {
                 localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
@@ -85,6 +87,7 @@ class Main extends Component {
                     showRootWarning: true
                 });
             }
+            getVaultSealStatus();
             listMounts();
             // TODO Display the result of listUsers
             listUsers().then(() => {
@@ -102,7 +105,8 @@ class Main extends Component {
      * @returns {ReactElement}
      */
     render() {
-        const {classes, secretsMounts = []} = this.props;
+        const {classes, secretsMounts = [], vaultSealStatus} = this.props;
+        const isVaultSealed = vaultSealStatus && vaultSealStatus.sealed;
         const {isMenuOpen, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
         return <div className={classes.root}>
@@ -113,6 +117,12 @@ class Main extends Component {
                         {Constants.APP_TITLE}
                     </Typography>
                     <div className={classes.grow} />
+                    <Typography color={isVaultSealed ? 'secondary' : 'inherit'}>
+                        Status:
+                    </Typography>
+                    <div className={classes.sealStatusDivider}>
+                        {isVaultSealed ? <LockIcon /> : <LockOpenIcon />}
+                    </div>
                     <div className={classes.sectionDesktop}>
                         <IconButton color='inherit'>
                             <Badge badgeContent={17} color='secondary'>
@@ -182,7 +192,9 @@ Main.propTypes = {
     secretsMounts: PropTypes.array,
     vaultDomain: PropTypes.object.isRequired,
     vaultLookupSelf: PropTypes.object.isRequired,
-    users: PropTypes.array
+    users: PropTypes.array,
+    getVaultSealStatus: PropTypes.func.isRequired,
+    vaultSealStatus: PropTypes.object.isRequired
 };
 
 /**
@@ -219,7 +231,8 @@ const _mapDispatchToProps = (dispatch) => {
             });
         },
         listMounts: () => dispatch(kvAction.listMounts()),
-        listUsers: () => dispatch(userAction.listUsers())
+        listUsers: () => dispatch(userAction.listUsers()),
+        getVaultSealStatus: () => dispatch(systemAction.getVaultSealStatus())
     };
 };
 
@@ -235,6 +248,10 @@ const _styles = () => ({
     },
     grow: {
         flexGrow: 1,
+    },
+    sealStatusDivider: {
+        borderRight: '0.1em solid white',
+        padding: '0.5em'
     },
     sectionDesktop: {
         display: 'flex'

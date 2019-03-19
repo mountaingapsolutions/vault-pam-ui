@@ -4,6 +4,7 @@ import reduxThunk from 'redux-thunk';
 import kvReducer from 'app/core/reducers/kvReducer';
 import localStorageReducer from 'app/core/reducers/localStorageReducer';
 import sessionReducer from 'app/core/reducers/sessionReducer';
+import systemReducer from 'app/core/reducers/systemReducer';
 import userReducer from 'app/core/reducers/userReducer';
 
 /**
@@ -18,6 +19,7 @@ const configureMainStore = (initialState) => {
             kvReducer,
             localStorageReducer,
             sessionReducer,
+            systemReducer,
             userReducer
         }),
         initialState,
