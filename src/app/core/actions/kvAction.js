@@ -13,18 +13,30 @@ class KvAction extends _Actions {
      */
     constructor() {
         super('KvAction', {
+            LIST_MOUNTS: 'LIST_MOUNTS',
             LIST_SECRETS: 'LIST_SECRETS'
         });
     }
 
     /**
-     * Returns a list of key names at the specified location
+     * Lists all the mounted secrets engines.
      *
-     * @param {string} path Specifies the path of the secrets to list
      * @returns {function} Redux dispatch function.
      */
-    listSecrets(path = null) {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS, path ? `/api/v1/secret/${path}?list=true` : '/api/v1/secret?list=true');
+    listMounts() {
+        return this._dispatchGet(this.ACTION_TYPES.LIST_MOUNTS, '/api/v1/sys/internal/ui/mounts');
+    }
+
+    /**
+     * Returns a list of key names at the specified location
+     *
+     * @param {string} [path] Specifies the path of the secrets to list
+     * @returns {function} Redux dispatch function.
+     */
+    listSecrets(path = '') {
+        return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS, `/api/v1/${path}`, {
+            list: true
+        });
     }
 }
 

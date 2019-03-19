@@ -14,12 +14,29 @@ import kvAction from 'app/core/actions/kvAction';
  * @returns {Object} The updated state.
  */
 export default (previousState = {
+    secretsMounts: [],
     secretsPaths: []
 }, action) => {
     switch (action.type) {
+        case kvAction.ACTION_TYPES.LIST_MOUNTS:
+            const mounts = ((action.data || {}).data || {}).secret || {};
+            return {
+                ...previousState,
+                secretsMounts: Object.keys(mounts).map(key => {
+                    return {
+                        ...mounts[key],
+                        name: key,
+                        // See https://www.vaultproject.io/docs/secrets/kv/kv-v2.html for additional information. Version 2 KV secrets engine requires an additional /metadata in the query path.
+                        path: (mounts[key].options || {}).version === '2' ? `${key}/metadata` : key
+                    };
+                }).filter(mount => mount.type !== 'identity' && mount.type !== 'system') // Filter out the identity and system mounts.
+            };
         case kvAction.ACTION_TYPES.LIST_SECRETS:
             const {data} = action;
-            return {...previousState, secretsPaths: ((data || {}).data || {}).keys};
+            return {
+                ...previousState,
+                secretsPaths: ((data || {}).data || {}).keys
+            };
         default:
             return {...previousState};
     }

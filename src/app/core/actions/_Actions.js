@@ -142,7 +142,7 @@ export default class _Actions {
             if (vaultDomain) {
                 initData.headers['X-Vault-Domain'] = vaultDomain;
             }
-            const vaultToken = localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
+            const vaultToken = window.app.store.getState().sessionReducer.vaultToken.data || localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
             if (vaultToken) {
                 initData.headers['X-Vault-Token'] = vaultToken;
             }

@@ -1,8 +1,11 @@
 /* global window */
 
 import {withStyles} from '@material-ui/core/styles';
-import {AppBar, Button, Card, CardActionArea, CardActions, CardContent, Grid, IconButton, Snackbar, Toolbar, Typography} from '@material-ui/core';
+import {AppBar, Button, Card, CardActions, CardContent, Grid, IconButton, List, ListItem, ListItemIcon, ListItemSecondaryAction, ListItemText, Snackbar, Toolbar, Typography} from '@material-ui/core';
 import CloseIcon from '@material-ui/icons/Close';
+import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
+import ListIcon from '@material-ui/icons/List';
+import LockOpenIcon from '@material-ui/icons/LockOpen';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
@@ -30,6 +33,7 @@ class Main extends Component {
             showRootWarning: false
         };
         this._onClose = this._onClose.bind(this);
+        this._onListItemClick = this._onListItemClick.bind(this);
         this._onLogOut = this._onLogOut.bind(this);
     }
 
@@ -44,6 +48,27 @@ class Main extends Component {
         if (reason !== 'clickaway') {
             this.setState({
                 showRootWarning: false
+            });
+        }
+    }
+
+    /**
+     * Handle for the list item click.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _onListItemClick(event) {
+        event.preventDefault();
+        // Get the name of the item.
+        const closestNamedElement = event.target.closest('[name]');
+        if (closestNamedElement) {
+            const {secretsMounts, listSecrets} = this.props;
+            const name = closestNamedElement.getAttribute('name');
+            const {path} = secretsMounts.find(mount => mount.name === name) || {};
+            listSecrets(path).then(() => {
+                const {secretsPaths} = this.props;
+                console.log(`Secrets from ${path} returned: `, secretsPaths);
             });
         }
     }
@@ -69,7 +94,7 @@ class Main extends Component {
     componentDidMount() {
         const {checkSession} = this.props;
         checkSession().then(() => {
-            const {listSecrets, listUsers, vaultLookupSelf} = this.props;
+            const {listMounts, listUsers, vaultLookupSelf} = this.props;
 
             if (vaultLookupSelf.data.data.policies.includes('root')) {
                 localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
@@ -77,11 +102,7 @@ class Main extends Component {
                     showRootWarning: true
                 });
             }
-            // TODO Display the result of listSecrets
-            listSecrets().then(() => {
-                const {secretsPaths} = this.props;
-                console.log('Secrets returned: ', secretsPaths);
-            });
+            listMounts();
             // TODO Display the result of listUsers
             listUsers().then(() => {
                 const {users} = this.props;
@@ -98,7 +119,7 @@ class Main extends Component {
      * @returns {ReactElement}
      */
     render() {
-        const {classes} = this.props;
+        const {classes, secretsMounts = []} = this.props;
         const {showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
         return <div className={classes.root}>
@@ -114,17 +135,27 @@ class Main extends Component {
                 <Switch>
                     <Route exact path='/'>
                         <Card className={classes.card}>
-                            <CardActionArea>
-                                <img alt='Homer' src='/assets/success.png'/>
-                                <CardContent>
-                                    <Typography gutterBottom className={classes.textCenter} component='h5' variant='h6'>
-                                        Success!
-                                    </Typography>
-                                    <Typography component='p'>
-                                        Unfortunately this is as far as we have for functionality. More to come soon.
-                                    </Typography>
-                                </CardContent>
-                            </CardActionArea>
+                            <CardContent>
+                                <Typography gutterBottom color='textSecondary' variant='h6'>
+                                    Secrets Engines
+                                </Typography>
+                            </CardContent>
+                            <List onClick={this._onListItemClick}>{
+                                secretsMounts.map(mount => {
+                                    const {description, name, type} = mount;
+                                    return <ListItem button key={name} name={name}>
+                                        <ListItemIcon>
+                                            {type === 'cubbyhole' ? <LockOpenIcon/> : <ListIcon/>}
+                                        </ListItemIcon>
+                                        <ListItemText primary={name} secondary={description}/>
+                                        <ListItemSecondaryAction name={name}>
+                                            <IconButton>
+                                                <KeyboardArrowRightIcon/>
+                                            </IconButton>
+                                        </ListItemSecondaryAction>
+                                    </ListItem>;
+                                })
+                            }</List>
                             <CardActions>
                                 <Button color='primary' size='small' onClick={this._onLogOut}>
                                     Log Out
@@ -152,9 +183,11 @@ Main.propTypes = {
     checkSession: PropTypes.func.isRequired,
     classes: PropTypes.object.isRequired,
     history: PropTypes.object.isRequired,
+    listMounts: PropTypes.func.isRequired,
     listSecrets: PropTypes.func.isRequired,
     listUsers: PropTypes.func.isRequired,
     location: PropTypes.object.isRequired,
+    secretsMounts: PropTypes.array,
     secretsPaths: PropTypes.array,
     vaultDomain: PropTypes.object.isRequired,
     vaultLookupSelf: PropTypes.object.isRequired,
@@ -186,7 +219,15 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        checkSession: () => dispatch(sessionAction.validateToken()),
+        checkSession: () => {
+            return new Promise((resolve, reject) => {
+                dispatch(sessionAction.validateToken()).then(() => {
+                    dispatch(sessionAction.setToken(localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN)));
+                    resolve();
+                }).catch(reject);
+            });
+        },
+        listMounts: () => dispatch(kvAction.listMounts()),
         listSecrets: (path) => dispatch(kvAction.listSecrets(path)),
         listUsers: () => dispatch(userAction.listUsers())
     };
@@ -200,7 +241,7 @@ const _mapDispatchToProps = (dispatch) => {
  */
 const _styles = () => ({
     card: {
-        width: '600px'
+        width: '800px'
     },
     textCenter: {
         textAlign: 'center'
