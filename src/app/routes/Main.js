@@ -147,7 +147,7 @@ class Main extends Component {
                             <List>{
                                 secretsMounts.map(mount => {
                                     const {description, name, type} = mount;
-                                    return <ListItem button component={(props) => <Link to={`secrets/${name}list`} {...props}/>} key={name}>
+                                    return <ListItem button component={(props) => <Link to={`secrets/list/${name}`} {...props}/>} key={name}>
                                         <ListItemIcon>
                                             {type === 'cubbyhole' ? <LockOpenIcon/> : <ListIcon/>}
                                         </ListItemIcon>
@@ -167,7 +167,7 @@ class Main extends Component {
                             </CardActions>
                         </Card>
                     </Route>
-                    <Route exact component={SecretsList} path='/secrets/:mount/list'/>
+                    <Route component={SecretsList} path='/secrets/list/:mount*'/>
                     <Redirect to='/'/>
                 </Switch>
             </Grid>
