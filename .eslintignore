@@ -1,6 +1,10 @@
 build/*
 dist/*
+config/*
 coverage/*
 jsdoc/*
 node_modules/*
 **/node_modules/*
+scripts/*
+
+src/*.js

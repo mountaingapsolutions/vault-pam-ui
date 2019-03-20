@@ -1,5 +1,5 @@
 import {withStyles} from '@material-ui/core/styles';
-import {Button, Card, CardActions, CardContent, List, ListItem, ListItemText, Typography} from '@material-ui/core';
+import {Button, Card, CardActions, CardContent, CircularProgress, List, ListItem, ListItemText, Typography} from '@material-ui/core';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
@@ -20,6 +20,19 @@ class SecretsList extends Component {
      */
     constructor(props) {
         super(props);
+
+        this._onBack = this._onBack.bind(this);
+    }
+
+    /**
+     * Handle for when back button is pressed.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _onBack(event) {
+        event.preventDefault();
+        this.props.history.goBack();
     }
 
     /**
@@ -45,6 +58,17 @@ class SecretsList extends Component {
         }
     }
 
+
+    componentDidUpdate() {
+        window.onpopstate = () => {
+            // Update secretsPaths on browser back button
+            const {listSecrets, match} = this.props;
+            const {params} = match;
+            const {mount} = params;
+            listSecrets(mount);
+        };
+    }
+
     /**
      * Required React Component lifecycle method. Returns a tree of React components that will render to HTML.
      *
@@ -53,7 +77,7 @@ class SecretsList extends Component {
      * @returns {ReactElement}
      */
     render() {
-        const {classes, match, secretsPaths = []} = this.props;
+        const {classes, history, listSecrets, match, secretsPaths = []} = this.props;
         const {params} = match;
         const {mount} = params;
         return <Card className={classes.card}>
@@ -62,20 +86,33 @@ class SecretsList extends Component {
                     {mount}
                 </Typography>
             </CardContent>
-            <List>{
-                secretsPaths.map(path => {
-                    return <ListItem button component={(props) => <Link to='#' {...props} onClick={event => {
-                        event.preventDefault();
-                        /* eslint-disable no-alert */
-                        window.alert(`Make me go to ${path}!`);
-                        /* eslint-enable no-alert */
-                    }}/>} key={path}>
-                        <ListItemText primary={path}/>
-                    </ListItem>;
-                })
-            }</List>
+            {
+                secretsPaths.length > 0 ?
+                    <List>{
+                        secretsPaths.map(path => {
+                            return <ListItem button component={(props) => <Link to='#' {...props} onClick={event => {
+                                event.preventDefault();
+                                if (path.includes('/')) {
+                                    history.push(`/secrets/list/${mount}/${path}`);
+                                    listSecrets(`${mount}/${path}`);
+                                } else {
+                                    /* eslint-disable no-alert */
+                                    window.alert(`Make me go to ${path}!`);
+                                    /* eslint-enable no-alert */
+                                }
+                            }}/>} key={path}>
+                                <ListItemText primary={path}/>
+                            </ListItem>;
+                        })
+                    }</List>
+                    :
+                    <div>
+                        <CircularProgress className={classes.progress}/>
+                    </div>
+            }
+
             <CardActions>
-                <Button color='primary' size='small'>
+                <Button color='primary' size='small' onClick={this._onBack}>
                     Back
                 </Button>
             </CardActions>
@@ -127,11 +164,15 @@ const _mapDispatchToProps = (dispatch) => {
  * Returns custom style overrides.
  *
  * @private
+ * @param {Object} theme theme
  * @returns {Object}
  */
-const _styles = () => ({
+const _styles = (theme) => ({
     card: {
         width: '800px'
+    },
+    progress: {
+        margin: theme.spacing.unit * 2,
     }
 });
 

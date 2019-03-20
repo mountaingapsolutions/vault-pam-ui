@@ -3,7 +3,6 @@ import localStorageUtil from 'app/util/localStorageUtil';
 
 /**
  * Actions class responsible for handling local storage management.
- *
  */
 class LocalStorageAction extends _Actions {
 

@@ -102,7 +102,7 @@ class Main extends Component {
     componentDidMount() {
         const {checkSession} = this.props;
         checkSession().then(() => {
-            const {listMounts, getVaultSealStatus, listUsers, vaultLookupSelf} = this.props;
+            const {listMounts, getVaultSealStatus, vaultLookupSelf} = this.props;
 
             if (vaultLookupSelf.data.data.policies.includes('root')) {
                 localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
@@ -113,10 +113,10 @@ class Main extends Component {
             getVaultSealStatus();
             listMounts();
             // TODO Display the result of listUsers
-            listUsers().then(() => {
-                const {users} = this.props;
-                console.log('Users returned: ', users);
-            });
+            // listUsers().then(() => {
+            //     const {users} = this.props;
+            //     console.log('Users returned: ', users);
+            // });
         });
     }
 
@@ -170,7 +170,7 @@ class Main extends Component {
                             <List>{
                                 secretsMounts.map(mount => {
                                     const {description, name, type} = mount;
-                                    return <ListItem button component={(props) => <Link to={`secrets/${name}list`} {...props}/>} key={name}>
+                                    return <ListItem button component={(props) => <Link to={`secrets/list/${name}`} {...props}/>} key={name}>
                                         <ListItemIcon>
                                             {type === 'cubbyhole' ? <LockOpenIcon/> : <ListIcon/>}
                                         </ListItemIcon>
@@ -190,7 +190,7 @@ class Main extends Component {
                             </CardActions>
                         </Card>
                     </Route>
-                    <Route exact component={SecretsList} path='/secrets/:mount/list'/>
+                    <Route component={SecretsList} path='/secrets/list/:mount*'/>
                     <Redirect to='/'/>
                 </Switch>
             </Grid>

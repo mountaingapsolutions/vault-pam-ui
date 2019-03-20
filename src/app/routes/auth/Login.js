@@ -95,8 +95,10 @@ class Login extends Component {
                 };
                 break;
             case 1:
+            case 2:
                 fieldsToValidate = ['username', 'password'];
                 authenticationMap = {
+                    authType: tabValue === 1 ? 'userpass' : 'ldap',
                     username,
                     password
                 };
@@ -140,13 +142,34 @@ class Login extends Component {
     }
 
     /**
+     * Returns the corresponding tab content based on its tab value.
+     *
+     * @private
+     * @param {number} tab The tab index selected.
+     * @returns {ReactElement}
+     */
+    _renderTabContent(tab) {
+        switch (tab) {
+            case 0:
+                return this._renderTokenEntry();
+            case 1:
+            case 2:
+                return this._renderUsernamePasswordEntry();
+            default:
+                return <Typography gutterBottom color='textPrimary' variant='h6'>
+                    {`Invalid tab selection: ${tab}`}
+                </Typography>;
+        }
+    }
+
+    /**
      * Renders the tab content for token.
      *
      * @private
      * @returns {ReactElement}
      */
     _renderTokenEntry() {
-        const {errors} = this.state;
+        const {errors, token} = this.state;
         const {token: tokenError} = errors;
         return <TextField
             required
@@ -157,6 +180,7 @@ class Login extends Component {
             margin='normal'
             name='token'
             type='password'
+            value={token}
             variant='outlined'
             onChange={this._onValueChange}/>;
     }
@@ -168,7 +192,7 @@ class Login extends Component {
      * @returns {Array<ReactElement>}
      */
     _renderUsernamePasswordEntry() {
-        const {errors} = this.state;
+        const {errors, password, username} = this.state;
         const {password: passwordError, username: usernameError} = errors;
         return [
             <TextField
@@ -180,6 +204,7 @@ class Login extends Component {
                 label='Username'
                 margin='normal'
                 name='username'
+                value={username}
                 variant='outlined'
                 onChange={this._onValueChange}/>,
             <TextField
@@ -192,6 +217,7 @@ class Login extends Component {
                 margin='normal'
                 name='password'
                 type='password'
+                value={password}
                 variant='outlined'
                 onChange={this._onValueChange}/>
         ];
@@ -217,17 +243,17 @@ class Login extends Component {
                     <AppBar color='default' position='static'>
                         <Tabs value={tabValue} onChange={this._onTabChange}>
                             <Tab label='Token'/>
-                            <Tab label='Username'/>
+                            <Tab label='Userpass'/>
+                            <Tab label='LDAP'/>
                         </Tabs>
                     </AppBar>
                     <FormControl className={classes.formContainer} component='fieldset' error={!!formError}>
                         <FormLabel className={classes.formLabel} component='legend'>
                             {formError}
                         </FormLabel>
-                        <div className={classes.contentContainer}>
-                            {tabValue === 0 && this._renderTokenEntry()}
-                            {tabValue === 1 && this._renderUsernamePasswordEntry()}
-                        </div>
+                        <div className={classes.contentContainer}>{
+                            this._renderTabContent(tabValue)
+                        }</div>
                     </FormControl>
                 </Paper>
             </CardContent>
@@ -280,7 +306,7 @@ const _mapDispatchToProps = (dispatch) => {
          * @returns {function} Redux dispatch function.
          */
         authenticate: (authenticationMap) => {
-            const {token, username, password} = authenticationMap;
+            const {authType, token, username, password} = authenticationMap;
             if (token) {
                 localStorageUtil.setItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN, token);
                 dispatch(sessionAction.setToken(token));
@@ -288,7 +314,7 @@ const _mapDispatchToProps = (dispatch) => {
             } else if (username && password) {
                 localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
                 return new Promise((resolve, reject) => {
-                    dispatch(sessionAction.authenticateUserPass(username, password)).then((response) => {
+                    dispatch(sessionAction.authenticateUserPass(username, password, authType)).then((response) => {
                         const {client_token: clientToken} = response.data.auth;
                         localStorageUtil.setItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN, clientToken);
                         dispatch(sessionAction.setToken(clientToken));

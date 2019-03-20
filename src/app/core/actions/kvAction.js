@@ -2,7 +2,6 @@ import _Actions from 'app/core/actions/_Actions';
 
 /**
  * Actions class responsible for kv secrets engine related actions.
- *
  */
 class KvAction extends _Actions {
 

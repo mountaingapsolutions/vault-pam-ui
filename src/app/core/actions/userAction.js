@@ -2,7 +2,6 @@ import _Actions from 'app/core/actions/_Actions';
 
 /**
  * Actions class responsible for user related actions.
- *
  */
 class UserAction extends _Actions {
 
