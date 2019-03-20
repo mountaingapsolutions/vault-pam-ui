@@ -7,7 +7,7 @@ import {Redirect, Route, Switch, withRouter} from 'react-router-dom';
 
 import Server from 'app/routes/auth/Server';
 import Login from 'app/routes/auth/Login';
-import Constants from 'app/core/util/Constants';
+import Constants from 'app/util/Constants';
 
 /**
  * The authentication container.

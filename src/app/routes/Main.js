@@ -17,9 +17,9 @@ import kvAction from 'app/core/actions/kvAction';
 import sessionAction from 'app/core/actions/sessionAction';
 import systemAction from 'app/core/actions/systemAction';
 import userAction from 'app/core/actions/userAction';
-import RequestDetailsModal from 'app/core/components/RequestDetailsModal';
-import Constants from 'app/core/util/Constants';
+import RequestQueueModal from 'app/core/components/RequestQueueModal';
 import SecretsList from 'app/routes/secrets/SecretsList';
+import Constants from 'app/util/Constants';
 import localStorageUtil from 'app/util/localStorageUtil';
 
 /**
@@ -38,11 +38,13 @@ class Main extends Component {
 
         this.state = {
             isMenuOpen: false,
-            isHardCodedRequestDetailsOpen: false, // This state value is obviously just here temporarily. Do not keep this in the codebase.
+            isSecretRequestListOpen: false,
             showRootWarning: false
         };
         this._onClose = this._onClose.bind(this);
         this._onLogOut = this._onLogOut.bind(this);
+        this._openRequestQueueModal = this._openRequestQueueModal.bind(this);
+        this._closeRequestQueueModal = this._closeRequestQueueModal.bind(this);
     }
 
     /**
@@ -70,6 +72,30 @@ class Main extends Component {
         event.preventDefault();
         localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
         window.location.href = '/';
+    }
+
+    /**
+     * Handle for Notification click is triggered.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _openRequestQueueModal() {
+        this.setState({
+            isSecretRequestListOpen: true
+        });
+    }
+
+    /**
+     * Handle for when modal secret list close button is triggered.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _closeRequestQueueModal() {
+        this.setState({
+            isSecretRequestListOpen: false
+        });
     }
 
     /**
@@ -109,7 +135,7 @@ class Main extends Component {
     render() {
         const {classes, secretsMounts = [], vaultSealStatus} = this.props;
         const isVaultSealed = vaultSealStatus && vaultSealStatus.sealed;
-        const {isHardCodedRequestDetailsOpen, isMenuOpen, showRootWarning} = this.state;
+        const {isMenuOpen, isSecretRequestListOpen, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
         return <div className={classes.root}>
             <AppBar position='static'>
@@ -118,26 +144,21 @@ class Main extends Component {
                     <Typography noWrap className={classes.title} color='inherit' variant='h6'>
                         {Constants.APP_TITLE}
                     </Typography>
-                    <div className={classes.grow} />
+                    <div className={classes.grow}/>
                     <Typography color={isVaultSealed ? 'secondary' : 'inherit'}>
                         Status:
                     </Typography>
                     <div className={classes.sealStatusDivider}>
-                        {isVaultSealed ? <LockIcon /> : <LockOpenIcon />}
+                        {isVaultSealed ? <LockIcon/> : <LockOpenIcon/>}
                     </div>
                     <div className={classes.sectionDesktop}>
-                        <IconButton color='inherit' onClick={event => {
-                            event.preventDefault();
-                            this.setState({
-                                isHardCodedRequestDetailsOpen: true
-                            });
-                        }}>
+                        <IconButton color='inherit' onClick={this._openRequestQueueModal}>
                             <Badge badgeContent={17} color='secondary'>
-                                <NotificationsIcon />
+                                <NotificationsIcon/>
                             </Badge>
                         </IconButton>
                         <IconButton aria-haspopup='true' aria-owns={isMenuOpen ? 'material-appbar' : undefined} color='inherit' onClick={event => event.preventDefault()}>
-                            <AccountCircle />
+                            <AccountCircle/>
                         </IconButton>
                     </div>
                 </Toolbar>
@@ -187,11 +208,7 @@ class Main extends Component {
             }} autoHideDuration={12000} ContentProps={{
                 classes: {message: classes.warningMessageContentWidth}
             }} message={rootMessage} open={showRootWarning} onClose={this._onClose}/>
-            <RequestDetailsModal open={isHardCodedRequestDetailsOpen} onClose={() => {
-                this.setState({
-                    isHardCodedRequestDetailsOpen: false
-                });
-            }}/>
+            <RequestQueueModal open={isSecretRequestListOpen} onClose={this._closeRequestQueueModal}/>
         </div>;
     }
 }
