@@ -74,6 +74,10 @@ class SecretRequestList extends Component {
     }
 }
 
+SecretRequestList.defaultProps = {
+    open: false
+};
+
 SecretRequestList.propTypes = {
     classes: PropTypes.object.isRequired,
     onClose: PropTypes.func.isRequired,

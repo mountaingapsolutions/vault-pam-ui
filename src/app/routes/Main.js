@@ -20,7 +20,7 @@ import systemAction from 'app/core/actions/systemAction';
 import userAction from 'app/core/actions/userAction';
 import localStorageUtil from 'app/util/localStorageUtil';
 
-import SecretRequestList from 'app/routes/secrets/SecretRequestList';
+import SecretRequestList from 'app/core/components/SecretRequestList';
 import SecretsList from 'app/routes/secrets/SecretsList';
 
 /**
