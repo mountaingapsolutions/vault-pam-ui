@@ -1,9 +1,5 @@
-
 /**
  * Enum of various constants.
- *
- * @author Mountain Gap Solutions
- * @copyright ©2019
  */
 class Constants {
 
@@ -13,7 +9,7 @@ class Constants {
      * @public
      */
     constructor() {
-        this.APP_TITLE = 'Vault PAM UI';
+        this.APP_TITLE = 'Vault Web UI';
     }
 }
 

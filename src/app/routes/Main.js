@@ -13,11 +13,12 @@ import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import {Link, Redirect, Route, Switch, withRouter} from 'react-router-dom';
-import Constants from 'app/core/util/Constants';
 import kvAction from 'app/core/actions/kvAction';
 import sessionAction from 'app/core/actions/sessionAction';
 import systemAction from 'app/core/actions/systemAction';
 import userAction from 'app/core/actions/userAction';
+import RequestDetailsModal from 'app/core/components/RequestDetailsModal';
+import Constants from 'app/core/util/Constants';
 import SecretsList from 'app/routes/secrets/SecretsList';
 import localStorageUtil from 'app/util/localStorageUtil';
 
@@ -37,6 +38,7 @@ class Main extends Component {
 
         this.state = {
             isMenuOpen: false,
+            isHardCodedRequestDetailsOpen: false, // This state value is obviously just here temporarily. Do not keep this in the codebase.
             showRootWarning: false
         };
         this._onClose = this._onClose.bind(this);
@@ -107,7 +109,7 @@ class Main extends Component {
     render() {
         const {classes, secretsMounts = [], vaultSealStatus} = this.props;
         const isVaultSealed = vaultSealStatus && vaultSealStatus.sealed;
-        const {isMenuOpen, showRootWarning} = this.state;
+        const {isHardCodedRequestDetailsOpen, isMenuOpen, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
         return <div className={classes.root}>
             <AppBar position='static'>
@@ -124,7 +126,12 @@ class Main extends Component {
                         {isVaultSealed ? <LockIcon /> : <LockOpenIcon />}
                     </div>
                     <div className={classes.sectionDesktop}>
-                        <IconButton color='inherit'>
+                        <IconButton color='inherit' onClick={event => {
+                            event.preventDefault();
+                            this.setState({
+                                isHardCodedRequestDetailsOpen: true
+                            });
+                        }}>
                             <Badge badgeContent={17} color='secondary'>
                                 <NotificationsIcon />
                             </Badge>
@@ -180,6 +187,11 @@ class Main extends Component {
             }} autoHideDuration={12000} ContentProps={{
                 classes: {message: classes.warningMessageContentWidth}
             }} message={rootMessage} open={showRootWarning} onClose={this._onClose}/>
+            <RequestDetailsModal open={isHardCodedRequestDetailsOpen} onClose={() => {
+                this.setState({
+                    isHardCodedRequestDetailsOpen: false
+                });
+            }}/>
         </div>;
     }
 }
