@@ -18,8 +18,10 @@ import kvAction from 'app/core/actions/kvAction';
 import sessionAction from 'app/core/actions/sessionAction';
 import systemAction from 'app/core/actions/systemAction';
 import userAction from 'app/core/actions/userAction';
-import SecretsList from 'app/routes/secrets/SecretsList';
 import localStorageUtil from 'app/util/localStorageUtil';
+
+import SecretRequestList from 'app/routes/secrets/SecretRequestList';
+import SecretsList from 'app/routes/secrets/SecretsList';
 
 /**
  * The main container.
@@ -37,6 +39,7 @@ class Main extends Component {
 
         this.state = {
             isMenuOpen: false,
+            isSecretRequestListOpen: false,
             showRootWarning: false
         };
         this._onClose = this._onClose.bind(this);
@@ -69,6 +72,26 @@ class Main extends Component {
         localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
         window.location.href = '/';
     }
+
+    /**
+     * Handle for Notification click is triggered.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _openSecretRequestList = () => {
+        this.setState({isSecretRequestListOpen: true});
+    };
+
+    /**
+     * Handle for when modal secret list close button is triggered.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _closeSecretRequestList = () => {
+        this.setState({isSecretRequestListOpen: false});
+    };
 
     /**
      * Required React Component lifecycle method. Invoked once, only on the client (not on the server), immediately after the initial rendering occurs.
@@ -124,7 +147,7 @@ class Main extends Component {
                         {isVaultSealed ? <LockIcon /> : <LockOpenIcon />}
                     </div>
                     <div className={classes.sectionDesktop}>
-                        <IconButton color='inherit'>
+                        <IconButton color='inherit' onClick={this._openSecretRequestList}>
                             <Badge badgeContent={17} color='secondary'>
                                 <NotificationsIcon />
                             </Badge>
@@ -180,6 +203,9 @@ class Main extends Component {
             }} autoHideDuration={12000} ContentProps={{
                 classes: {message: classes.warningMessageContentWidth}
             }} message={rootMessage} open={showRootWarning} onClose={this._onClose}/>
+            <SecretRequestList
+                open={this.state.isSecretRequestListOpen}
+                onClose={this._closeSecretRequestList} />
         </div>;
     }
 }
