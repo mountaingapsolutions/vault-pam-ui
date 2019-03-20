@@ -1,5 +1,6 @@
 import {withStyles} from '@material-ui/core/styles';
-import {Button, Card, CardActions, CardContent, CircularProgress, List, ListItem, ListItemText, Typography} from '@material-ui/core';
+import {Button, Card, CardActions, CircularProgress, List, ListItem, ListItemText, Paper, Typography} from '@material-ui/core';
+import {Breadcrumbs} from '@material-ui/lab';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
@@ -80,12 +81,33 @@ class SecretsList extends Component {
         const {classes, history, listSecrets, match, secretsPaths = []} = this.props;
         const {params} = match;
         const {mount} = params;
+        const folders = (mount || '').split('/');
         return <Card className={classes.card}>
-            <CardContent>
-                <Typography gutterBottom color='textSecondary' variant='h6'>
-                    {mount}
-                </Typography>
-            </CardContent>
+            <Paper className={classes.paper}>
+                {mount ?
+                    <Breadcrumbs arial-label='Breadcrumb' separator='>'>
+                        {
+                            folders.map((folder, idx) => {
+                                return idx !== folders.length - 1 ?
+                                    <Link key={folder} to='#' onClick={event => {
+                                        const currentPath = folders.slice(0, idx + 1).join('/');
+                                        event.preventDefault();
+                                        history.push(`/secrets/list/${currentPath}`);
+                                        listSecrets(`${currentPath}`);
+                                    }}>
+                                        <Typography color='textSecondary' variant='h6'>{folder}</Typography>
+                                    </Link>
+                                    :
+                                    <Typography color='textPrimary' key={folder} variant='h6'>{folder}</Typography>;
+                            })
+                        }
+                    </Breadcrumbs>
+                    :
+                    <div>
+                        <CircularProgress className={classes.progress}/>
+                    </div>
+                }
+            </Paper>
             {
                 secretsPaths.length > 0 ?
                     <List>{
@@ -170,6 +192,9 @@ const _mapDispatchToProps = (dispatch) => {
 const _styles = (theme) => ({
     card: {
         width: '800px'
+    },
+    paper: {
+        padding: `${theme.spacing.unit}px ${theme.spacing.unit * 2}px`,
     },
     progress: {
         margin: theme.spacing.unit * 2,
