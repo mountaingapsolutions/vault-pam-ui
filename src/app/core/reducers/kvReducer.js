@@ -15,7 +15,7 @@ import kvAction from 'app/core/actions/kvAction';
  */
 export default (previousState = {
     secretsMounts: [],
-    secretsPaths: []
+    secretsPaths: {}
 }, action) => {
     switch (action.type) {
         case kvAction.ACTION_TYPES.LIST_MOUNTS:
@@ -35,7 +35,7 @@ export default (previousState = {
             const {data} = action;
             return {
                 ...previousState,
-                secretsPaths: ((data || {}).data || {}).keys
+                secretsPaths: kvAction.injectMetaData((data || {}).data || {}, action)
             };
         default:
             return {...previousState};

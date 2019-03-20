@@ -177,4 +177,20 @@ export default class _Actions {
             inProgress
         };
     }
+
+    /**
+     * Injects meta data into the provided response data.
+     *
+     * @public
+     * @param {*} data - The concrete response data to inject the meta data into.
+     * @param {Object} action - Action type.
+     * @returns {Object} The updated data.
+     */
+    injectMetaData(data, action) {
+        if (action) {
+            const {errors, inProgress} = action;
+            data._meta = {errors, inProgress};
+        }
+        return data;
+    }
 }

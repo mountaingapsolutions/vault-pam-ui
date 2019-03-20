@@ -43,23 +43,18 @@ class SecretsList extends Component {
      * @override
      */
     componentDidMount() {
-        const {listMounts, listSecrets, match, secretsMounts} = this.props;
+        const {listSecrets, match} = this.props;
         const {params} = match;
-        const {mount: mountName} = params;
-        // If no mounts, try fetching again. Typically this means coming from a refresh scenario.
-        if (secretsMounts.length === 0) {
-            listMounts().then(() => {
-                const {secretsMounts: newSecretMounts} = this.props;
-                const {path} = newSecretMounts.find(mount => mount.name === `${mountName}/`) || {};
-                listSecrets(path);
-            });
-        } else {
-            const {path} = secretsMounts.find(mount => mount.name === `${mountName}/`) || {};
-            listSecrets(path);
-        }
+        const {mount} = params;
+        listSecrets(mount);
     }
 
-
+    /**
+     * Required React Component lifecycle method. Invoked immediately after the component's updates are flushed to the DOM. This method is not called for the initial render.
+     *
+     * @protected
+     * @override
+     */
     componentDidUpdate() {
         window.onpopstate = () => {
             // Update secretsPaths on browser back button
@@ -78,10 +73,11 @@ class SecretsList extends Component {
      * @returns {ReactElement}
      */
     render() {
-        const {classes, history, listSecrets, match, secretsPaths = []} = this.props;
+        const {classes, history, listSecrets, match, secretsPaths = {}} = this.props;
         const {params} = match;
         const {mount} = params;
         const folders = (mount || '').split('/');
+        console.info(secretsPaths);
         return <Card className={classes.card}>
             <Paper className={classes.paper}>
                 {mount ?
@@ -109,28 +105,34 @@ class SecretsList extends Component {
                 }
             </Paper>
             {
-                secretsPaths.length > 0 ?
-                    <List>{
-                        secretsPaths.map(path => {
-                            return <ListItem button component={(props) => <Link to='#' {...props} onClick={event => {
-                                event.preventDefault();
-                                if (path.includes('/')) {
-                                    history.push(`/secrets/list/${mount}/${path}`);
-                                    listSecrets(`${mount}/${path}`);
-                                } else {
-                                    /* eslint-disable no-alert */
-                                    window.alert(`Make me go to ${path}!`);
-                                    /* eslint-enable no-alert */
-                                }
-                            }}/>} key={path}>
-                                <ListItemText primary={path}/>
-                            </ListItem>;
-                        })
-                    }</List>
-                    :
+                secretsPaths && secretsPaths._meta && secretsPaths._meta.inProgress === true > 0 ?
                     <div>
                         <CircularProgress className={classes.progress}/>
                     </div>
+                    :
+                    <List>{
+                        secretsPaths && secretsPaths._meta && secretsPaths && secretsPaths._meta.errors && Array.isArray(secretsPaths._meta.errors) ?
+                            <div>
+                                <Typography color='textPrimary'>{secretsPaths._meta.errors[0]}</Typography>
+                            </div>
+                            :
+                            (secretsPaths.keys || []).map(path => {
+                                return <ListItem button component={(props) => <Link to='#' {...props} onClick={event => {
+                                    event.preventDefault();
+                                    if (path.includes('/')) {
+                                        history.push(`/secrets/list/${mount}/${path}`);
+                                        listSecrets(`${mount}/${path}`);
+                                    } else {
+                                        /* eslint-disable no-alert */
+                                        window.alert(`Make me go to ${path}!`);
+                                        /* eslint-enable no-alert */
+                                    }
+                                }}/>} key={path}>
+                                    <ListItemText primary={path}/>
+                                </ListItem>;
+                            })
+                    }</List>
+
             }
 
             <CardActions>
@@ -145,11 +147,9 @@ class SecretsList extends Component {
 SecretsList.propTypes = {
     classes: PropTypes.object.isRequired,
     history: PropTypes.object.isRequired,
-    listMounts: PropTypes.func.isRequired,
     listSecrets: PropTypes.func.isRequired,
     match: PropTypes.object.isRequired,
-    secretsMounts: PropTypes.array,
-    secretsPaths: PropTypes.array
+    secretsPaths: PropTypes.object
 };
 
 /**
@@ -177,7 +177,6 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        listMounts: () => dispatch(kvAction.listMounts()),
         listSecrets: (path) => dispatch(kvAction.listSecrets(path))
     };
 };
