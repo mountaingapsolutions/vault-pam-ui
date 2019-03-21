@@ -30,7 +30,7 @@ build:
   stage: build
   script:
     - npm run build
- artifacts:
+  artifacts:
     paths:
     - vault-pam-ui.zip
     expire_in: 10 mins
