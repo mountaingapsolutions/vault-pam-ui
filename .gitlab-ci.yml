@@ -5,7 +5,7 @@ cache:
   - node_modules/
 
 stages:
-  - deploy
+  - test
 
 variables:
   AWS_DEFAULT_REGION: "us-east-1"
@@ -18,24 +18,6 @@ variables:
 # Executes eslint and runs unit tests.
 test:
   stage: test
-  script:
-    - npm install
-    - npm run lint
-    - npm test -- --coverage
-
-# Builds the application and zips it up.
-build:
-  stage: build
-  script:
-    - npm run build
-  artifacts:
-    paths:
-    - vault-pam-ui.zip
-    expire_in: 10 mins
-
-# Deploys the zip to Elastic Beanstalk.
-deploy:
-  stage: deploy
   before_script:
     - echo Installing AWS CLI
     - apt-get install -y python-dev python-pip
