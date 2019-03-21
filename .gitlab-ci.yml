@@ -38,5 +38,9 @@ build:
 # Deploys the zip to Elastic Beanstalk.
 deploy:
   stage: deploy
+  before_script:
+    - echo Installing AWS CLI
+    - apt-get install -yqq python-pip python3-dev
+    - pip install awscli --ignore-installed six
   script:
     - ./scripts/deploy
