@@ -1,19 +1,42 @@
-image: python:3.5
+image: node:10.15.3
+
+cache:
+  paths:
+  - node_modules/
 
 stages:
   - test
-
-variables:
-  AWS_DEFAULT_REGION: "us-east-1"
-  EB_APP_NAME: "vault-pam-ui"
-  EB_APP_ENV: "development"
-  ZIP_FILE: "vault-pam-ui.zip"
-  S3_BUCKET: "elasticbeanstalk-us-east-1-163714151155"
-  S3_KEY: ""
+  - build
+  - deploy
 
 # Executes eslint and runs unit tests.
 test:
   stage: test
+  script:
+    - npm install
+    - npm run lint
+    - npm test -- --coverage
+
+# Builds the application and zips it up.
+build:
+  stage: build
+  script:
+    - npm run build
+  artifacts:
+    paths:
+    - vault-pam-ui.zip
+    expire_in: 10 mins
+
+# Deploys the zip to Elastic Beanstalk.
+deploy:
+  image: python:3.5
+  stage: deploy
+  variables:
+    AWS_DEFAULT_REGION: "us-east-1"
+    EB_APP_NAME: "vault-pam-ui"
+    EB_APP_ENV: "development"
+    ZIP_FILE: "vault-pam-ui.zip"
+    S3_BUCKET: "elasticbeanstalk-us-east-1-163714151155"
   before_script:
     - echo Installing AWS CLI
     - curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"
