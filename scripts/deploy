@@ -1,12 +1,18 @@
 #!/bin/bash
 
+# Install AWS CLI
+echo Installing AWS CLI
+curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"
+python get-pip.py
+pip install awscli --ignore-installed six
+
 BUILD_VERSION=`date "+%Y-%m-%d-%H-%M-%S"`
 
 echo Setting build version to $BUILD_VERSION
 
 # Zip up everything with the exception of node_modules (including dist)
 # Rename the zip file.
-VERSIONED_ZIP_FILE=`$ZIP_FILE-$BUILD_VERSION.zip`
+VERSIONED_ZIP_FILE=`$EB_APP_NAME-$BUILD_VERSION.zip`
 mv $ZIP_FILE $VERSIONED_ZIP_FILE
 
 S3_KEY=$S3_KEY/$VERSIONED_ZIP_FILE

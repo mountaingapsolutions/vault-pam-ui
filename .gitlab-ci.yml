@@ -30,6 +30,10 @@ build:
   stage: build
   script:
     - npm run build
+ artifacts:
+    paths:
+    - vault-pam-ui.zip
+    expire_in: 10 mins
 
 # Deploys the zip to Elastic Beanstalk.
 deploy:
