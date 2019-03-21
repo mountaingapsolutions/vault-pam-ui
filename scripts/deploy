@@ -1,0 +1,32 @@
+#!/bin/bash
+
+BUILD_VERSION=`date "+%Y-%m-%d-%H-%M-%S"`
+
+echo Setting build version to $BUILD_VERSION
+
+# Zip up everything with the exception of node_modules (including dist)
+# Rename the zip file.
+VERSIONED_ZIP_FILE=`$ZIP_FILE-$BUILD_VERSION.zip`
+mv $ZIP_FILE $VERSIONED_ZIP_FILE
+
+S3_KEY=$S3_KEY/$VERSIONED_ZIP_FILE
+
+# Copy the app to S3
+aws s3 cp $VERSIONED_ZIP_FILE "s3://$S3_BUCKET/$S3_KEY"
+
+# Create a new version in eb
+EB_VERSION=v.$BUILD_VERSION
+echo "Creating ElasticBeanstalk Application Version $EB_VERSION"
+aws elasticbeanstalk create-application-version \
+  --application-name $EB_APP_NAME \
+  --version-label "$EB_VERSION" \
+  --source-bundle S3Bucket="$S3_BUCKET",S3Key="$S3_KEY" --auto-create-application
+
+# Update to that version
+echo "Updating ElasticBeanstalk Application Version $EB_VERSION"
+aws elasticbeanstalk update-environment \
+  --application-name $EB_APP_NAME \
+  --environment-name $EB_APP_ENV \
+  --version-label "$EB_VERSION"
+
+echo "Done! Deployed!"
