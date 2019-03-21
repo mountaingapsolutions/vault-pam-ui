@@ -6,7 +6,7 @@ echo Setting build version to $BUILD_VERSION
 
 # Zip up everything with the exception of node_modules (including dist)
 # Rename the zip file.
-VERSIONED_ZIP_FILE=`$BUILD_VERSION.zip`
+VERSIONED_ZIP_FILE=$BUILD_VERSION.zip
 echo Renaming $ZIP_FILE to $VERSIONED_ZIP_FILE
 mv $ZIP_FILE $VERSIONED_ZIP_FILE
 
