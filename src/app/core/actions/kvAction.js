@@ -12,9 +12,20 @@ class KvAction extends _Actions {
      */
     constructor() {
         super('KvAction', {
+            GET_SECRETS: 'GET_SECRETS',
             LIST_MOUNTS: 'LIST_MOUNTS',
             LIST_SECRETS: 'LIST_SECRETS'
         });
+    }
+
+    /**
+     * Returns secrets at the specified location
+     *
+     * @param {string} [path] Specifies the path of the secrets to get
+     * @returns {function} Redux dispatch function.
+     */
+    getSecrets(path = '') {
+        return this._dispatchGet(this.ACTION_TYPES.GET_SECRETS, `/api/v1/${path}`);
     }
 
     /**

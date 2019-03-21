@@ -11,22 +11,13 @@ import {
 } from '@material-ui/core';
 import {withStyles} from '@material-ui/core/styles/index';
 
-//TODO - WIRE THE LIST SOURCE TO REDUCER
-const REQUEST_LIST = [
-    {secret: '/secret/Request 1', requestor: 'John Ho'},
-    {secret: '/secret/Request 2', requestor: 'Jerry Lam'},
-    {secret: '/secret/Request 3', requestor: 'Jay Ramirez'},
-    {secret: '/secret/Request 4', requestor: 'Russell de Castro'},
-    {secret: '/secret/Request 5', requestor: 'Aldo'},
-    {secret: '/secret/Request 6', requestor: 'Hakan'},
-    {secret: '/secret/Request 7', requestor: 'Jane Doe'},
-    {secret: '/secret/Request 8', requestor: 'John Doe'}
-];
-
 /**
- * The Secret Request container.
+ * List modal class that can be extended.
+ *
+ * @author Mountain Gap Solutions
+ * @copyright ©2019 Mountain Gap Solutions
  */
-class RequestQueueModal extends Component {
+class ListModal extends Component {
 
     /**
      * Required React Component lifecycle method. Returns a tree of React components that will render to HTML.
@@ -36,24 +27,25 @@ class RequestQueueModal extends Component {
      * @returns {ReactElement}
      */
     render() {
-        const {classes, onClose} = this.props;
+        const {buttonTitle, classes, onClick, onClose, open, items, listTitle} = this.props;
         return (
             <Dialog
                 disableBackdropClick
                 disableEscapeKeyDown
                 fullWidth={true}
                 maxWidth={'sm'}
-                open={this.props.open}>
-                <DialogTitle>Request Queue</DialogTitle>
+                open={open}>
+                <DialogTitle>{listTitle}</DialogTitle>
                 <DialogContent>
-                    {REQUEST_LIST.map((item, index) => {
+                    {Object.keys(items).filter(item => item !== '_meta').map((item, index) => {
                         return (
                             <ListItem dense key={index}>
-                                <ListItemText primary={item.secret} secondary={item.requestor} />
+                                <ListItemText primary={item} secondary={items[item]} />
                                 <Button
                                     color='primary'
-                                    size='small'>
-                                    DETAILS
+                                    size='small'
+                                    onClick={onClick}>
+                                    {buttonTitle}
                                 </Button>
                             </ListItem>
                         );
@@ -74,12 +66,16 @@ class RequestQueueModal extends Component {
     }
 }
 
-RequestQueueModal.defaultProps = {
+ListModal.defaultProps = {
     open: false
 };
 
-RequestQueueModal.propTypes = {
+ListModal.propTypes = {
+    buttonTitle: PropTypes.string.isRequired,
     classes: PropTypes.object.isRequired,
+    items: PropTypes.object.isRequired,
+    listTitle: PropTypes.string.isRequired,
+    onClick: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
     open: PropTypes.bool.isRequired
 };
@@ -97,4 +93,4 @@ const _styles = () => ({
     }
 });
 
-export default withStyles(_styles)(RequestQueueModal);
+export default withStyles(_styles)(ListModal);

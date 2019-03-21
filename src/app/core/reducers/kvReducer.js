@@ -14,10 +14,16 @@ import kvAction from 'app/core/actions/kvAction';
  * @returns {Object} The updated state.
  */
 export default (previousState = {
+    secrets: {},
     secretsMounts: [],
     secretsPaths: {}
 }, action) => {
     switch (action.type) {
+        case kvAction.ACTION_TYPES.GET_SECRETS:
+            return {
+                ...previousState,
+                secrets: kvAction.injectMetaData((action.data || {}).data || {}, action)
+            };
         case kvAction.ACTION_TYPES.LIST_MOUNTS:
             const mounts = ((action.data || {}).data || {}).secret || {};
             return {
@@ -32,10 +38,9 @@ export default (previousState = {
                 }).filter(mount => mount.type !== 'identity' && mount.type !== 'system') // Filter out the identity and system mounts.
             };
         case kvAction.ACTION_TYPES.LIST_SECRETS:
-            const {data} = action;
             return {
                 ...previousState,
-                secretsPaths: kvAction.injectMetaData((data || {}).data || {}, action)
+                secretsPaths: kvAction.injectMetaData((action.data || {}).data || {}, action)
             };
         default:
             return {...previousState};

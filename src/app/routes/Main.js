@@ -17,7 +17,7 @@ import kvAction from 'app/core/actions/kvAction';
 import sessionAction from 'app/core/actions/sessionAction';
 import systemAction from 'app/core/actions/systemAction';
 import userAction from 'app/core/actions/userAction';
-import RequestQueueModal from 'app/core/components/RequestQueueModal';
+import ListModal from 'app/core/components/ListModal';
 import SecretsList from 'app/routes/secrets/SecretsList';
 import Constants from 'app/util/Constants';
 import localStorageUtil from 'app/util/localStorageUtil';
@@ -39,12 +39,23 @@ class Main extends Component {
         this.state = {
             isMenuOpen: false,
             isSecretRequestListOpen: false,
+            //TODO - WIRE THE LIST SOURCE TO REDUCER
+            requestList: {
+                '/secret/Request 1': 'John Ho',
+                '/secret/Request 2': 'Jerry Lam',
+                '/secret/Request 3': 'Jay Ramirez',
+                '/secret/Request 4': 'Russell de Castro',
+                '/secret/Request 5': 'Aldo',
+                '/secret/Request 6': 'Hakan',
+                '/secret/Request 7': 'Jane Doe',
+                '/secret/Request 8': 'John Doe'
+            },
             showRootWarning: false
         };
         this._onClose = this._onClose.bind(this);
         this._onLogOut = this._onLogOut.bind(this);
-        this._openRequestQueueModal = this._openRequestQueueModal.bind(this);
-        this._closeRequestQueueModal = this._closeRequestQueueModal.bind(this);
+        this._openListModal = this._openListModal.bind(this);
+        this._closeListModal = this._closeListModal.bind(this);
     }
 
     /**
@@ -80,21 +91,21 @@ class Main extends Component {
      * @private
      * @param {SyntheticMouseEvent} event The event.
      */
-    _openRequestQueueModal() {
+    _openListModal() {
         this.setState({
-            isSecretRequestListOpen: true
+            isListModalOpen: true
         });
     }
 
     /**
-     * Handle for when modal secret list close button is triggered.
+     * Handle for when list modal close button is triggered.
      *
      * @private
      * @param {SyntheticMouseEvent} event The event.
      */
-    _closeRequestQueueModal() {
+    _closeListModal() {
         this.setState({
-            isSecretRequestListOpen: false
+            isListModalOpen: false
         });
     }
 
@@ -135,7 +146,7 @@ class Main extends Component {
     render() {
         const {classes, secretsMounts = [], vaultSealStatus} = this.props;
         const isVaultSealed = vaultSealStatus && vaultSealStatus.sealed;
-        const {isMenuOpen, isSecretRequestListOpen, showRootWarning} = this.state;
+        const {isListModalOpen, isMenuOpen, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
         return <div className={classes.root}>
             <AppBar position='static'>
@@ -152,7 +163,7 @@ class Main extends Component {
                         {isVaultSealed ? <LockIcon/> : <LockOpenIcon/>}
                     </div>
                     <div className={classes.sectionDesktop}>
-                        <IconButton color='inherit' onClick={this._openRequestQueueModal}>
+                        <IconButton color='inherit' onClick={this._openListModal}>
                             <Badge badgeContent={17} color='secondary'>
                                 <NotificationsIcon/>
                             </Badge>
@@ -208,7 +219,11 @@ class Main extends Component {
             }} autoHideDuration={12000} ContentProps={{
                 classes: {message: classes.warningMessageContentWidth}
             }} message={rootMessage} open={showRootWarning} onClose={this._onClose}/>
-            <RequestQueueModal open={isSecretRequestListOpen} onClose={this._closeRequestQueueModal}/>
+            <ListModal buttonTitle={'DETAILS'} items={this.state.requestList} listTitle={'Request Queue'} open={isListModalOpen} onClick={() => {
+                /* eslint-disable no-alert */
+                window.alert('button clicked!');
+                /* eslint-enable no-alert */
+            }} onClose={this._closeListModal}/>
         </div>;
     }
 }

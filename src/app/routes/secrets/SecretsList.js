@@ -7,6 +7,7 @@ import {connect} from 'react-redux';
 import {Link, withRouter} from 'react-router-dom';
 
 import kvAction from 'app/core/actions/kvAction';
+import ListModal from 'app/core/components/ListModal';
 
 /**
  * The secrets list container.
@@ -22,7 +23,11 @@ class SecretsList extends Component {
     constructor(props) {
         super(props);
 
+        this.state = {isListModalOpen: false};
+
         this._onBack = this._onBack.bind(this);
+        this._openListModal = this._openListModal.bind(this);
+        this._closeListModal = this._closeListModal.bind(this);
     }
 
     /**
@@ -34,6 +39,31 @@ class SecretsList extends Component {
     _onBack(event) {
         event.preventDefault();
         this.props.history.goBack();
+    }
+
+
+    /**
+     * Handle for Notification click is triggered.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _openListModal() {
+        this.setState({
+            isListModalOpen: true
+        });
+    }
+
+    /**
+     * Handle for when list modal close button is triggered.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _closeListModal() {
+        this.setState({
+            isListModalOpen: false
+        });
     }
 
     /**
@@ -73,11 +103,11 @@ class SecretsList extends Component {
      * @returns {ReactElement}
      */
     render() {
-        const {classes, history, listSecrets, match, secretsPaths = {}} = this.props;
+        const {classes, history, getSecrets, listSecrets, match, secrets, secretsPaths = {}} = this.props;
+        const {isListModalOpen} = this.state;
         const {params} = match;
         const {mount} = params;
         const folders = (mount || '').split('/');
-        console.info(secretsPaths);
         return <Card className={classes.card}>
             <Paper className={classes.paper}>
                 {mount ?
@@ -123,32 +153,36 @@ class SecretsList extends Component {
                                         history.push(`/secrets/list/${mount}/${path}`);
                                         listSecrets(`${mount}/${path}`);
                                     } else {
-                                        /* eslint-disable no-alert */
-                                        window.alert(`Make me go to ${path}!`);
-                                        /* eslint-enable no-alert */
+                                        this._openListModal();
+                                        getSecrets(`${mount}/${path}`);
                                     }
                                 }}/>} key={path}>
                                     <ListItemText primary={path}/>
                                 </ListItem>;
                             })
                     }</List>
-
             }
-
             <CardActions>
                 <Button color='primary' size='small' onClick={this._onBack}>
                     Back
                 </Button>
             </CardActions>
+            <ListModal buttonTitle={'Request Secret'} items={secrets} listTitle={'Secrets'} open={isListModalOpen} onClick={() => {
+                /* eslint-disable no-alert */
+                window.alert('button clicked!');
+                /* eslint-enable no-alert */
+            }} onClose={this._closeListModal}/>
         </Card>;
     }
 }
 
 SecretsList.propTypes = {
     classes: PropTypes.object.isRequired,
+    getSecrets: PropTypes.func.isRequired,
     history: PropTypes.object.isRequired,
     listSecrets: PropTypes.func.isRequired,
     match: PropTypes.object.isRequired,
+    secrets: PropTypes.object,
     secretsPaths: PropTypes.object
 };
 
@@ -177,7 +211,8 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        listSecrets: (path) => dispatch(kvAction.listSecrets(path))
+        listSecrets: (path) => dispatch(kvAction.listSecrets(path)),
+        getSecrets: (path) => dispatch(kvAction.getSecrets(path))
     };
 };
 
