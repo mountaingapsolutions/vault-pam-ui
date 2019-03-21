@@ -1,4 +1,4 @@
-# vault-web-ui
+# vault-pam-ui
 A web client to connect to an existing Vault server.
 
 ## Quick start guide

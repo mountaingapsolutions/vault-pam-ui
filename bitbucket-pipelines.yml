@@ -14,7 +14,7 @@ pipelines:
           - unset CI
           - npm run build
         artifacts:
-          - vault-web-ui.zip
+          - vault-pam-ui.zip
     - step:
         name: "Deploy to Elastic Beanstalk"
         deployment: test
@@ -24,8 +24,8 @@ pipelines:
             AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
             AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
             AWS_DEFAULT_REGION: "us-east-1"
-            APPLICATION_NAME: "vault-web-ui"
-            ENVIRONMENT_NAME: "test"
-            ZIP_FILE: "vault-web-ui.zip"
+            APPLICATION_NAME: "vault-pam-ui"
+            ENVIRONMENT_NAME: "development"
+            ZIP_FILE: "vault-pam-ui.zip"
             S3_BUCKET: "elasticbeanstalk-us-east-1-163714151155"
             VERSION_LABEL: "v.0.${BITBUCKET_BUILD_NUMBER}"

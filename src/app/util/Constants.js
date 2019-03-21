@@ -9,7 +9,7 @@ class Constants {
      * @public
      */
     constructor() {
-        this.APP_TITLE = 'Vault Web UI';
+        this.APP_TITLE = 'Vault PAM UI';
     }
 }
 

@@ -1,5 +1,6 @@
 {
-  "name": "vault-web-ui",
+  "name": "vault-pam-ui",
+  "description": "Vault Privileged Access Management: a custom enhanced Vault client.",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -72,7 +73,7 @@
   "scripts": {
     "start": "node scripts/start.js",
     "startprod": "node productionServer",
-    "prebuild": "rm -rf dist && rm -f vault-web-ui.zip",
+    "prebuild": "rm -rf dist && rm -f vault-pam-ui.zip",
     "build": "GENERATE_SOURCEMAP=false node scripts/build.js",
     "postbuild": "mkdir dist && mv build dist/build && cp package.json dist/package.json && cp src/restServiceMethods.js dist/restServiceMethods.js && cp src/productionServer.js dist/productionServer.js && cp robots.txt dist/robots.txt && node scripts/dist.js",
     "lint": "eslint --ext .js,.jsx --format table .",

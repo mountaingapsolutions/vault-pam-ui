@@ -9,7 +9,7 @@
 # production
 /build
 /dist
-vault-web-ui.zip
+vault-pam-ui.zip
 
 # misc
 .DS_Store
