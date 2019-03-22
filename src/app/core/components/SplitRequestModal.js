@@ -77,7 +77,7 @@ class SplitRequestModal extends Component {
                         Current Split
                     </Typography>
                     {splitList.map((items, index) => {
-                        return <GridCard items={items} key={index}/>;
+                        return <GridCard items={items} key={`${items}-${index}`}/>;
                     })}
                     <div className={classes.alignRight}>
                         <Button onClick={this._onClick}>Add</Button>

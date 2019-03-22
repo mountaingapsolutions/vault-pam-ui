@@ -22,7 +22,7 @@ class Button extends Component {
         const {className, children, onClick} = this.props;
         return (
             <MaterialUIButton
-                className={`${className}`}
+                className={className}
                 color='primary'
                 size='small'
                 variant='contained'
