@@ -40,9 +40,7 @@ deploy:
     ZIP_FILE: "vault-pam-ui.zip"
     S3_BUCKET: "elasticbeanstalk-us-east-1-163714151155"
   before_script:
-    - echo Installing PIP and AWS CLI
-    - curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"
-    - python get-pip.py
+    - echo Installing AWS CLI
     - pip install awscli --ignore-installed six
   script:
     - export BUILD_VERSION=`date "+%Y-%m-%d-%H-%M-%S"`
