@@ -19,7 +19,7 @@ class Auth extends Component {
      *
      * @override
      * @protected
-     * @returns {ReactElement}
+     * @returns {React.ReactElement}
      */
     render() {
         const {classes, history, location, vaultDomain} = this.props;

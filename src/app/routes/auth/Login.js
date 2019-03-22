@@ -148,7 +148,7 @@ class Login extends Component {
      *
      * @private
      * @param {number} tab The tab index selected.
-     * @returns {ReactElement}
+     * @returns {React.ReactElement}
      */
     _renderTabContent(tab) {
         switch (tab) {
@@ -168,7 +168,7 @@ class Login extends Component {
      * Renders the tab content for token.
      *
      * @private
-     * @returns {ReactElement}
+     * @returns {React.ReactElement}
      */
     _renderTokenEntry() {
         const {errors, token} = this.state;
@@ -191,30 +191,28 @@ class Login extends Component {
      * Renders the tab content for username and password.
      *
      * @private
-     * @returns {Array<ReactElement>}
+     * @returns {React.ReactElement}
      */
     _renderUsernamePasswordEntry() {
         const {errors, password, username} = this.state;
         const {password: passwordError, username: usernameError} = errors;
-        return [
+        return <React.Fragment>
             <TextField
                 required
                 className='m-1'
                 error={!!usernameError}
                 helperText={usernameError}
-                key='username-field'
                 label='Username'
                 margin='normal'
                 name='username'
                 value={username}
                 variant='outlined'
-                onChange={this._onValueChange}/>,
+                onChange={this._onValueChange}/>
             <TextField
                 required
                 className='m-1'
                 error={!!passwordError}
                 helperText={passwordError}
-                key='password-field'
                 label='Password'
                 margin='normal'
                 name='password'
@@ -222,7 +220,7 @@ class Login extends Component {
                 value={password}
                 variant='outlined'
                 onChange={this._onValueChange}/>
-        ];
+        </React.Fragment>;
     }
 
     /**
@@ -230,7 +228,7 @@ class Login extends Component {
      *
      * @override
      * @protected
-     * @returns {ReactElement}
+     * @returns {React.ReactElement}
      */
     render() {
         const {classes, history} = this.props;

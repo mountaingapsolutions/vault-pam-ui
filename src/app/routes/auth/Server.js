@@ -152,7 +152,7 @@ class Server extends Component {
      *
      * @override
      * @protected
-     * @returns {ReactElement}
+     * @returns {React.ReactElement}
      */
     render() {
         const {classes, vaultDomains} = this.props;

@@ -23,27 +23,23 @@ class GridCard extends Component {
      *
      * @override
      * @protected
-     * @returns {ReactElement}
+     * @returns {React.ReactElement}
      */
     render() {
         const {classes, items} = this.props;
         const itemKeyList = Object.keys(items);
         const gridValue = Constants.GRID_WIDTH / itemKeyList.length;
-        return (
-            <Grid container className={classes.rootGrid} spacing={24}>
-                {itemKeyList.map((item, index) => {
-                    return (
-                        <Grid item key={`${item}-${index}`} xs={gridValue}>
-                            <Paper className={classes.paper}>
-                                <Typography className={classes.textPadding}>
-                                    {`${item}: ${items[item]}`}
-                                </Typography>
-                            </Paper>
-                        </Grid>
-                    );
-                })}
-            </Grid>
-        );
+        return <Grid container className={classes.rootGrid} spacing={24}>
+            {itemKeyList.map((item, index) => {
+                return <Grid item key={`${item}-${index}`} xs={gridValue}>
+                    <Paper className={classes.paper}>
+                        <Typography className={classes.textPadding}>
+                            {`${item}: ${items[item]}`}
+                        </Typography>
+                    </Paper>
+                </Grid>;
+            })}
+        </Grid>;
     }
 }
 

@@ -24,7 +24,7 @@ class ListModal extends Component {
      *
      * @override
      * @protected
-     * @returns {ReactElement}
+     * @returns {React.ReactElement}
      */
     render() {
         const {buttonTitle, classes, onClick, onClose, open, items, listTitle} = this.props;

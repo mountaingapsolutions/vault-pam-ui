@@ -34,7 +34,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     listMounts() {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_MOUNTS, '/api/v1/sys/internal/ui/mounts');
+        return this._dispatchGet(this.ACTION_TYPES.LIST_MOUNTS, '/api/v1/sys/mounts');
     }
 
     /**

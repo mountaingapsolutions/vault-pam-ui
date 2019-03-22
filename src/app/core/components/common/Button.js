@@ -14,7 +14,7 @@ class Button extends Component {
      *
      * @override
      * @protected
-     * @returns {ReactElement}
+     * @returns {React.ReactElement}
      */
     render() {
         const mappedProps = {...this.props};

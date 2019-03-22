@@ -74,10 +74,12 @@ class SecretsList extends Component {
      * @override
      */
     componentDidMount() {
-        const {listSecrets, match} = this.props;
+        const {listSecrets, match, secretsMounts} = this.props;
         const {params} = match;
         const {mount} = params;
-        listSecrets(mount);
+        // Find the mount data object from the URL mount path.
+        const mountData = secretsMounts.find(m => m.name.endsWith('/') ? mount === m.name.slice(0, -1) : mount === m.name) || {};
+        listSecrets(mountData.path);
     }
 
     /**
@@ -101,7 +103,7 @@ class SecretsList extends Component {
      *
      * @override
      * @protected
-     * @returns {ReactElement}
+     * @returns {React.ReactElement}
      */
     render() {
         const {classes, history, getSecrets, listSecrets, match, secrets, secretsPaths = {}} = this.props;
@@ -184,6 +186,7 @@ SecretsList.propTypes = {
     listSecrets: PropTypes.func.isRequired,
     match: PropTypes.object.isRequired,
     secrets: PropTypes.object,
+    secretsMounts: PropTypes.array,
     secretsPaths: PropTypes.object
 };
 

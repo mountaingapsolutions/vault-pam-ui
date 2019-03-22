@@ -58,7 +58,7 @@ class SplitRequestModal extends Component {
      *
      * @override
      * @protected
-     * @returns {ReactElement}
+     * @returns {React.ReactElement}
      */
     render() {
         const {classes, onClose, open} = this.props;

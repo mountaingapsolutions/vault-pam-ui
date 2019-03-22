@@ -133,6 +133,26 @@ class Main extends Component {
     }
 
     /**
+     * Returns the proper icon from the provided mount type.
+     *
+     * @private
+     * @param {string} type The mount type.
+     * @returns {Element}
+     */
+    _renderIconFromType(type) {
+        switch (type) {
+            case 'aws':
+                return <img alt='aws' src='/assets/aws-icon.svg'/>;
+            case 'cubbyhole':
+                return <LockOpenIcon/>;
+            case 'azure':
+                return <img alt='azure' src='/assets/azure-icon.svg'/>;
+            default:
+                return <ListIcon/>;
+        }
+    }
+
+    /**
      * Required React Component lifecycle method. Invoked once, only on the client (not on the server), immediately after the initial rendering occurs.
      *
      * @protected
@@ -162,9 +182,9 @@ class Main extends Component {
     /**
      * Required React Component lifecycle method. Returns a tree of React components that will render to HTML.
      *
-     * @override
      * @protected
-     * @returns {ReactElement}
+     * @override
+     * @returns {React.ReactElement}
      */
     render() {
         const {classes, secretsMounts = [], vaultSealStatus} = this.props;
@@ -210,9 +230,9 @@ class Main extends Component {
                                 secretsMounts.map(mount => {
                                     const {description, name, type} = mount;
                                     return <ListItem button component={(props) => <Link to={`secrets/list/${name}`} {...props}/>} key={name}>
-                                        <ListItemIcon>
-                                            {type === 'cubbyhole' ? <LockOpenIcon/> : <ListIcon/>}
-                                        </ListItemIcon>
+                                        <ListItemIcon>{
+                                            this._renderIconFromType(type)
+                                        }</ListItemIcon>
                                         <ListItemText primary={name} secondary={description}/>
                                         <ListItemSecondaryAction>
                                             <IconButton>
