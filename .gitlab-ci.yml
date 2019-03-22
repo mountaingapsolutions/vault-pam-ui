@@ -20,7 +20,7 @@ test:
 
 # Builds the application and zips it up.
 build:
-  image: python:3.5
+  <<: *node_definition
   stage: build
   script:
     - npm run build
@@ -31,7 +31,7 @@ build:
 
 # Deploys the zip to Elastic Beanstalk.
 deploy:
-  <<: *python_definition
+  image: python:3.5
   stage: deploy
   variables:
     AWS_DEFAULT_REGION: "us-east-1"
@@ -40,7 +40,7 @@ deploy:
     ZIP_FILE: "vault-pam-ui.zip"
     S3_BUCKET: "elasticbeanstalk-us-east-1-163714151155"
   before_script:
-    - echo Installing AWS CLI
+    - echo Installing PIP and AWS CLI
     - curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"
     - python get-pip.py
     - pip install awscli --ignore-installed six
