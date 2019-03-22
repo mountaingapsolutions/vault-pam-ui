@@ -16,7 +16,7 @@ module.exports = {
             res.status(400).json({errors: ['No Vault server domain provided.']});
         } else {
             const uri = `${domain.endsWith('/') ? domain.slice(0, -1) : domain}${req.url}`;
-            console.log(`Proxy the request from ${chalk.yellow(chalk.bold(req.originalUrl))} to ${chalk.yellow(chalk.bold(uri))}.`);
+            console.log(`Proxy the request from ${chalk.bold.yellow(chalk.bold(req.originalUrl))} to ${chalk.bold.yellow(chalk.bold(uri))}.`);
             req.pipe(request({
                 headers: {
                     'x-vault-token': token
@@ -48,13 +48,18 @@ module.exports = {
             res.status(400).json({errors: ['No domain provided.']});
         } else {
             const url = `${domain.endsWith('/') ? domain.slice(0, -1) : domain}/v1/sys/seal-status`;
+            console.log(`Validating ${chalk.bold.yellow(url)}.`);
             request(url, (error, response, body) => {
                 if (error) {
+                    console.log(`Received error from ${url}:`);
+                    console.error(error);
                     _sendError(url, res, error);
                 } else {
                     try {
                         const sealStatusResponse = JSON.parse(body);
-                        if (sealStatusResponse && sealStatusResponse.initialized) {
+                        const responseKeys = Object.keys(sealStatusResponse);
+                        // Validation approach to checking for a proper Vault server is to check that the response contains the required sealed, version, and cluster_name keys.
+                        if (responseKeys.includes('sealed') && responseKeys.includes('version') && responseKeys.includes('cluster_name')) {
                             res.json(sealStatusResponse);
                         } else {
                             _sendError(url, res, sealStatusResponse);

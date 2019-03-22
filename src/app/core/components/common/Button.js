@@ -1,7 +1,5 @@
-import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {Button as MaterialUIButton} from '@material-ui/core';
-import {withStyles} from '@material-ui/core/styles/index';
 
 /**
  * Button class that can be extended.
@@ -19,17 +17,12 @@ class Button extends Component {
      * @returns {ReactElement}
      */
     render() {
-        const {className, children, color, onClick, size, variant} = this.props;
-        return (
-            <MaterialUIButton
-                className={className}
-                color={color}
-                size={size}
-                variant={variant}
-                onClick={onClick}>
-                {children}
-            </MaterialUIButton>
-        );
+        const mappedProps = {...this.props};
+        // Exclude children from being passed as a prop.
+        delete mappedProps.children;
+        return <MaterialUIButton {...mappedProps}>{
+            this.props.children
+        }</MaterialUIButton>;
     }
 }
 
@@ -40,15 +33,7 @@ Button.defaultProps = {
 };
 
 Button.propTypes = {
-    children: PropTypes.oneOfType([
-        PropTypes.arrayOf(PropTypes.node),
-        PropTypes.node
-    ]).isRequired,
-    className: PropTypes.string,
-    color: PropTypes.string,
-    onClick: PropTypes.func.isRequired,
-    size: PropTypes.string,
-    variant: PropTypes.string
+    ...MaterialUIButton.propTypes
 };
 
-export default withStyles(null)(Button);
+export default Button;
