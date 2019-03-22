@@ -1,8 +1,8 @@
-image: node:10.15.3
-
-cache:
-  paths:
-  - node_modules/
+.node_template: &node_definition
+  image: node:10.15.3
+  cache:
+    paths:
+    - node_modules/
 
 stages:
   - test
@@ -11,6 +11,7 @@ stages:
 
 # Executes eslint and runs unit tests.
 test:
+  <<: *node_definition
   stage: test
   script:
     - npm install
@@ -19,6 +20,7 @@ test:
 
 # Builds the application and zips it up.
 build:
+  image: python:3.5
   stage: build
   script:
     - npm run build
@@ -29,7 +31,7 @@ build:
 
 # Deploys the zip to Elastic Beanstalk.
 deploy:
-  image: python:3.5
+  <<: *python_definition
   stage: deploy
   variables:
     AWS_DEFAULT_REGION: "us-east-1"
@@ -43,4 +45,21 @@ deploy:
     - python get-pip.py
     - pip install awscli --ignore-installed six
   script:
-    - ./scripts/deploy
+    - export BUILD_VERSION=`date "+%Y-%m-%d-%H-%M-%S"`
+    - echo Setting build version to $BUILD_VERSION
+    - export VERSIONED_ZIP_FILE=$BUILD_VERSION.zip
+    - echo Renaming $ZIP_FILE to $VERSIONED_ZIP_FILE
+    - mv $ZIP_FILE $VERSIONED_ZIP_FILE
+    - aws s3 cp $VERSIONED_ZIP_FILE "s3://$S3_BUCKET"
+    - export EB_VERSION=v.$BUILD_VERSION
+    - echo Creating ElasticBeanstalk Application Version $EB_VERSION
+    - aws elasticbeanstalk create-application-version "
+        --application-name $EB_APP_NAME
+        --version-label $EB_VERSION
+        --source-bundle S3Bucket=$S3_BUCKET,S3Key=$VERSIONED_ZIP_FILE --auto-create-application"
+    - echo Updating ElasticBeanstalk Application Version $EB_VERSION
+    - aws elasticbeanstalk update-environment
+        --application-name $EB_APP_NAME
+        --environment-name $EB_APP_ENV
+        --version-label $EB_VERSION"
+    - echo "Done! Deployed!"
