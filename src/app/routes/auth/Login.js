@@ -1,13 +1,15 @@
 /* global window */
 
 import {withStyles} from '@material-ui/core/styles';
-import {AppBar, Button, CardActions, CardContent, FormControl, FormLabel, Paper, Tab, Tabs, TextField, Typography} from '@material-ui/core';
+import {AppBar, CardActions, CardContent, FormControl, FormLabel, Paper, Tab, Tabs, TextField, Typography} from '@material-ui/core';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
 
 import sessionAction from 'app/core/actions/sessionAction';
 import localStorageUtil from 'app/util/localStorageUtil';
+
+import Button from 'app/core/components/common/Button';
 
 /**
  * The Vault token validation page.
@@ -258,10 +260,10 @@ class Login extends Component {
                 </Paper>
             </CardContent>
             <CardActions className={classes.cardAction}>
-                <Button color='primary' onClick={() => history.push('/auth/server')}>
+                <Button variant='text' onClick={() => history.push('/auth/server')}>
                     Back
                 </Button>
-                <Button color='primary' type='submit' variant='contained' onClick={this._onSubmit}>
+                <Button type='submit' onClick={this._onSubmit}>
                     Next
                 </Button>
             </CardActions>

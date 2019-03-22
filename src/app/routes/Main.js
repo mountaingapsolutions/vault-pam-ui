@@ -1,8 +1,9 @@
 /* global window */
 
 import {withStyles} from '@material-ui/core/styles';
-import {AppBar, Badge, Button, Card, CardActions, CardContent, Grid, IconButton, List, ListItem, ListItemIcon, ListItemSecondaryAction, ListItemText, Snackbar, Toolbar, Typography} from '@material-ui/core';
+import {AppBar, Badge, Card, CardActions, CardContent, Grid, IconButton, List, ListItem, ListItemIcon, ListItemSecondaryAction, ListItemText, Snackbar, Toolbar, Typography} from '@material-ui/core';
 import AccountCircle from '@material-ui/icons/AccountCircle';
+import Button from 'app/core/components/common/Button';
 import CloseIcon from '@material-ui/icons/Close';
 import LockIcon from '@material-ui/icons/Lock';
 import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
@@ -222,7 +223,7 @@ class Main extends Component {
                                 })
                             }</List>
                             <CardActions>
-                                <Button color='primary' size='small' onClick={this._onLogOut}>
+                                <Button variant='text' onClick={this._onLogOut}>
                                     Log Out
                                 </Button>
                             </CardActions>

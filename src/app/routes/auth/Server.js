@@ -1,5 +1,5 @@
 import {withStyles} from '@material-ui/core/styles';
-import {Button, CardActions, CardContent, ExpansionPanel, ExpansionPanelSummary, ExpansionPanelDetails, MenuList, MenuItem, TextField, Typography} from '@material-ui/core';
+import {CardActions, CardContent, ExpansionPanel, ExpansionPanelSummary, ExpansionPanelDetails, MenuList, MenuItem, TextField, Typography} from '@material-ui/core';
 import {ExpandMore} from '@material-ui/icons';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
@@ -8,6 +8,8 @@ import {connect} from 'react-redux';
 import localStorageAction from 'app/core/actions/localStorageAction';
 import sessionAction from 'app/core/actions/sessionAction';
 import localStorageUtil from 'app/util/localStorageUtil';
+
+import Button from 'app/core/components/common/Button';
 
 /**
  * The Vault server validation page.
@@ -184,7 +186,7 @@ class Server extends Component {
                             vaultDomains.map((domain, i) => <MenuItem key={`vault-domain-${i}`} onClick={this._onMenuItemClick.bind(this, domain)}>
                                 <div className={classes.menuListContainer}>
                                     <div className={classes.menuListLabel}>{domain}</div>
-                                    <Button color='primary' onClick={this._onRemoveMenuItem.bind(this, domain)}>
+                                    <Button variant='text' onClick={this._onRemoveMenuItem.bind(this, domain)}>
                                         Remove
                                     </Button>
                                 </div>
@@ -194,7 +196,7 @@ class Server extends Component {
                 </ExpansionPanel>
             </CardContent>
             <CardActions className={classes.cardAction}>
-                <Button className={classes.button} color='primary' type='submit' variant='contained' onClick={this._onSubmit}>
+                <Button className={classes.button} type='submit' onClick={this._onSubmit}>
                     Next
                 </Button>
             </CardActions>

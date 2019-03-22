@@ -19,13 +19,13 @@ class Button extends Component {
      * @returns {ReactElement}
      */
     render() {
-        const {className, children, onClick} = this.props;
+        const {className, children, color, onClick, size, variant} = this.props;
         return (
             <MaterialUIButton
                 className={className}
-                color='primary'
-                size='small'
-                variant='contained'
+                color={color}
+                size={size}
+                variant={variant}
                 onClick={onClick}>
                 {children}
             </MaterialUIButton>
@@ -33,13 +33,22 @@ class Button extends Component {
     }
 }
 
+Button.defaultProps = {
+    color: 'primary',
+    size: 'small',
+    variant: 'contained'
+};
+
 Button.propTypes = {
     children: PropTypes.oneOfType([
         PropTypes.arrayOf(PropTypes.node),
         PropTypes.node
     ]).isRequired,
     className: PropTypes.string,
-    onClick: PropTypes.func.isRequired
+    color: PropTypes.string,
+    onClick: PropTypes.func.isRequired,
+    size: PropTypes.string,
+    variant: PropTypes.string
 };
 
 export default withStyles(null)(Button);

@@ -1,7 +1,6 @@
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {
-    Button,
     Dialog,
     DialogActions,
     DialogContent,
@@ -9,6 +8,7 @@ import {
     ListItem,
     ListItemText
 } from '@material-ui/core';
+import Button from 'app/core/components/common/Button';
 import {withStyles} from '@material-ui/core/styles/index';
 
 /**
@@ -42,8 +42,7 @@ class ListModal extends Component {
                             <ListItem dense key={index}>
                                 <ListItemText primary={item} secondary={items[item]} />
                                 <Button
-                                    color='primary'
-                                    size='small'
+                                    variant='text'
                                     onClick={onClick}>
                                     {buttonTitle}
                                 </Button>
@@ -54,9 +53,6 @@ class ListModal extends Component {
                 <DialogActions className={classes.lineDivider}>
                     <Button
                         className={classes.button}
-                        color='primary'
-                        size='small'
-                        variant='contained'
                         onClick={onClose}>
                         Close
                     </Button>

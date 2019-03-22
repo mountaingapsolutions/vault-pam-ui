@@ -1,11 +1,12 @@
 import {withStyles} from '@material-ui/core/styles';
-import {Button, Card, CardActions, CircularProgress, List, ListItem, ListItemText, Paper, Typography} from '@material-ui/core';
+import {Card, CardActions, CircularProgress, List, ListItem, ListItemText, Paper, Typography} from '@material-ui/core';
 import {Breadcrumbs} from '@material-ui/lab';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import {Link, withRouter} from 'react-router-dom';
 
+import Button from 'app/core/components/common/Button';
 import kvAction from 'app/core/actions/kvAction';
 import ListModal from 'app/core/components/common/ListModal';
 
@@ -163,7 +164,7 @@ class SecretsList extends Component {
                     }</List>
             }
             <CardActions>
-                <Button color='primary' size='small' onClick={this._onBack}>
+                <Button variant='text' onClick={this._onBack}>
                     Back
                 </Button>
             </CardActions>
