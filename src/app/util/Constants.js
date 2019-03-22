@@ -10,6 +10,7 @@ class Constants {
      */
     constructor() {
         this.APP_TITLE = 'Vault PAM UI';
+        this.GRID_WIDTH = 12;
     }
 }
 

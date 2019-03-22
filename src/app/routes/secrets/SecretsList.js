@@ -7,7 +7,7 @@ import {connect} from 'react-redux';
 import {Link, withRouter} from 'react-router-dom';
 
 import kvAction from 'app/core/actions/kvAction';
-import ListModal from 'app/core/components/ListModal';
+import ListModal from 'app/core/components/common/ListModal';
 
 /**
  * The secrets list container.

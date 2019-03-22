@@ -17,7 +17,8 @@ import kvAction from 'app/core/actions/kvAction';
 import sessionAction from 'app/core/actions/sessionAction';
 import systemAction from 'app/core/actions/systemAction';
 import userAction from 'app/core/actions/userAction';
-import ListModal from 'app/core/components/ListModal';
+import ListModal from 'app/core/components/common/ListModal';
+import SplitRequestModal from 'app/core/components/SplitRequestModal';
 import SecretsList from 'app/routes/secrets/SecretsList';
 import Constants from 'app/util/Constants';
 import localStorageUtil from 'app/util/localStorageUtil';
@@ -38,6 +39,7 @@ class Main extends Component {
 
         this.state = {
             isMenuOpen: false,
+            isSplitRequestModalOpen: false,
             isSecretRequestListOpen: false,
             //TODO - WIRE THE LIST SOURCE TO REDUCER
             requestList: {
@@ -52,10 +54,12 @@ class Main extends Component {
             },
             showRootWarning: false
         };
+        this._closeListModal = this._closeListModal.bind(this);
+        this._closeSplitRequestModal = this._closeSplitRequestModal.bind(this);
         this._onClose = this._onClose.bind(this);
         this._onLogOut = this._onLogOut.bind(this);
         this._openListModal = this._openListModal.bind(this);
-        this._closeListModal = this._closeListModal.bind(this);
+        this._openSplitRequestModal = this._openSplitRequestModal.bind(this);
     }
 
     /**
@@ -83,6 +87,24 @@ class Main extends Component {
         event.preventDefault();
         localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
         window.location.href = '/';
+    }
+
+    /**
+     * Handle for when split request modal open button is triggered.
+     *
+     * @private
+     */
+    _openSplitRequestModal() {
+        this.setState({isSplitRequestModalOpen: true});
+    }
+
+    /**
+     * Handle for when split request modal close button is triggered.
+     *
+     * @private
+     */
+    _closeSplitRequestModal() {
+        this.setState({isSplitRequestModalOpen: false});
     }
 
     /**
@@ -146,7 +168,7 @@ class Main extends Component {
     render() {
         const {classes, secretsMounts = [], vaultSealStatus} = this.props;
         const isVaultSealed = vaultSealStatus && vaultSealStatus.sealed;
-        const {isListModalOpen, isMenuOpen, showRootWarning} = this.state;
+        const {isListModalOpen, isMenuOpen, isSplitRequestModalOpen, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
         return <div className={classes.root}>
             <AppBar position='static'>
@@ -219,11 +241,16 @@ class Main extends Component {
             }} autoHideDuration={12000} ContentProps={{
                 classes: {message: classes.warningMessageContentWidth}
             }} message={rootMessage} open={showRootWarning} onClose={this._onClose}/>
-            <ListModal buttonTitle={'DETAILS'} items={this.state.requestList} listTitle={'Request Queue'} open={isListModalOpen} onClick={() => {
-                /* eslint-disable no-alert */
-                window.alert('button clicked!');
-                /* eslint-enable no-alert */
-            }} onClose={this._closeListModal}/>
+            <ListModal
+                buttonTitle={'DETAILS'}
+                items={this.state.requestList}
+                listTitle={'Request Queue'}
+                open={isListModalOpen}
+                onClick={this._openSplitRequestModal}
+                onClose={this._closeListModal}/>
+            <SplitRequestModal
+                open={isSplitRequestModalOpen}
+                onClose={this._closeSplitRequestModal}/>
         </div>;
     }
 }
