@@ -74,28 +74,32 @@ class SecretsList extends Component {
      * @override
      */
     componentDidMount() {
-        const {listSecrets, match, secretsMounts} = this.props;
+        const {history, listSecrets, match, secretsMounts} = this.props;
         const {params} = match;
         const {mount} = params;
         // Find the mount data object from the URL mount path.
-        const mountData = secretsMounts.find(m => m.name.endsWith('/') ? mount === m.name.slice(0, -1) : mount === m.name) || {};
-        listSecrets(mountData.path);
+        const mountPath = (secretsMounts.find(m => m.name.endsWith('/') ? mount === m.name.slice(0, -1) : mount === m.name) || {}).path;
+        listSecrets(mountPath);
+        this.unlisten = history.listen((location, action) => {
+            if (action === 'POP') {
+                const {match: newMatch} = this.props;
+                const {params: newParams} = newMatch;
+                const {mount: newMount} = newParams;
+                const folders = (newMount || '').split('/');
+                const listSecretsCurrentQueryPath = folders.length > 1 ? `${mountPath}/${folders.slice(1).join('/')}` : mountPath;
+                listSecrets(listSecretsCurrentQueryPath);
+            }
+        });
     }
 
     /**
-     * Required React Component lifecycle method. Invoked immediately after the component's updates are flushed to the DOM. This method is not called for the initial render.
+     * Required React Component lifecycle method. Invoked immediately before a component is unmounted from the DOM. Perform any necessary cleanup in this method, such as invalidating timers or
+     * cleaning up any DOM elements that were created in componentDidMount.
      *
      * @protected
-     * @override
      */
-    componentDidUpdate() {
-        window.onpopstate = () => {
-            // Update secretsPaths on browser back button
-            const {listSecrets, match} = this.props;
-            const {params} = match;
-            const {mount} = params;
-            listSecrets(mount);
-        };
+    componentWillUnmount() {
+        this.unlisten();
     }
 
     /**
@@ -106,31 +110,34 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, history, getSecrets, listSecrets, match, secrets, secretsPaths = {}} = this.props;
+        const {classes, history, getSecrets, listSecrets, match, secrets, secretsMounts, secretsPaths = {}} = this.props;
         const {isListModalOpen} = this.state;
         const {params} = match;
         const {mount} = params;
         const folders = (mount || '').split('/');
+        const initialMount = folders[0];
+        const mountPath = (secretsMounts.find(m => m.name.endsWith('/') ? initialMount === m.name.slice(0, -1) : initialMount === m.name) || {}).path;
+        const listSecretsCurrentQueryPath = folders.length > 1 ? `${mountPath}/${folders.slice(1).join('/')}` : mountPath;
         return <Card className={classes.card}>
             <Paper className={classes.paper}>
                 {mount ?
-                    <Breadcrumbs arial-label='Breadcrumb' separator='>'>
-                        {
-                            folders.map((folder, idx) => {
-                                return idx !== folders.length - 1 ?
-                                    <Link key={folder} to='#' onClick={event => {
-                                        const currentPath = folders.slice(0, idx + 1).join('/');
-                                        event.preventDefault();
-                                        history.push(`/secrets/list/${currentPath}`);
-                                        listSecrets(`${currentPath}`);
-                                    }}>
-                                        <Typography color='textSecondary' variant='h6'>{folder}</Typography>
-                                    </Link>
-                                    :
-                                    <Typography color='textPrimary' key={folder} variant='h6'>{folder}</Typography>;
-                            })
-                        }
-                    </Breadcrumbs>
+                    <Breadcrumbs arial-label='Breadcrumb' separator='>'>{
+                        folders.map((folder, idx) => {
+                            const currentPath = folders.slice(0, idx + 1).join('/');
+                            const listingPath = `${mountPath}/${folders.slice(1, idx + 1).join('/')}`;
+                            const url = `/secrets/list/${currentPath}`;
+                            return idx !== folders.length - 1 ?
+                                <Link key={folder} to={url} onClick={event => {
+                                    event.preventDefault();
+                                    history.push(url);
+                                    listSecrets(`${listingPath}`);
+                                }}>
+                                    <Typography color='textSecondary' variant='h6'>{folder}</Typography>
+                                </Link>
+                                :
+                                <Typography color='textPrimary' key={folder} variant='h6'>{folder}</Typography>;
+                        })
+                    }</Breadcrumbs>
                     :
                     <div>
                         <CircularProgress className={classes.progress}/>
@@ -146,15 +153,16 @@ class SecretsList extends Component {
                     <List>{
                         secretsPaths && secretsPaths._meta && secretsPaths && secretsPaths._meta.errors && Array.isArray(secretsPaths._meta.errors) ?
                             <div>
-                                <Typography color='textPrimary'>{secretsPaths._meta.errors[0]}</Typography>
+                                <Typography color='textPrimary'>{(secretsPaths._meta.errors[0] || '').toString()}</Typography>
                             </div>
                             :
                             (secretsPaths.keys || []).map(path => {
-                                return <ListItem button component={(props) => <Link to='#' {...props} onClick={event => {
+                                const url = `/secrets/list/${mount}/${path}`;
+                                return <ListItem button component={(props) => <Link to={url} {...props} onClick={event => {
                                     event.preventDefault();
                                     if (path.includes('/')) {
-                                        history.push(`/secrets/list/${mount}/${path}`);
-                                        listSecrets(`${mount}/${path}`);
+                                        history.push(url);
+                                        listSecrets(`${listSecretsCurrentQueryPath}/${path}`);
                                     } else {
                                         this._openListModal();
                                         getSecrets(`${mount}/${path}`);
