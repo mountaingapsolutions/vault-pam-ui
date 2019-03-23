@@ -194,10 +194,12 @@ class Main extends Component {
         return <div className={classes.root}>
             <AppBar position='static'>
                 <Toolbar>
-                    <img alt='logo' className='mr-1' src='/assets/vault-dark.svg'/>
-                    <Typography noWrap className={classes.title} color='inherit' variant='h6'>
-                        {Constants.APP_TITLE}
-                    </Typography>
+                    <Button color='inherit' component={props => <Link to='/' {...props}/>} variant='text'>
+                        <img alt='logo' className='mr-1' src='/assets/vault-dark.svg'/>
+                        <Typography noWrap className={classes.title} color='inherit' variant='h6'>{
+                            Constants.APP_TITLE
+                        }</Typography>
+                    </Button>
                     <div className={classes.grow}/>
                     <Typography color={isVaultSealed ? 'secondary' : 'inherit'}>
                         Status:

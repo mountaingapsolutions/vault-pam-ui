@@ -153,7 +153,7 @@ class SecretsList extends Component {
                     <List>{
                         secretsPaths && secretsPaths._meta && secretsPaths && secretsPaths._meta.errors && Array.isArray(secretsPaths._meta.errors) ?
                             <div>
-                                <Typography color='textPrimary'>{(secretsPaths._meta.errors[0] || '').toString()}</Typography>
+                                <Typography color='textPrimary'>{secretsPaths._meta.errors[0]}</Typography>
                             </div>
                             :
                             (secretsPaths.keys || []).map(path => {
