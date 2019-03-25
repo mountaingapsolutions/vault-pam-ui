@@ -83,7 +83,13 @@ class CreateUpdateSecretModal extends Component {
         if (mode === 'update' && !loaded && secrets && secrets._meta && !secrets._meta.inProgress) {
             // Check if KV engine is version 2, as the resource data is different.
             const isV2 = secrets.data && secrets.metadata && secrets.data && secrets.metadata.version;
-            const secretsData = isV2 ? secrets.data : secrets;
+            let secretsData;
+            if (isV2) {
+                secretsData = {...secrets.data};
+            } else {
+                secretsData = {...secrets};
+                delete secretsData._meta;
+            }
             return {
                 secrets: Object.keys(secretsData).map(key => {
                     return {
@@ -183,9 +189,9 @@ class CreateUpdateSecretModal extends Component {
         } else if (value.startsWith('/')) {
             return 'Path cannot start with "/."';
         } else {
-            const regexp = /^[a-zA-Z0-9-_]+$/; // Regex to only allow for folder names that are alphanumeric, dashes, or underscores.
+            const regexp = /^[a-zA-Z0-9-_ ]+$/; // Regex to only allow for folder names that are alphanumeric, spaces, dashes, or underscores.
             if (value.search(regexp) === -1) {
-                return 'Invalid folder name. Only alphanumeric, dash, and underscore characters are allowed.';
+                return 'Invalid folder name. Only alphanumeric, space, dash, and underscore characters are allowed.';
             } else {
                 return '';
             }

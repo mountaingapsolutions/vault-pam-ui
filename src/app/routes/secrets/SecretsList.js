@@ -245,7 +245,7 @@ class SecretsList extends Component {
                 window.alert('button clicked!');
                 /* eslint-enable no-alert */
             }} onClose={this._closeListModal}/>
-            <CreateUpdateSecretModal initialPath={`${mount}/${path}`} mode={secretModalMode} open={!!secretModalMode} onClose={() => this._toggleCreateUpdateSecretModal()}/>
+            <CreateUpdateSecretModal initialPath={`${mount}${path ? `/${path}` : ''}`} mode={secretModalMode} open={!!secretModalMode} onClose={() => this._toggleCreateUpdateSecretModal()}/>
         </Card>;
     }
 }
