@@ -37,8 +37,10 @@ const useYarn = fs.existsSync(paths.yarnLockFile);
 const isInteractive = process.stdout.isTTY;
 const { connection } = require('../src/db/models');
 
-connection.sync().then(() => {
-    console.log(`Initialize DB models.`)
+connection.sync().then(function(){
+    console.log('DB connection sucessful.');
+}, function(err){
+    console.log(err);
 });
 
 // Warn and crash if required files are missing

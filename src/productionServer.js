@@ -17,8 +17,10 @@ console.log(`Starting server on port ${chalk.yellow(port)}...`);
 
 // Database Init
 const { connection } = require('../src/db/models');
-connection.sync().then(() => {
-    console.log(`Initialize DB models.`)
+connection.sync().then(function(){
+    console.log('DB connection sucessful.');
+}, function(err){
+    console.log(err);
 });
 
 const noCacheUrls = ['/'];
