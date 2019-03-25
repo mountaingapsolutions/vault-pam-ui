@@ -12,10 +12,7 @@ import Button from 'app/core/components/common/Button';
 import {withStyles} from '@material-ui/core/styles/index';
 
 /**
- * List modal class that can be extended.
- *
- * @author Mountain Gap Solutions
- * @copyright ©2019 Mountain Gap Solutions
+ * Generic list modal.
  */
 class ListModal extends Component {
 
