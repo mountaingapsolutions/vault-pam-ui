@@ -37,9 +37,9 @@ const useYarn = fs.existsSync(paths.yarnLockFile);
 const isInteractive = process.stdout.isTTY;
 const { connection } = require('../src/db/models');
 
-connection.sync().then(function(){
+connection.sync().then(() => {
     console.log('DB connection sucessful.');
-}, function(err){
+}, (err) => {
     console.log(err);
 });
 
