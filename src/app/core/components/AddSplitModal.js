@@ -113,13 +113,13 @@ class AddSplitModal extends Component {
                 </DialogContent>
                 <DialogActions>
                     <Button
+                        className={classes.button}>
+                        Apply
+                    </Button>
+                    <Button
                         className={classes.button}
                         onClick={onClose}>
                         Close
-                    </Button>
-                    <Button
-                        className={classes.button}>
-                        Apply
                     </Button>
                 </DialogActions>
             </Dialog>

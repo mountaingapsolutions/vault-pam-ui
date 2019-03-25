@@ -98,7 +98,7 @@ SplitRequestModal.defaultProps = {
 
 SplitRequestModal.propTypes = {
     classes: PropTypes.object.isRequired,
-    onAdd: PropTypes.object.isRequired,
+    onAdd: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
     open: PropTypes.bool.isRequired
 };
