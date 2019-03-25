@@ -14,11 +14,14 @@ import sessionAction from 'app/core/actions/systemAction';
  * @returns {Object} The updated state.
  */
 export default (previousState = {
-    vaultSealStatus: {}
+    selfCapabilities: {},
+    sealStatus: {}
 }, action) => {
     switch (action.type) {
-        case sessionAction.ACTION_TYPES.GET_VAULT_SEAL_STATUS:
-            return {...previousState, vaultSealStatus: action.data};
+        case sessionAction.ACTION_TYPES.GET_SELF_CAPABILITIES:
+            return {...previousState, selfCapabilities: action.data};
+        case sessionAction.ACTION_TYPES.GET_SEAL_STATUS:
+            return {...previousState, sealStatus: action.data};
         default:
             return {...previousState};
     }

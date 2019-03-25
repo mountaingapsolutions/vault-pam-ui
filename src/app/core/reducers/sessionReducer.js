@@ -17,7 +17,7 @@ export default (previousState = {
     authUser: {},
     vaultDomain: {},
     vaultLookupSelf: {},
-    vaultSealStatus: {},
+    sealStatus: {},
     vaultToken: {}
 }, action) => {
     switch (action.type) {
@@ -32,7 +32,7 @@ export default (previousState = {
         case sessionAction.ACTION_TYPES.SET_TOKEN:
             return {...previousState, vaultToken: action};
         case sessionAction.ACTION_TYPES.VALIDATE_DOMAIN:
-            return {...previousState, vaultSealStatus: action};
+            return {...previousState, sealStatus: action};
         case sessionAction.ACTION_TYPES.VALIDATE_TOKEN:
             // Message the error message with proper grammar.
             if (action.errors) {

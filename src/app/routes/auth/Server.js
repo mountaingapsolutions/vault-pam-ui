@@ -105,10 +105,10 @@ class Server extends Component {
             setVaultDomain(url).then(() => {
                 history.push('/auth/login');
             }).catch(() => {
-                const {vaultSealStatus} = this.props;
-                if (vaultSealStatus.errors) {
+                const {sealStatus} = this.props;
+                if (sealStatus.errors) {
                     this.setState({
-                        error: vaultSealStatus.errors[0]
+                        error: sealStatus.errors[0]
                     });
                 }
             });
@@ -216,7 +216,7 @@ Server.propTypes = {
     vaultDomain: PropTypes.object.isRequired,
     vaultDomains: PropTypes.array.isRequired,
     vaultLookupSelf: PropTypes.object.isRequired,
-    vaultSealStatus: PropTypes.object.isRequired
+    sealStatus: PropTypes.object.isRequired
 };
 
 /**

@@ -20,7 +20,7 @@ class Login extends Component {
      * The constructor method. Executed upon class instantiation.
      *
      * @public
-     * @param {Object} props - Props to initialize with.
+     * @param {Object} props Props to initialize with.
      */
     constructor(props) {
         super(props);
@@ -42,7 +42,7 @@ class Login extends Component {
      * Handle for when a value change is triggered.
      *
      * @private
-     * @param {SyntheticMouseEvent} event - The event.
+     * @param {SyntheticMouseEvent} event The event.
      */
     _onValueChange(event) {
         event.preventDefault();
@@ -62,7 +62,7 @@ class Login extends Component {
      * Handle for the tab value change.
      *
      * @private
-     * @param {SyntheticMouseEvent} event - The event.
+     * @param {SyntheticMouseEvent} event The event.
      * @param {number} value - The tab index selected.
      */
     _onTabChange(event, value) {
@@ -79,7 +79,7 @@ class Login extends Component {
      * Handle for submitting the form.
      *
      * @private
-     * @param {SyntheticMouseEvent} event - The event.
+     * @param {SyntheticMouseEvent} event The event.
      */
     _onSubmit(event) {
         event.preventDefault();

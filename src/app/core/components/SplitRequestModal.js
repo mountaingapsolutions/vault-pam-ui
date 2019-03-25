@@ -35,7 +35,7 @@ class SplitRequestModal extends Component {
      * The constructor method. Executed upon class instantiation.
      *
      * @public
-     * @param {Object} props - Props to initialize with.
+     * @param {Object} props Props to initialize with.
      */
     constructor(props) {
         super(props);

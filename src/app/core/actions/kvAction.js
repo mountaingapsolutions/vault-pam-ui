@@ -14,7 +14,8 @@ class KvAction extends _Actions {
         super('KvAction', {
             GET_SECRETS: 'GET_SECRETS',
             LIST_MOUNTS: 'LIST_MOUNTS',
-            LIST_SECRETS: 'LIST_SECRETS'
+            LIST_SECRETS: 'LIST_SECRETS',
+            SAVE_SECRET: 'SAVE_SECRET'
         });
     }
 
@@ -46,6 +47,19 @@ class KvAction extends _Actions {
     listSecrets(path = '') {
         return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS, `/api/v1/${path}`, {
             list: true
+        });
+    }
+
+    /**
+     * Returns a list of key names at the specified location
+     *
+     * @param {string} path Specifies the path of the secrets to list
+     * @param {Object} [data] The secrets key value map to save. If not provided, then just the "folder" will be created.
+     * @returns {function} Redux dispatch function.
+     */
+    saveSecret(path, data = {}) {
+        return this._dispatchPost(this.ACTION_TYPES.SAVE_SECRET, `/api/v1/${path}`, {
+            data
         });
     }
 }

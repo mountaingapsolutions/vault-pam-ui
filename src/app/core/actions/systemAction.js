@@ -12,17 +12,30 @@ class SystemAction extends _Actions {
      */
     constructor() {
         super('SystemAction', {
-            GET_VAULT_SEAL_STATUS: 'GET_VAULT_SEAL_STATUS'
+            GET_SELF_CAPABILITIES: 'GET_SELF_CAPABILITIES',
+            GET_SEAL_STATUS: 'GET_SEAL_STATUS'
         });
     }
 
     /**
-     * Validates Vault status.
+     * Returns the list of capabilities of a given path of the session user.
+     *
+     * @param {string} path The path to query.
+     * @returns {function} Redux dispatch function.
+     */
+    checkSelfCapabilities(path) {
+        return this._dispatchPost(this.ACTION_TYPES.GET_SELF_CAPABILITIES, '/api/v1/sys/capabilities-self', {
+            paths: [path]
+        });
+    }
+
+    /**
+     * Returns the current Vault status.
      *
      * @returns {function} Redux dispatch function.
      */
-    getVaultSealStatus() {
-        return this._dispatchGet(this.ACTION_TYPES.GET_VAULT_SEAL_STATUS, '/api/v1/sys/seal-status');
+    getSealStatus() {
+        return this._dispatchGet(this.ACTION_TYPES.GET_SEAL_STATUS, '/api/v1/sys/seal-status');
     }
 
 }

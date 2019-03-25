@@ -1,7 +1,7 @@
 /* global window */
 
 import {withStyles} from '@material-ui/core/styles';
-import {AppBar, Badge, Card, CardActions, CardContent, Grid, IconButton, List, ListItem, ListItemIcon, ListItemSecondaryAction, ListItemText, Snackbar, Toolbar, Typography} from '@material-ui/core';
+import {AppBar, Badge, Card, CardContent, Grid, IconButton, List, ListItem, ListItemIcon, ListItemSecondaryAction, ListItemText, Menu, MenuItem, Snackbar, Toolbar, Typography} from '@material-ui/core';
 import AccountCircle from '@material-ui/icons/AccountCircle';
 import Button from 'app/core/components/common/Button';
 import CloseIcon from '@material-ui/icons/Close';
@@ -33,13 +33,13 @@ class Main extends Component {
      * The constructor method. Executed upon class instantiation.
      *
      * @public
-     * @param {Object} props - Props to initialize with.
+     * @param {Object} props Props to initialize with.
      */
     constructor(props) {
         super(props);
 
         this.state = {
-            isMenuOpen: false,
+            accountAnchorElement: null,
             isSplitRequestModalOpen: false,
             isSecretRequestListOpen: false,
             //TODO - WIRE THE LIST SOURCE TO REDUCER
@@ -61,6 +61,7 @@ class Main extends Component {
         this._onLogOut = this._onLogOut.bind(this);
         this._openListModal = this._openListModal.bind(this);
         this._openSplitRequestModal = this._openSplitRequestModal.bind(this);
+        this._toggleAccountMenu = this._toggleAccountMenu.bind(this);
     }
 
     /**
@@ -88,6 +89,19 @@ class Main extends Component {
         event.preventDefault();
         localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
         window.location.href = '/';
+    }
+
+    /**
+     * Toggles the account menu.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _toggleAccountMenu(event) {
+        const {accountAnchorElement} = this.state;
+        this.setState({
+            accountAnchorElement: accountAnchorElement ? null : event.currentTarget
+        });
     }
 
     /**
@@ -161,7 +175,7 @@ class Main extends Component {
     componentDidMount() {
         const {checkSession} = this.props;
         checkSession().then(() => {
-            const {listMounts, getVaultSealStatus, vaultLookupSelf} = this.props;
+            const {listMounts, getSealStatus, vaultLookupSelf} = this.props;
 
             if (vaultLookupSelf.data.data.policies.includes('root')) {
                 localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
@@ -169,7 +183,7 @@ class Main extends Component {
                     showRootWarning: true
                 });
             }
-            getVaultSealStatus();
+            getSealStatus();
             listMounts();
             // TODO Display the result of listUsers
             // listUsers().then(() => {
@@ -187,9 +201,9 @@ class Main extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, secretsMounts = [], vaultSealStatus} = this.props;
-        const isVaultSealed = vaultSealStatus && vaultSealStatus.sealed;
-        const {isListModalOpen, isMenuOpen, isSplitRequestModalOpen, showRootWarning} = this.state;
+        const {classes, secretsMounts = [], sealStatus} = this.props;
+        const isVaultSealed = sealStatus && sealStatus.sealed;
+        const {accountAnchorElement, isListModalOpen, isSplitRequestModalOpen, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
         return <div className={classes.root}>
             <AppBar position='static'>
@@ -213,9 +227,14 @@ class Main extends Component {
                                 <NotificationsIcon/>
                             </Badge>
                         </IconButton>
-                        <IconButton aria-haspopup='true' aria-owns={isMenuOpen ? 'material-appbar' : undefined} color='inherit' onClick={event => event.preventDefault()}>
+                        <IconButton aria-haspopup='true' aria-owns={accountAnchorElement ? 'material-appbar' : undefined} color='inherit' onClick={this._toggleAccountMenu}>
                             <AccountCircle/>
                         </IconButton>
+                        <Menu anchorEl={accountAnchorElement} open={!!accountAnchorElement} onClose={this._toggleAccountMenu}>
+                            <MenuItem onClick={this._onLogOut}>
+                                <img className={classes.marginRight} src='/assets/logout-icon.svg' width='20'/> Log Out
+                            </MenuItem>
+                        </Menu>
                     </div>
                 </Toolbar>
             </AppBar>
@@ -244,11 +263,6 @@ class Main extends Component {
                                     </ListItem>;
                                 })
                             }</List>
-                            <CardActions>
-                                <Button variant='text' onClick={this._onLogOut}>
-                                    Log Out
-                                </Button>
-                            </CardActions>
                         </Card>
                     </Route>
                     <Route component={SecretsList} path='/secrets/list/:mount*'/>
@@ -287,8 +301,8 @@ Main.propTypes = {
     vaultDomain: PropTypes.object.isRequired,
     vaultLookupSelf: PropTypes.object.isRequired,
     users: PropTypes.array,
-    getVaultSealStatus: PropTypes.func.isRequired,
-    vaultSealStatus: PropTypes.object.isRequired
+    getSealStatus: PropTypes.func.isRequired,
+    sealStatus: PropTypes.object.isRequired
 };
 
 /**
@@ -326,7 +340,7 @@ const _mapDispatchToProps = (dispatch) => {
         },
         listMounts: () => dispatch(kvAction.listMounts()),
         listUsers: () => dispatch(userAction.listUsers()),
-        getVaultSealStatus: () => dispatch(systemAction.getVaultSealStatus())
+        getSealStatus: () => dispatch(systemAction.getSealStatus())
     };
 };
 
@@ -334,14 +348,18 @@ const _mapDispatchToProps = (dispatch) => {
  * Returns custom style overrides.
  *
  * @private
+ * @param {Object} theme The theme object.
  * @returns {Object}
  */
-const _styles = () => ({
+const _styles = (theme) => ({
     card: {
         width: '800px'
     },
     grow: {
         flexGrow: 1,
+    },
+    marginRight: {
+        marginRight: theme.spacing.unit
     },
     sealStatusDivider: {
         borderRight: '0.1em solid white',
