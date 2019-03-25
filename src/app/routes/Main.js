@@ -18,6 +18,7 @@ import kvAction from 'app/core/actions/kvAction';
 import sessionAction from 'app/core/actions/sessionAction';
 import systemAction from 'app/core/actions/systemAction';
 import userAction from 'app/core/actions/userAction';
+import AddSplitModal from 'app/core/components/AddSplitModal';
 import ListModal from 'app/core/components/common/ListModal';
 import SplitRequestModal from 'app/core/components/SplitRequestModal';
 import SecretsList from 'app/routes/secrets/SecretsList';
@@ -40,6 +41,7 @@ class Main extends Component {
 
         this.state = {
             accountAnchorElement: null,
+            isAddSplitModalOpen: false,
             isSplitRequestModalOpen: false,
             isSecretRequestListOpen: false,
             //TODO - WIRE THE LIST SOURCE TO REDUCER
@@ -55,12 +57,10 @@ class Main extends Component {
             },
             showRootWarning: false
         };
-        this._closeListModal = this._closeListModal.bind(this);
-        this._closeSplitRequestModal = this._closeSplitRequestModal.bind(this);
+        this._closeModal = this._closeModal.bind(this);
         this._onClose = this._onClose.bind(this);
         this._onLogOut = this._onLogOut.bind(this);
-        this._openListModal = this._openListModal.bind(this);
-        this._openSplitRequestModal = this._openSplitRequestModal.bind(this);
+        this._openModal = this._openModal.bind(this);
         this._toggleAccountMenu = this._toggleAccountMenu.bind(this);
     }
 
@@ -77,6 +77,26 @@ class Main extends Component {
                 showRootWarning: false
             });
         }
+    }
+
+    /**
+     * Handle for when a close event from the modal is clicked.
+     *
+     * @private
+     * @param {string} modalState The close reason.
+     */
+    _closeModal(modalState) {
+        this.setState({[modalState]: false});
+    }
+
+    /**
+     * Handle for when a modal is opened.
+     *
+     * @private
+     * @param {string} modalState The close reason.
+     */
+    _openModal(modalState) {
+        this.setState({[modalState]: true});
     }
 
     /**
@@ -101,48 +121,6 @@ class Main extends Component {
         const {accountAnchorElement} = this.state;
         this.setState({
             accountAnchorElement: accountAnchorElement ? null : event.currentTarget
-        });
-    }
-
-    /**
-     * Handle for when split request modal open button is triggered.
-     *
-     * @private
-     */
-    _openSplitRequestModal() {
-        this.setState({isSplitRequestModalOpen: true});
-    }
-
-    /**
-     * Handle for when split request modal close button is triggered.
-     *
-     * @private
-     */
-    _closeSplitRequestModal() {
-        this.setState({isSplitRequestModalOpen: false});
-    }
-
-    /**
-     * Handle for Notification click is triggered.
-     *
-     * @private
-     * @param {SyntheticMouseEvent} event The event.
-     */
-    _openListModal() {
-        this.setState({
-            isListModalOpen: true
-        });
-    }
-
-    /**
-     * Handle for when list modal close button is triggered.
-     *
-     * @private
-     * @param {SyntheticMouseEvent} event The event.
-     */
-    _closeListModal() {
-        this.setState({
-            isListModalOpen: false
         });
     }
 
@@ -203,7 +181,7 @@ class Main extends Component {
     render() {
         const {classes, secretsMounts = [], sealStatus} = this.props;
         const isVaultSealed = sealStatus && sealStatus.sealed;
-        const {accountAnchorElement, isListModalOpen, isSplitRequestModalOpen, showRootWarning} = this.state;
+        const {accountAnchorElement, isAddSplitModalOpen, isListModalOpen, isSplitRequestModalOpen, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
         return <div className={classes.root}>
             <AppBar position='static'>
@@ -222,7 +200,7 @@ class Main extends Component {
                         {isVaultSealed ? <LockIcon/> : <LockOpenIcon/>}
                     </div>
                     <div className={classes.sectionDesktop}>
-                        <IconButton color='inherit' onClick={this._openListModal}>
+                        <IconButton color='inherit' onClick={() => this._openModal('isListModalOpen')}>
                             <Badge badgeContent={17} color='secondary'>
                                 <NotificationsIcon/>
                             </Badge>
@@ -283,11 +261,15 @@ class Main extends Component {
                 items={this.state.requestList}
                 listTitle={'Request Queue'}
                 open={isListModalOpen}
-                onClick={this._openSplitRequestModal}
-                onClose={this._closeListModal}/>
+                onClick={() => this._openModal('isSplitRequestModalOpen')}
+                onClose={() => this._closeModal('isListModalOpen')}/>
             <SplitRequestModal
                 open={isSplitRequestModalOpen}
-                onClose={this._closeSplitRequestModal}/>
+                onAdd={() => this._openModal('isAddSplitModalOpen')}
+                onClose={() => this._closeModal('isSplitRequestModalOpen')}/>
+            <AddSplitModal
+                open={isAddSplitModalOpen}
+                onClose={() => this._closeModal('isAddSplitModalOpen')}/>
         </div>;
     }
 }

@@ -61,7 +61,7 @@ class SplitRequestModal extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, onClose, open} = this.props;
+        const {classes, onAdd, onClose, open} = this.props;
         return (
             <Dialog
                 disableBackdropClick
@@ -80,7 +80,7 @@ class SplitRequestModal extends Component {
                         return <GridCard items={items} key={`${items}-${index}`}/>;
                     })}
                     <div className={classes.alignRight}>
-                        <Button onClick={this._onClick}>Add</Button>
+                        <Button onClick={onAdd}>Add</Button>
                     </div>
                 </DialogContent>
                 <DialogActions>
@@ -98,6 +98,7 @@ SplitRequestModal.defaultProps = {
 
 SplitRequestModal.propTypes = {
     classes: PropTypes.object.isRequired,
+    onAdd: PropTypes.object.isRequired,
     onClose: PropTypes.func.isRequired,
     open: PropTypes.bool.isRequired
 };
