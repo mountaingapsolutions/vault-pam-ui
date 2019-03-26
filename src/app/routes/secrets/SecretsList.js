@@ -44,6 +44,58 @@ class SecretsList extends Component {
         this._onCreateUpdateSecretModalClose = this._onCreateUpdateSecretModalClose.bind(this);
         this._openListModal = this._openListModal.bind(this);
         this._closeListModal = this._closeListModal.bind(this);
+        this._checkCapabilitiesAndListSecrets = this._checkCapabilitiesAndListSecrets.bind(this);
+    }
+
+    /**
+     * Check self capabilities and then list secrets or secrets key names
+     *
+     * @private
+     * @param {Array} secretsMounts - array of secrets mounts
+     * @param {string} mountName - mount name from url
+     * @param {string} path - path from URL
+     * @returns {string}
+     */
+    _checkCapabilitiesAndListSecrets(secretsMounts = [], mountName, path = '') {
+        return new Promise((resolve, reject) => {
+            const {checkSelfCapabilities, listSecrets} = this.props;
+            const queryFullPath = this._getQueryFullPath(secretsMounts, mountName, path, 'LIST');
+            if (queryFullPath) {
+                checkSelfCapabilities(queryFullPath).then(() => {
+                    if ((this.props.selfCapabilities.capabilities || []).includes('list')) {
+                        listSecrets(queryFullPath);
+                    } else {
+                        /* eslint-disable no-alert */
+                        window.alert('No permission to list!');
+                        /* eslint-enable no-alert */
+                    }
+                }).catch(reject);
+            } else {
+                reject();
+            }
+        });
+    }
+
+
+    /**
+     * Construct query full path from mount name, path, and type of CRUD operation
+     *
+     * @private
+     * @param {Array} secretsMounts - array of secrets mounts
+     * @param {string} mountName - mount name from url
+     * @param {string} path - path from URL
+     * @param {string} [operation] - CRUD operation name
+     * @returns {string}
+     */
+    _getQueryFullPath(secretsMounts = [], mountName, path = '', operation) {
+        let queryFullPath = '';
+        const mount = secretsMounts.find(m => mountName === m.name.slice(0, -1));
+        if (mount) {
+            // See https://www.vaultproject.io/docs/secrets/kv/kv-v2.html for additional information. Version 2 KV secrets engine requires an additional /metadata in the query path.
+            const queryMountPath = mount.options && mount.options.version === '2' ? `${mountName}/${operation === 'GET' ? 'data' : 'metadata'}` : mountName;
+            queryFullPath = `${queryMountPath}/${path}`;
+        }
+        return queryFullPath;
     }
 
     /**
@@ -104,10 +156,10 @@ class SecretsList extends Component {
      */
     _onCreateUpdateSecretModalClose(refresh) {
         if (refresh) {
-            const {listSecrets, match, secretsMounts} = this.props;
+            const {match, secretsMounts} = this.props;
             const {params} = match;
             const {mount, path} = params;
-            listSecrets(secretsMounts, mount, path);
+            this._checkCapabilitiesAndListSecrets(secretsMounts, mount, path);
         }
         this.setState({
             secretModalInitialPath: '',
@@ -122,16 +174,16 @@ class SecretsList extends Component {
      * @override
      */
     componentDidMount() {
-        const {history, listMounts, listSecrets, match, secretsMounts} = this.props;
+        const {history, listMounts, match, secretsMounts} = this.props;
         const {params} = match;
         const {mount, path} = params;
 
         if (secretsMounts.length === 0) {
             listMounts().then(() => {
-                listSecrets(this.props.secretsMounts, mount, path);
+                this._checkCapabilitiesAndListSecrets(this.props.secretsMounts, mount, path);
             });
         } else {
-            listSecrets(secretsMounts, mount, path);
+            this._checkCapabilitiesAndListSecrets(secretsMounts, mount, path);
         }
 
         this.unlisten = history.listen((location, action) => {
@@ -139,7 +191,7 @@ class SecretsList extends Component {
                 const {match: newMatch} = this.props;
                 const {params: newParams} = newMatch;
                 const {path: newPath} = newParams;
-                listSecrets(secretsMounts, mount, newPath);
+                this._checkCapabilitiesAndListSecrets(secretsMounts, mount, newPath);
             }
         });
     }
@@ -161,7 +213,7 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     _renderBreadcrumbsArea() {
-        const {classes, history, listSecrets, match, secretsMounts = {}, selfCapabilities = {}} = this.props;
+        const {classes, history, match, secretsMounts = {}, selfCapabilities = {}} = this.props;
         const {params} = match;
         const {mount, path} = params;
         const paths = path ? [mount].concat(path.split('/')) : [mount];
@@ -181,7 +233,7 @@ class SecretsList extends Component {
                                 <Link key={folder} to={url} onClick={event => {
                                     event.preventDefault();
                                     history.push(url);
-                                    listSecrets(secretsMounts, mount, currentPath);
+                                    this._checkCapabilitiesAndListSecrets(secretsMounts, mount, currentPath);
                                 }}>
                                     <Typography color='textSecondary' variant='h6'>{folder}</Typography>
                                 </Link>
@@ -213,7 +265,7 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     _renderSecretsListArea() {
-        const {classes, history, getSecrets, listSecrets, match, secretsMounts = {}, secretsPaths = {}, selfCapabilities = {}} = this.props;
+        const {classes, history, getSecrets, match, secretsMounts = {}, secretsPaths = {}, selfCapabilities = {}} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
         if (secretsPaths._meta && secretsPaths._meta.inProgress === true) {
@@ -235,14 +287,14 @@ class SecretsList extends Component {
                         event.preventDefault();
                         if (key.includes('/')) {
                             history.push(url);
-                            listSecrets(secretsMounts, mount, currentPath);
+                            this._checkCapabilitiesAndListSecrets(secretsMounts, mount, currentPath);
                         } else {
                             if ((selfCapabilities.capabilities || []).includes('update')) {
                                 this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'update');
                             } else {
                                 this._openListModal();
                             }
-                            getSecrets(secretsMounts, mount, currentPath);
+                            getSecrets(this._getQueryFullPath(secretsMounts, mount, currentPath, 'GET'));
                         }
                     }}/>} key={`key-${i}`}>
                         <ListItemAvatar>
@@ -298,7 +350,7 @@ class SecretsList extends Component {
                 title={`Delete ${deleteSecretConfirmation}?`}
                 onClose={confirm => {
                     if (confirm) {
-                        deleteSecrets(secretsMounts, mount, path, deleteSecretConfirmation);
+                        deleteSecrets(this._getQueryFullPath(secretsMounts, mount, path, 'DELETE'), deleteSecretConfirmation);
                     }
                     this.setState({
                         deleteSecretConfirmation: ''
@@ -310,6 +362,7 @@ class SecretsList extends Component {
 }
 
 SecretsList.propTypes = {
+    checkSelfCapabilities: PropTypes.func.isRequired,
     classes: PropTypes.object.isRequired,
     deleteSecrets: PropTypes.func.isRequired,
     getSecrets: PropTypes.func.isRequired,
@@ -349,41 +402,37 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        listMounts: () => dispatch(kvAction.listMounts()),
-        listSecrets: (secretsMounts = [], mountName, path = '') => {
+        checkSelfCapabilities: (queryFullPath) => {
             return new Promise((resolve, reject) => {
-                const mount = secretsMounts.find(m => mountName === m.name.slice(0, -1));
-                if (mount) {
-                    // See https://www.vaultproject.io/docs/secrets/kv/kv-v2.html for additional information. Version 2 KV secrets engine requires an additional /metadata in the query path.
-                    const queryMountPath = mount.options && mount.options.version === '2' ? `${mountName}/metadata` : mountName;
-                    const queryFullPath = `${queryMountPath}/${path}`;
-                    Promise.all([
-                        dispatch(kvAction.listSecrets(queryFullPath)),
-                        dispatch(systemAction.checkSelfCapabilities(queryFullPath))
-                    ]).then(resolve).catch(reject);
+                if (queryFullPath) {
+                    dispatch(systemAction.checkSelfCapabilities(queryFullPath)).then(resolve).catch(reject);
                 } else {
                     reject();
                 }
             });
         },
-        getSecrets: (secretsMounts = [], mountName, path = '') => {
+        listMounts: () => dispatch(kvAction.listMounts()),
+        listSecrets: (queryFullPath) => {
             return new Promise((resolve, reject) => {
-                const mount = secretsMounts.find(m => mountName === m.name.slice(0, -1));
-                if (mount) {
-                    const queryMountPath = mount.options && mount.options.version === '2' ? `${mountName}/data` : mountName;
-                    const queryFullPath = `${queryMountPath}/${path}`;
+                if (queryFullPath) {
+                    dispatch(kvAction.listSecrets(queryFullPath)).then(resolve).catch(reject);
+                } else {
+                    reject();
+                }
+            });
+        },
+        getSecrets: (queryFullPath) => {
+            return new Promise((resolve, reject) => {
+                if (queryFullPath) {
                     dispatch(kvAction.getSecrets(queryFullPath)).then(resolve).catch(reject);
                 } else {
                     reject();
                 }
             });
         },
-        deleteSecrets: (secretsMounts = [], mountName, path, secret) => {
+        deleteSecrets: (queryFullPath, secret) => {
             return new Promise((resolve, reject) => {
-                const mount = secretsMounts.find(m => mountName === m.name.slice(0, -1));
-                if (mount) {
-                    const queryMountPath = mount.options && mount.options.version === '2' ? `${mountName}/metadata` : mountName;
-                    const queryFullPath = `${queryMountPath}/${path ? `${path}/` : ''}`;
+                if (queryFullPath) {
                     dispatch(kvAction.deleteSecrets(`${queryFullPath}${secret}`))
                         .then(() => {
                             dispatch(kvAction.listSecrets(queryFullPath))
