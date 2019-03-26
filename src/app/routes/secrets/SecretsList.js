@@ -46,6 +46,7 @@ class SecretsList extends Component {
         this._openListModal = this._openListModal.bind(this);
         this._closeListModal = this._closeListModal.bind(this);
         this._checkCapabilitiesAndListSecrets = this._checkCapabilitiesAndListSecrets.bind(this);
+        this._checkCapabilitiesAndGetSecrets = this._checkCapabilitiesAndGetSecrets.bind(this);
     }
 
     /**
@@ -71,9 +72,11 @@ class SecretsList extends Component {
                             this._toggleLoadingState(false);
                         });
                     } else {
-                        /* eslint-disable no-alert */
-                        window.alert('No permission to list!');
-                        /* eslint-enable no-alert */
+                        listSecrets(queryFullPath, true).then(() => {
+                            this._toggleLoadingState(false);
+                        }).catch(() => {
+                            this._toggleLoadingState(false);
+                        });
                     }
                 }).catch(() => {
                     this._toggleLoadingState(false);
@@ -86,6 +89,39 @@ class SecretsList extends Component {
         });
     }
 
+    /**
+     * Check self capabilities and then get secrets or secrets key names
+     *
+     * @private
+     * @param {Array} secretsMounts - array of secrets mounts
+     * @param {string} mountName - mount name from url
+     * @param {string} path - path from URL
+     * @returns {Promise}
+     */
+    _checkCapabilitiesAndGetSecrets(secretsMounts = [], mountName, path = '') {
+        this._toggleLoadingState(true);
+        return new Promise((resolve, reject) => {
+            const {checkSelfCapabilities, getSecrets} = this.props;
+            const queryFullPath = this._getQueryFullPath(secretsMounts, mountName, path, 'GET');
+            if (queryFullPath) {
+                checkSelfCapabilities(queryFullPath).then(() => {
+                    if ((this.props.selfCapabilities.capabilities || []).includes('read')) {
+                        getSecrets(queryFullPath).then(() => {
+                            this._toggleLoadingState(false);
+                        }).catch(() => {
+                            this._toggleLoadingState(false);
+                        });
+                    } else {
+                        /* eslint-disable no-alert */
+                        window.alert('No permission to read!');
+                        /* eslint-enable no-alert */
+                    }
+                }).catch(reject);
+            } else {
+                reject();
+            }
+        });
+    }
 
     /**
      * Construct query full path from mount name, path, and type of CRUD operation
@@ -287,7 +323,7 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     _renderSecretsListArea() {
-        const {classes, history, getSecrets, match, secretsMounts = {}, secretsPaths = {}, selfCapabilities = {}} = this.props;
+        const {classes, history, match, secretsMounts = {}, secretsPaths = {}, selfCapabilities = {}} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
         const {loading} = this.state;
@@ -317,7 +353,7 @@ class SecretsList extends Component {
                             } else {
                                 this._openListModal();
                             }
-                            getSecrets(this._getQueryFullPath(secretsMounts, mount, currentPath, 'GET'));
+                            this._checkCapabilitiesAndGetSecrets(secretsMounts, mount, currentPath);
                         }
                     }}/>} key={`key-${i}`}>
                         <ListItemAvatar>
@@ -362,7 +398,7 @@ class SecretsList extends Component {
         return <Card className={classes.card}>
             {this._renderBreadcrumbsArea()}
             {this._renderSecretsListArea()}
-            <ListModal buttonTitle={'Request Secret'} items={secrets} listTitle={'Secrets'} open={isListModalOpen} onClick={() => {
+            <ListModal buttonTitle={'Request Secret'} items={(secrets || {}).data ? secrets.data : secrets} listTitle={'Secrets'} open={isListModalOpen} onClick={() => {
                 /* eslint-disable no-alert */
                 window.alert('button clicked!');
                 /* eslint-enable no-alert */
@@ -437,10 +473,10 @@ const _mapDispatchToProps = (dispatch) => {
             });
         },
         listMounts: () => dispatch(kvAction.listMounts()),
-        listSecrets: (queryFullPath) => {
+        listSecrets: (queryFullPath, useApiKey) => {
             return new Promise((resolve, reject) => {
                 if (queryFullPath) {
-                    dispatch(kvAction.listSecrets(queryFullPath)).then(resolve).catch(reject);
+                    dispatch(kvAction.listSecrets(queryFullPath, useApiKey)).then(resolve).catch(reject);
                 } else {
                     reject();
                 }

@@ -34,10 +34,11 @@ export default class _Actions {
      * @param {string} type - The action type.
      * @param {string} url - The XHR url.
      * @param {Object} [data] - The data to query by.
+     * @param {Object} [headers] - custom headers
      * @returns {function} Redux dispatch function.
      */
-    _dispatchGet(type, url, data) {
-        return this._orchestrateRequest('GET', type, url, data);
+    _dispatchGet(type, url, data, headers) {
+        return this._orchestrateRequest('GET', type, url, data, headers);
     }
 
     /**
@@ -47,10 +48,11 @@ export default class _Actions {
      * @param {string} type - The action type.
      * @param {string} url - The XHR url.
      * @param {Object} [data] - The data to post.
+     * @param {Object} [headers] - custom headers
      * @returns {function} Redux dispatch function.
      */
-    _dispatchPost(type, url, data) {
-        return this._orchestrateRequest('POST', type, url, data);
+    _dispatchPost(type, url, data, headers) {
+        return this._orchestrateRequest('POST', type, url, data, headers);
     }
 
     /**
@@ -60,10 +62,11 @@ export default class _Actions {
      * @param {string} type - The action type.
      * @param {string} url - The XHR url.
      * @param {Object} [data] - The data to post.
+     * @param {Object} [headers] - custom headers
      * @returns {function} Redux dispatch function.
      */
-    _dispatchPut(type, url, data) {
-        return this._orchestrateRequest('PUT', type, url, data);
+    _dispatchPut(type, url, data, headers) {
+        return this._orchestrateRequest('PUT', type, url, data, headers);
     }
 
     /**
@@ -73,10 +76,11 @@ export default class _Actions {
      * @param {string} type - The action type.
      * @param {string} url - The XHR url.
      * @param {Object} [data] - The data to query by.
+     * @param {Object} [headers] - custom headers
      * @returns {function} Redux dispatch function.
      */
-    _dispatchDelete(type, url, data) {
-        return this._orchestrateRequest('DELETE', type, url, data);
+    _dispatchDelete(type, url, data, headers) {
+        return this._orchestrateRequest('DELETE', type, url, data, headers);
     }
 
     /**
@@ -87,15 +91,16 @@ export default class _Actions {
      * @param {string} type - The action type.
      * @param {string} url - The XHR url.
      * @param {Object} data - The data to post or query by.
+     * @param {Object} [headers] - custom headers
      * @returns {function} Redux dispatch function.
      */
-    _orchestrateRequest(method, type, url, data) {
+    _orchestrateRequest(method, type, url, data, headers) {
         return dispatch => {
             // Kickoff the initial inProgress dispatch.
             dispatch(this._createResourceData(type, undefined, undefined, true));
 
             return new Promise((resolve, reject) => {
-                this._fetch(method, url, data).then(res => {
+                this._fetch(method, url, data, headers).then(res => {
                     const responseData = this._createResourceData(type, undefined, res, false);
                     dispatch(responseData);
                     resolve(responseData);
@@ -115,9 +120,10 @@ export default class _Actions {
      * @param {string} method - The HTTP method.
      * @param {string} url - The XHR url.
      * @param {Object} data - The data to post or query by.
+     * @param {Object} [headers] - custom headers
      * @returns {Promise}
      */
-    _fetch(method, url, data) {
+    _fetch(method, url, data, headers) {
         return new Promise((resolve, reject) => {
             let initData = { // Refer to https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch for full init data documentation.
                 method,
@@ -142,7 +148,9 @@ export default class _Actions {
                 initData.headers['X-Vault-Domain'] = vaultDomain;
             }
             const vaultToken = window.app.store.getState().sessionReducer.vaultToken.data || localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
-            if (vaultToken) {
+            if (headers && headers['X-Vault-Token']) {
+                initData.headers['X-Vault-Token'] = headers['X-Vault-Token'];
+            } else if (vaultToken) {
                 initData.headers['X-Vault-Token'] = vaultToken;
             }
             let ok;

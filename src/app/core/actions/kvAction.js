@@ -53,12 +53,16 @@ class KvAction extends _Actions {
      * Returns a list of key names at the specified location
      *
      * @param {string} [path] Specifies the path of the secrets to list.
+     * @param {boolean} [useApiKey] specifies if API key is used
      * @returns {function} Redux dispatch function.
      */
-    listSecrets(path = '') {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS, `/api/v1/${this._encodePath(path)}`, {
+    listSecrets(path = '', useApiKey = false) {
+        return useApiKey ? this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS, `/api/v1/${this._encodePath(path)}`, {
             list: true
-        });
+        }, {'X-Vault-Token': process.env.REACT_APP_API_TOKEN}) :
+            this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS, `/api/v1/${this._encodePath(path)}`, {
+                list: true
+            });
     }
 
     /**
