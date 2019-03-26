@@ -184,7 +184,7 @@ class Main extends Component {
         const isVaultSealed = sealStatus && sealStatus.sealed;
         const {accountAnchorElement, isAddSplitModalOpen, isListModalOpen, isSplitRequestModalOpen, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
-        return <div className={classes.root}>
+        return <div>
             <AppBar position='static'>
                 <Toolbar>
                     <Button color='inherit' component={props => <Link to='/' {...props}/>} variant='text'>
@@ -271,7 +271,7 @@ class Main extends Component {
             <AddSplitModal
                 open={isAddSplitModalOpen}
                 onClose={() => this._closeModal('isAddSplitModalOpen')}/>
-            <Footer />
+            <Footer/>
         </div>;
     }
 }
