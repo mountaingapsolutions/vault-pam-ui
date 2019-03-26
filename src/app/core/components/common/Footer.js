@@ -52,14 +52,15 @@ class Footer extends Component {
 }
 
 Footer.defaultProps = {
+    activeVaultDomain: '',
     vaultVersion: ''
 };
 
 Footer.propTypes = {
-    activeVaultDomain: PropTypes.string,
+    activeVaultDomain: PropTypes.string.isRequired,
     classes: PropTypes.object.isRequired,
     getActiveVaultDomain: PropTypes.func.isRequired,
-    vaultVersion: PropTypes.string
+    vaultVersion: PropTypes.string.isRequired
 };
 
 /**
@@ -83,9 +84,10 @@ const _mapDispatchToProps = (dispatch) => {
  * @returns {Object}
  */
 const _mapStateToProps = (state) => {
+    const {localStorageReducer, systemReducer} = state;
     return {
-        activeVaultDomain: state.localStorageReducer.activeVaultDomain,
-        vaultVersion: state.systemReducer.sealStatus && state.systemReducer.sealStatus.version
+        activeVaultDomain: localStorageReducer && localStorageReducer.activeVaultDomain,
+        vaultVersion: systemReducer && systemReducer.sealStatus && systemReducer.sealStatus.version
     };
 };
 
