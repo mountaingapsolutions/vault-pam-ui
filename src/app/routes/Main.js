@@ -21,6 +21,7 @@ import userAction from 'app/core/actions/userAction';
 import AddSplitModal from 'app/core/components/AddSplitModal';
 import ListModal from 'app/core/components/common/ListModal';
 import SplitRequestModal from 'app/core/components/SplitRequestModal';
+import Footer from 'app/core/components/common/Footer';
 import SecretsList from 'app/routes/secrets/SecretsList';
 import Constants from 'app/util/Constants';
 import localStorageUtil from 'app/util/localStorageUtil';
@@ -270,6 +271,7 @@ class Main extends Component {
             <AddSplitModal
                 open={isAddSplitModalOpen}
                 onClose={() => this._closeModal('isAddSplitModalOpen')}/>
+            <Footer />
         </div>;
     }
 }

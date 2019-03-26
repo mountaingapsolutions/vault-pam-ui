@@ -34,7 +34,7 @@ class ListModal extends Component {
                 fullWidth={true}
                 maxWidth={'sm'}
                 open={open}>
-                <DialogTitle>
+                <DialogTitle disableTypography>
                     <Typography color='textSecondary' variant='h6'>
                         {listTitle}
                     </Typography>

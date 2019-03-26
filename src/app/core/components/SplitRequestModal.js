@@ -70,7 +70,7 @@ class SplitRequestModal extends Component {
                 fullWidth={true}
                 maxWidth={'md'}
                 open={open}>
-                <DialogTitle>
+                <DialogTitle disableTypography>
                     <Typography color='textSecondary' variant='h6'>
                         Split Secret Request
                     </Typography>
