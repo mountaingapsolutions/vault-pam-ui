@@ -6,7 +6,9 @@ import {
     DialogContent,
     DialogTitle,
     ListItem,
-    ListItemText
+    ListItemText,
+    Paper,
+    Typography
 } from '@material-ui/core';
 import Button from 'app/core/components/common/Button';
 import {withStyles} from '@material-ui/core/styles/index';
@@ -35,22 +37,28 @@ class ListModal extends Component {
                 fullWidth={true}
                 maxWidth={'sm'}
                 open={open}>
-                <DialogTitle>{listTitle}</DialogTitle>
+                <DialogTitle>
+                    <Typography color='textSecondary' variant='h6'>
+                        {listTitle}
+                    </Typography>
+                </DialogTitle>
                 <DialogContent>
-                    {Object.keys(items).filter(item => item !== '_meta').map((item, index) => {
-                        return (
-                            <ListItem dense key={index}>
-                                <ListItemText primary={item} secondary={items[item]} />
-                                <Button
-                                    variant='text'
-                                    onClick={onClick}>
-                                    {buttonTitle}
-                                </Button>
-                            </ListItem>
-                        );
-                    })}
+                    <Paper className={classes.paper} elevation={2}>
+                        {Object.keys(items).filter(item => item !== '_meta').map((item, index) => {
+                            return (
+                                <ListItem dense divider key={index}>
+                                    <ListItemText primary={item} secondary={items[item]} />
+                                    <Button
+                                        variant='text'
+                                        onClick={onClick}>
+                                        {buttonTitle}
+                                    </Button>
+                                </ListItem>
+                            );
+                        })}
+                    </Paper>
                 </DialogContent>
-                <DialogActions className={classes.lineDivider}>
+                <DialogActions>
                     <Button
                         className={classes.button}
                         onClick={onClose}>
@@ -83,9 +91,11 @@ ListModal.propTypes = {
  * @returns {Object}
  */
 const _styles = () => ({
-    lineDivider: {
-        borderTop: '1px solid gray',
-        paddingTop: 10
+    button: {
+        marginTop: 20
+    },
+    paper: {
+        margin: 10
     }
 });
 

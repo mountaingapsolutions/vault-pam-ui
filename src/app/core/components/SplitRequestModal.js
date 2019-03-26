@@ -6,6 +6,7 @@ import {
     DialogContent,
     DialogTitle,
     Divider,
+    Paper,
     Typography
 } from '@material-ui/core';
 import {withStyles} from '@material-ui/core/styles/index';
@@ -69,23 +70,29 @@ class SplitRequestModal extends Component {
                 fullWidth={true}
                 maxWidth={'md'}
                 open={open}>
-                <DialogTitle>Split Secret Request</DialogTitle>
-                <DialogContent className={classes.dialogContent}>
-                    <GridCard items={secretRequestInfo}/>
-                    <Divider />
-                    <Typography className={classes.alignLeft}>
-                        Current Split
+                <DialogTitle>
+                    <Typography color='textSecondary' variant='h6'>
+                        Split Secret Request
                     </Typography>
-                    {splitList.map((items, index) => {
-                        return <GridCard items={items} key={`${items}-${index}`}/>;
-                    })}
-                    <div className={classes.alignRight}>
-                        <Button onClick={onAdd}>Add</Button>
-                    </div>
+                </DialogTitle>
+                <DialogContent className={classes.dialogContent}>
+                    <Paper className={classes.paper} elevation={2}>
+                        <GridCard items={secretRequestInfo}/>
+                        <Divider />
+                        <Typography className={classes.alignLeft}>
+                            Current Split
+                        </Typography>
+                        {splitList.map((items, index) => {
+                            return <GridCard items={items} key={`${items}-${index}`}/>;
+                        })}
+                        <div className={classes.alignRight}>
+                            <Button variant='text' onClick={onAdd}>Add</Button>
+                        </div>
+                    </Paper>
                 </DialogContent>
                 <DialogActions>
+                    <Button variant='text' onClick={onClose}>Cancel</Button>
                     <Button onClick={this._onClick}>Apply</Button>
-                    <Button onClick={onClose}>Cancel</Button>
                 </DialogActions>
             </Dialog>
         );
@@ -122,6 +129,10 @@ const _styles = () => ({
         flex: 1,
         flexDirection: 'row',
         textAlign: 'center'
+    },
+    paper: {
+        marginTop: 20,
+        paddingBottom: 5
     }
 });
 

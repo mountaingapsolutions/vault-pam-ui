@@ -6,7 +6,9 @@ import {
     DialogContent,
     DialogTitle,
     MenuItem,
-    TextField
+    Paper,
+    TextField,
+    Typography
 } from '@material-ui/core';
 import {withStyles} from '@material-ui/core/styles/index';
 import Button from 'app/core/components/common/Button';
@@ -53,7 +55,7 @@ class AddSplitModal extends Component {
      */
     _handleChange(event) {
         this.setState({
-            selectedGroupMember: event.target.value,
+            selectedControlGroupMember: event.target.value,
             controlGroupMemberEmail: event.target.value});
     }
 
@@ -75,9 +77,13 @@ class AddSplitModal extends Component {
                 fullWidth={true}
                 maxWidth={'sm'}
                 open={open}>
-                <DialogTitle>Add Split</DialogTitle>
+                <DialogTitle>
+                    <Typography color='textSecondary' variant='h6'>
+                        Add Split
+                    </Typography>
+                </DialogTitle>
                 <DialogContent>
-                    <div>
+                    <Paper className={classes.paper} elevation={2}>
                         <TextField
                             fullWidth
                             select
@@ -98,8 +104,6 @@ class AddSplitModal extends Component {
                                 </MenuItem>
                             )}
                         </TextField>
-                    </div>
-                    <div>
                         <TextField
                             disabled
                             fullWidth
@@ -109,17 +113,18 @@ class AddSplitModal extends Component {
                             margin='normal'
                             value={controlGroupMemberEmail}
                             variant='outlined'/>
-                    </div>
+                    </Paper>
                 </DialogContent>
                 <DialogActions>
                     <Button
-                        className={classes.button}>
-                        Apply
+                        className={classes.button}
+                        variant='text'
+                        onClick={onClose}>
+                        Cancel
                     </Button>
                     <Button
-                        className={classes.button}
-                        onClick={onClose}>
-                        Close
+                        className={classes.button}>
+                        Apply
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -133,4 +138,17 @@ AddSplitModal.propTypes = {
     onClose: PropTypes.func.isRequired
 };
 
-export default withStyles(null)(AddSplitModal);
+/**
+ * Returns custom style overrides.
+ *
+ * @private
+ * @returns {Object}
+ */
+const _styles = () => ({
+    paper: {
+        padding: 10,
+        marginTop: 10
+    }
+});
+
+export default withStyles(_styles)(AddSplitModal);
