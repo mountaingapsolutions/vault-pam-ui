@@ -1,4 +1,4 @@
-import sessionAction from 'app/core/actions/systemAction';
+import systemAction from 'app/core/actions/systemAction';
 
 /**
  * Reducer class responsible for reacting to and handling the system REST calls.
@@ -18,10 +18,10 @@ export default (previousState = {
     sealStatus: {}
 }, action) => {
     switch (action.type) {
-        case sessionAction.ACTION_TYPES.GET_SELF_CAPABILITIES:
-            return {...previousState, selfCapabilities: action.data};
-        case sessionAction.ACTION_TYPES.GET_SEAL_STATUS:
-            return {...previousState, sealStatus: action.data};
+        case systemAction.ACTION_TYPES.GET_SELF_CAPABILITIES:
+            return {...previousState, selfCapabilities: systemAction.injectMetaData(action.data || {}, action)};
+        case systemAction.ACTION_TYPES.GET_SEAL_STATUS:
+            return {...previousState, sealStatus: systemAction.injectMetaData(action.data || {}, action)};
         default:
             return {...previousState};
     }

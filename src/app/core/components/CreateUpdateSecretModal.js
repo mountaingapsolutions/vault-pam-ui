@@ -580,7 +580,7 @@ CreateUpdateSecretModal.propTypes = {
     open: PropTypes.bool,
     onClose: PropTypes.func.isRequired,
     secrets: PropTypes.object,
-    secretsMounts: PropTypes.array
+    secretsMounts: PropTypes.object
 };
 
 /**
@@ -610,7 +610,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const {initialPath} = ownProps;
             let savePath = initialPath.split('/');
             return new Promise((resolve, reject) => {
-                const mount = secretsMounts.find(m => savePath[0] === m.name.slice(0, -1));
+                const mount = (secretsMounts.data || []).find(m => savePath[0] === m.name.slice(0, -1));
                 let secretsData;
                 if (mount) {
                     const isV2 = mount.options.version === '2';

@@ -180,7 +180,7 @@ class Main extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, secretsMounts = [], sealStatus} = this.props;
+        const {classes, secretsMounts = {}, sealStatus} = this.props;
         const isVaultSealed = sealStatus && sealStatus.sealed;
         const {accountAnchorElement, isAddSplitModalOpen, isListModalOpen, isSplitRequestModalOpen, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
@@ -227,7 +227,7 @@ class Main extends Component {
                                 </Typography>
                             </CardContent>
                             <List>{
-                                secretsMounts.map(mount => {
+                                (secretsMounts.data || []).map(mount => {
                                     const {description, name, type} = mount;
                                     return <ListItem button component={(props) => <Link to={`secrets/${name}`} {...props}/>} key={name}>
                                         <ListItemIcon>{
@@ -281,7 +281,7 @@ Main.propTypes = {
     classes: PropTypes.object.isRequired,
     listMounts: PropTypes.func.isRequired,
     listUsers: PropTypes.func.isRequired,
-    secretsMounts: PropTypes.array,
+    secretsMounts: PropTypes.object,
     vaultDomain: PropTypes.object.isRequired,
     vaultLookupSelf: PropTypes.object.isRequired,
     users: PropTypes.array,

@@ -37,8 +37,8 @@ class SecretsList extends Component {
             newSecretAnchorElement: null,
             secretModalInitialPath: '',
             secretModalMode: '',
-            isListModalOpen: false,
-            loading: false
+            isListModalOpen: false
+
         };
 
         this._onBack = this._onBack.bind(this);
@@ -53,37 +53,26 @@ class SecretsList extends Component {
      * Check self capabilities and then list secrets or secrets key names
      *
      * @private
-     * @param {Array} secretsMounts - array of secrets mounts
+     * @param {Object} secretsMounts - object of secrets mounts
      * @param {string} mountName - mount name from url
      * @param {string} path - path from URL
      * @returns {Promise}
      */
-    _checkCapabilitiesAndListSecrets(secretsMounts = [], mountName, path = '') {
-        this._toggleLoadingState(true);
+    _checkCapabilitiesAndListSecrets(secretsMounts = {}, mountName, path = '') {
         return new Promise((resolve, reject) => {
             const {checkSelfCapabilities, listSecrets} = this.props;
             const queryFullPath = this._getQueryFullPath(secretsMounts, mountName, path, 'LIST');
             if (queryFullPath) {
                 checkSelfCapabilities(queryFullPath).then(() => {
                     if ((this.props.selfCapabilities.capabilities || []).includes('list')) {
-                        listSecrets(queryFullPath).then(() => {
-                            this._toggleLoadingState(false);
-                        }).catch(() => {
-                            this._toggleLoadingState(false);
-                        });
+                        listSecrets(queryFullPath);
                     } else {
-                        listSecrets(queryFullPath, true).then(() => {
-                            this._toggleLoadingState(false);
-                        }).catch(() => {
-                            this._toggleLoadingState(false);
-                        });
+                        listSecrets(queryFullPath, true);
                     }
                 }).catch(() => {
-                    this._toggleLoadingState(false);
                     reject();
                 });
             } else {
-                this._toggleLoadingState(false);
                 reject();
             }
         });
@@ -93,24 +82,19 @@ class SecretsList extends Component {
      * Check self capabilities and then get secrets or secrets key names
      *
      * @private
-     * @param {Array} secretsMounts - array of secrets mounts
+     * @param {Object} secretsMounts - object of secrets mounts
      * @param {string} mountName - mount name from url
      * @param {string} path - path from URL
      * @returns {Promise}
      */
-    _checkCapabilitiesAndGetSecrets(secretsMounts = [], mountName, path = '') {
-        this._toggleLoadingState(true);
+    _checkCapabilitiesAndGetSecrets(secretsMounts = {}, mountName, path = '') {
         return new Promise((resolve, reject) => {
             const {checkSelfCapabilities, getSecrets} = this.props;
             const queryFullPath = this._getQueryFullPath(secretsMounts, mountName, path, 'GET');
             if (queryFullPath) {
                 checkSelfCapabilities(queryFullPath).then(() => {
                     if ((this.props.selfCapabilities.capabilities || []).includes('read')) {
-                        getSecrets(queryFullPath).then(() => {
-                            this._toggleLoadingState(false);
-                        }).catch(() => {
-                            this._toggleLoadingState(false);
-                        });
+                        getSecrets(queryFullPath);
                     } else {
                         /* eslint-disable no-alert */
                         window.alert('No permission to read!');
@@ -127,15 +111,15 @@ class SecretsList extends Component {
      * Construct query full path from mount name, path, and type of CRUD operation
      *
      * @private
-     * @param {Array} secretsMounts - array of secrets mounts
+     * @param {Object} secretsMounts - object of secrets mounts
      * @param {string} mountName - mount name from url
      * @param {string} path - path from URL
      * @param {string} [operation] - CRUD operation name
      * @returns {string}
      */
-    _getQueryFullPath(secretsMounts = [], mountName, path = '', operation) {
+    _getQueryFullPath(secretsMounts = {}, mountName, path = '', operation) {
         let queryFullPath = '';
-        const mount = secretsMounts.find(m => mountName === m.name.slice(0, -1));
+        const mount = (secretsMounts.data || []).find(m => mountName === m.name.slice(0, -1));
         if (mount) {
             // See https://www.vaultproject.io/docs/secrets/kv/kv-v2.html for additional information. Version 2 KV secrets engine requires an additional /metadata in the query path.
             const queryMountPath = mount.options && mount.options.version === '2' ? `${mountName}/${operation === 'GET' ? 'data' : 'metadata'}` : mountName;
@@ -195,18 +179,6 @@ class SecretsList extends Component {
     }
 
     /**
-     * Sets internal loading state.
-     *
-     * @private
-     * @param {boolean} loading Toggle loading.
-     */
-    _toggleLoadingState(loading) {
-        this.setState({
-            loading
-        });
-    }
-
-    /**
      * Called when the create/update secrets modal is closed.
      *
      * @private
@@ -236,7 +208,7 @@ class SecretsList extends Component {
         const {params} = match;
         const {mount, path} = params;
 
-        if (secretsMounts.length === 0) {
+        if ((secretsMounts.data || []).length === 0) {
             listMounts().then(() => {
                 this._checkCapabilitiesAndListSecrets(this.props.secretsMounts, mount, path);
             });
@@ -326,7 +298,9 @@ class SecretsList extends Component {
         const {classes, history, match, secretsMounts = {}, secretsPaths = {}, selfCapabilities = {}} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
-        const {loading} = this.state;
+        const loading = secretsMounts._meta && secretsMounts._meta.inProgress === true ||
+            secretsPaths._meta && secretsPaths._meta.inProgress === true ||
+            selfCapabilities._meta && selfCapabilities._meta.inProgress === true;
         if (loading) {
             return <Grid container justify='center'>
                 <Grid item>
@@ -432,7 +406,7 @@ SecretsList.propTypes = {
     listSecrets: PropTypes.func.isRequired,
     match: PropTypes.object.isRequired,
     secrets: PropTypes.object,
-    secretsMounts: PropTypes.array,
+    secretsMounts: PropTypes.object,
     secretsPaths: PropTypes.object,
     selfCapabilities: PropTypes.object
 };

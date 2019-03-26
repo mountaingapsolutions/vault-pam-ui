@@ -15,7 +15,7 @@ import kvAction from 'app/core/actions/kvAction';
  */
 export default (previousState = {
     secrets: {},
-    secretsMounts: [],
+    secretsMounts: {},
     secretsPaths: {}
 }, action) => {
     switch (action.type) {
@@ -28,12 +28,12 @@ export default (previousState = {
             const mounts = (action.data || {}).data || {};
             return {
                 ...previousState,
-                secretsMounts: Object.keys(mounts).map(key => {
+                secretsMounts: kvAction.injectMetaData({data: Object.keys(mounts).map(key => {
                     return {
                         ...mounts[key],
                         name: key
                     };
-                }).filter(mount => mount.type !== 'identity' && mount.type !== 'system') // Filter out the identity and system mounts.
+                }).filter(mount => mount.type !== 'identity' && mount.type !== 'system')}, action) // Filter out the identity and system mounts.
             };
         case kvAction.ACTION_TYPES.LIST_SECRETS:
             return {
