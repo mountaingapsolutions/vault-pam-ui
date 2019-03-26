@@ -16,11 +16,11 @@ const useHsts = process.env.USE_HSTS !== null && process.env.USE_HSTS !== undefi
 console.log(`Starting server on port ${chalk.yellow(port)}...`);
 
 // Database Init
-const { connection } = require('../src/db/models');
+const { connection } = require('./db/models');
 connection.sync().then(() => {
-    console.log('DB connection sucessful.');
+    console.info('DB connection successful.');
 }, (err) => {
-    console.log(err);
+    console.error(err);
 });
 
 const noCacheUrls = ['/'];

@@ -38,9 +38,9 @@ const isInteractive = process.stdout.isTTY;
 const { connection } = require('../src/db/models');
 
 connection.sync().then(() => {
-    console.log('DB connection sucessful.');
+    console.info('DB connection successful.');
 }, (err) => {
-    console.log(err);
+    console.error(err);
 });
 
 // Warn and crash if required files are missing
