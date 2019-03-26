@@ -11,10 +11,7 @@ import {COLORS} from 'app/core/assets/Styles';
 
 
 /**
- * Grid with Cards row class that can be extended.
- *
- * @author Mountain Gap Solutions
- * @copyright ©2019 Mountain Gap Solutions
+ * Generic grid layout with items displayed using cards.
  */
 class GridCard extends Component {
 

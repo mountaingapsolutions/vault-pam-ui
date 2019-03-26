@@ -14,7 +14,7 @@ import kvAction from 'app/core/actions/kvAction';
 import systemAction from 'app/core/actions/systemAction';
 import Button from 'app/core/components/common/Button';
 import ListModal from 'app/core/components/common/ListModal';
-import NewSecretModal from 'app/core/components/NewSecretModal';
+import CreateUpdateSecretModal from 'app/core/components/CreateUpdateSecretModal';
 
 /**
  * The secrets list container.
@@ -32,13 +32,13 @@ class SecretsList extends Component {
 
         this.state = {
             newSecretAnchorElement: null,
+            secretModalMode: '',
             isListModalOpen: false
         };
 
         this._onBack = this._onBack.bind(this);
         this._openListModal = this._openListModal.bind(this);
         this._closeListModal = this._closeListModal.bind(this);
-        this._toggleNewSecretModal = this._toggleNewSecretModal.bind(this);
     }
 
     /**
@@ -78,15 +78,14 @@ class SecretsList extends Component {
     }
 
     /**
-     * Toggles the create new secret modal.
+     * Toggles the create/update secret modal.
      *
      * @private
-     * @param {SyntheticMouseEvent} event The event.
+     * @param {string} [secretModalMode] The secret modal mode. Either 'create' or 'update'. No value will hide the modal.
      */
-    _toggleNewSecretModal(event) {
-        const {newSecretAnchorElement} = this.state;
+    _toggleCreateUpdateSecretModal(secretModalMode = '') {
         this.setState({
-            newSecretAnchorElement: newSecretAnchorElement ? null : event.currentTarget
+            secretModalMode
         });
     }
 
@@ -100,17 +99,13 @@ class SecretsList extends Component {
         const {history, listSecrets, match, secretsMounts} = this.props;
         const {params} = match;
         const {mount} = params;
-        // Find the mount data object from the URL mount path.
-        const mountPath = (secretsMounts.find(m => m.name.endsWith('/') ? mount === m.name.slice(0, -1) : mount === m.name) || {}).path;
-        listSecrets(mountPath);
+        listSecrets(secretsMounts, mount);
         this.unlisten = history.listen((location, action) => {
             if (action === 'POP') {
                 const {match: newMatch} = this.props;
                 const {params: newParams} = newMatch;
-                const {mount: newMount} = newParams;
-                const folders = (newMount || '').split('/');
-                const listSecretsCurrentQueryPath = folders.length > 1 ? `${mountPath}/${folders.slice(1).join('/')}` : mountPath;
-                listSecrets(listSecretsCurrentQueryPath);
+                const {path} = newParams;
+                listSecrets(secretsMounts, mount, path);
             }
         });
     }
@@ -129,15 +124,13 @@ class SecretsList extends Component {
      * Renders the header containing breadcrumbs.
      *
      * @private
-     * @param {string} mountPath The root mount path.
-     * @param {Array} folders The current list of folders.
      * @returns {React.ReactElement}
      */
-    _renderBreadcrumbsArea(mountPath, folders) {
-        const {classes, history, listSecrets, match, selfCapabilities = {}} = this.props;
+    _renderBreadcrumbsArea() {
+        const {classes, history, listSecrets, match, secretsMounts = {}, selfCapabilities = {}} = this.props;
         const {params} = match;
-        const {mount} = params;
-        const {newSecretAnchorElement} = this.state;
+        const {mount, path} = params;
+        const paths = path ? [mount].concat(path.split('/')) : [mount];
         return <CardContent>{
             mount && <List disablePadding>
                 <ListItem disableGutters className={classes.disablePadding}>
@@ -147,15 +140,14 @@ class SecretsList extends Component {
                         </ListItemIcon>
                     </Button>
                     <Breadcrumbs arial-label='Breadcrumb' separator='>'>{
-                        folders.map((folder, idx) => {
-                            const currentPath = folders.slice(0, idx + 1).join('/');
-                            const listingPath = `${mountPath}/${folders.slice(1, idx + 1).join('/')}`;
-                            const url = `/secrets/list/${currentPath}`;
-                            return idx !== folders.length - 1 ?
+                        paths.map((folder, idx) => {
+                            const currentPath = paths.slice(1, idx + 1).join('/');
+                            const url = `/secrets/${mount}/${currentPath}`;
+                            return idx !== paths.length - 1 ?
                                 <Link key={folder} to={url} onClick={event => {
                                     event.preventDefault();
                                     history.push(url);
-                                    listSecrets(`${listingPath}`);
+                                    listSecrets(secretsMounts, mount, currentPath);
                                 }}>
                                     <Typography color='textSecondary' variant='h6'>{folder}</Typography>
                                 </Link>
@@ -165,15 +157,10 @@ class SecretsList extends Component {
                     }</Breadcrumbs>
                     {
                         (selfCapabilities.capabilities || []).includes('create') && <React.Fragment>
-                            <Fab aria-label='new' className={classes.fab} color='primary' size='medium' variant='extended' onClick={this._toggleNewSecretModal}>
+                            <Fab aria-label='new' className={classes.fab} color='primary' size='medium' variant='extended' onClick={() => this._toggleCreateUpdateSecretModal('create')}>
                                 <AddIcon className={classes.marginRight}/>
                                 Create Secret
                             </Fab>
-                            <NewSecretModal initialPath={mount} open={!!newSecretAnchorElement} onClose={() => {
-                                this.setState({
-                                    newSecretAnchorElement: null
-                                });
-                            }}/>
                         </React.Fragment>
                     }
                 </ListItem>
@@ -189,15 +176,12 @@ class SecretsList extends Component {
      * Renders the secrets list area.
      *
      * @private
-     * @param {string} mountPath The root mount path.
-     * @param {Array} folders The current list of folders.
      * @returns {React.ReactElement}
      */
-    _renderSecretsListArea(mountPath, folders) {
-        const {classes, history, getSecrets, listSecrets, match, secretsPaths = {}} = this.props;
+    _renderSecretsListArea() {
+        const {classes, history, getSecrets, listSecrets, match, secretsMounts = {}, secretsPaths = {}, selfCapabilities = {}} = this.props;
         const {params} = match;
-        const {mount} = params;
-        const listSecretsCurrentQueryPath = folders.length > 1 ? `${mountPath}/${folders.slice(1).join('/')}` : mountPath;
+        const {mount, path = ''} = params;
         if (secretsPaths._meta && secretsPaths._meta.inProgress === true) {
             return <Paper className={classes.paper} elevation={2}>
                 <CircularProgress className={classes.progress}/>
@@ -208,22 +192,27 @@ class SecretsList extends Component {
             </Paper>;
         } else if ((secretsPaths.keys || []).length > 0) {
             return <List>{
-                (secretsPaths.keys || []).map(path => {
-                    const url = `/secrets/list/${mount}/${path}`;
+                (secretsPaths.keys || []).map((key, i) => {
+                    const currentPath = path ? `${path}/${key}` : key;
+                    const url = `/secrets/${mount}/${currentPath}`;
                     return <ListItem button component={(props) => <Link to={url} {...props} onClick={event => {
                         event.preventDefault();
-                        if (path.includes('/')) {
+                        if (key.includes('/')) {
                             history.push(url);
-                            listSecrets(`${listSecretsCurrentQueryPath}/${path}`);
+                            listSecrets(secretsMounts, mount, currentPath);
                         } else {
-                            this._openListModal();
-                            getSecrets(`${mount}/${path}`);
+                            if ((selfCapabilities.capabilities || []).includes('update')) {
+                                this._toggleCreateUpdateSecretModal('update');
+                            } else {
+                                this._openListModal();
+                            }
+                            getSecrets(secretsMounts, mount, currentPath);
                         }
-                    }}/>} key={path}>
+                    }}/>} key={`key-${i}`}>
                         <ListItemIcon>{
-                            path.endsWith('/') ? <FolderIcon/> : <FileCopyIcon/>
+                            key.endsWith('/') ? <FolderIcon/> : <FileCopyIcon/>
                         }</ListItemIcon>
-                        <ListItemText primary={path}/>
+                        <ListItemText primary={key}/>
                     </ListItem>;
                 })
             }</List>;
@@ -244,21 +233,19 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, match, secrets, secretsMounts} = this.props;
-        const {isListModalOpen} = this.state;
+        const {classes, match, secrets} = this.props;
+        const {isListModalOpen, secretModalMode} = this.state;
         const {params} = match;
-        const {mount} = params;
-        const folders = (mount || '').split('/');
-        const initialMount = folders[0];
-        const mountPath = (secretsMounts.find(m => m.name.endsWith('/') ? initialMount === m.name.slice(0, -1) : initialMount === m.name) || {}).path;
+        const {mount, path = ''} = params;
         return <Card className={classes.card}>
-            {this._renderBreadcrumbsArea(mountPath, folders)}
-            {this._renderSecretsListArea(mountPath, folders)}
+            {this._renderBreadcrumbsArea()}
+            {this._renderSecretsListArea()}
             <ListModal buttonTitle={'Request Secret'} items={secrets} listTitle={'Secrets'} open={isListModalOpen} onClick={() => {
                 /* eslint-disable no-alert */
                 window.alert('button clicked!');
                 /* eslint-enable no-alert */
             }} onClose={this._closeListModal}/>
+            <CreateUpdateSecretModal initialPath={`${mount}${path ? `/${path}` : ''}`} mode={secretModalMode} open={!!secretModalMode} onClose={() => this._toggleCreateUpdateSecretModal()}/>
         </Card>;
     }
 }
@@ -301,15 +288,34 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        listSecrets: (path) => {
-            return new Promise((resolve) => {
-                Promise.all([
-                    dispatch(kvAction.listSecrets(path)),
-                    dispatch(systemAction.checkSelfCapabilities(path))
-                ]).then(resolve);
+        listSecrets: (secretsMounts = [], mountName, path = '') => {
+            return new Promise((resolve, reject) => {
+                const mount = secretsMounts.find(m => mountName === m.name.slice(0, -1));
+                if (mount) {
+                    // See https://www.vaultproject.io/docs/secrets/kv/kv-v2.html for additional information. Version 2 KV secrets engine requires an additional /metadata in the query path.
+                    const queryMountPath = mount.options.version === '2' ? `${mountName}/metadata` : mountName;
+                    const queryFullPath = `${queryMountPath}/${path}`;
+                    Promise.all([
+                        dispatch(kvAction.listSecrets(queryFullPath)),
+                        dispatch(systemAction.checkSelfCapabilities(queryFullPath))
+                    ]).then(resolve).catch(reject);
+                } else {
+                    reject();
+                }
             });
         },
-        getSecrets: (path) => dispatch(kvAction.getSecrets(path))
+        getSecrets: (secretsMounts = [], mountName, path = '') => {
+            return new Promise((resolve, reject) => {
+                const mount = secretsMounts.find(m => mountName === m.name.slice(0, -1));
+                if (mount) {
+                    const queryMountPath = mount.options.version === '2' ? `${mountName}/data` : mountName;
+                    const queryFullPath = `${queryMountPath}/${path}`;
+                    dispatch(kvAction.getSecrets(queryFullPath));
+                } else {
+                    reject();
+                }
+            });
+        }
     };
 };
 

@@ -2,10 +2,7 @@ import React, {Component} from 'react';
 import {Button as MaterialUIButton} from '@material-ui/core';
 
 /**
- * Button class that can be extended.
- *
- * @author Mountain Gap Solutions
- * @copyright ©2019 Mountain Gap Solutions
+ * Generic button class with default properties.
  */
 class Button extends Component {
 

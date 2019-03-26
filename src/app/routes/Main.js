@@ -228,7 +228,7 @@ class Main extends Component {
                             <List>{
                                 secretsMounts.map(mount => {
                                     const {description, name, type} = mount;
-                                    return <ListItem button component={(props) => <Link to={`secrets/list/${name}`} {...props}/>} key={name}>
+                                    return <ListItem button component={(props) => <Link to={`secrets/${name}`} {...props}/>} key={name}>
                                         <ListItemIcon>{
                                             this._renderIconFromType(type)
                                         }</ListItemIcon>
@@ -243,7 +243,7 @@ class Main extends Component {
                             }</List>
                         </Card>
                     </Route>
-                    <Route component={SecretsList} path='/secrets/list/:mount*'/>
+                    <Route component={SecretsList} path='/secrets/:mount/:path*'/>
                     <Redirect to='/'/>
                 </Switch>
             </Grid>

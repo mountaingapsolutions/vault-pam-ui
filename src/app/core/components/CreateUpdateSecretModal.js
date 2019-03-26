@@ -32,15 +32,13 @@ import kvAction from 'app/core/actions/kvAction';
 import Button from 'app/core/components/common/Button';
 
 /**
- * Button class that can be extended.
- *
- * @author Mountain Gap Solutions
- * @copyright ©2019 Mountain Gap Solutions
+ * Modal to create or modify a secret.
  */
-class NewSecretModal extends Component {
+class CreateUpdateSecretModal extends Component {
 
     _defaultState = {
         errors: {},
+        loaded: false,
         newPaths: [''],
         secrets: [{
             key: '',
@@ -68,6 +66,42 @@ class NewSecretModal extends Component {
         this._onValueChange = this._onValueChange.bind(this);
         this._resetState = this._resetState.bind(this);
         this._togglePasswordVisibility = this._togglePasswordVisibility.bind(this);
+    }
+
+    /**
+     * React Component lifecycle method. Invoked right before calling the render method, both on the initial mount and on subsequent updates.
+     *
+     * @protected
+     * @override
+     * @param {Object} props - Next set of updated props.
+     * @param {Object} state - The current state.
+     * @returns {Object}
+     */
+    static getDerivedStateFromProps(props, state) {
+        const {mode, secrets} = props;
+        const {loaded} = state;
+        if (mode === 'update' && !loaded && secrets && secrets._meta && !secrets._meta.inProgress) {
+            // Check if KV engine is version 2, as the resource data is different.
+            const isV2 = secrets.data && secrets.metadata && secrets.data && secrets.metadata.version;
+            let secretsData;
+            if (isV2) {
+                secretsData = {...secrets.data};
+            } else {
+                secretsData = {...secrets};
+                delete secretsData._meta;
+            }
+            return {
+                secrets: Object.keys(secretsData).map(key => {
+                    return {
+                        key,
+                        value: secretsData[key],
+                        showPassword: false
+                    };
+                }),
+                loaded: true
+            };
+        }
+        return null;
     }
 
     /**
@@ -155,9 +189,9 @@ class NewSecretModal extends Component {
         } else if (value.startsWith('/')) {
             return 'Path cannot start with "/."';
         } else {
-            const regexp = /^[a-zA-Z0-9-_]+$/; // Regex to only allow for folder names that are alphanumeric, dashes, or underscores.
+            const regexp = /^[a-zA-Z0-9-_ ]+$/; // Regex to only allow for folder names that are alphanumeric, spaces, dashes, or underscores.
             if (value.search(regexp) === -1) {
-                return 'Invalid folder name. Only alphanumeric, dash, and underscore characters are allowed.';
+                return 'Invalid folder name. Only alphanumeric, space, dash, and underscore characters are allowed.';
             } else {
                 return '';
             }
@@ -172,9 +206,19 @@ class NewSecretModal extends Component {
      */
     _onSubmit(event) {
         event.preventDefault();
-        const {errors, secrets} = this.state;
+        const {errors, newPaths, secrets} = this.state;
         const updatedErrors = {...errors};
         const errorMessage = 'Please fill out this field.';
+        let pathErrorMessage;
+        if (newPaths.length === 1) {
+            pathErrorMessage = this._validateNewPath(newPaths[0]);
+        } else if (newPaths.length > 1) {
+            const lastPathIndex = newPaths[newPaths.length - 1] === '' ? newPaths.length - 2 : newPaths.length - 1;
+            pathErrorMessage = this._validateNewPath(newPaths[lastPathIndex]);
+        }
+        if (pathErrorMessage) {
+            updatedErrors.currentPath = pathErrorMessage;
+        }
         secrets.forEach((secret, i) => {
             if (!secret.key) {
                 updatedErrors[`key-${i}`] = errorMessage;
@@ -272,6 +316,7 @@ class NewSecretModal extends Component {
             <div className={classes.pathRoot}>
                 <FolderIcon className={classes.folderIcon} color='disabled'/>
                 <InputBase
+                    autoFocus
                     fullWidth
                     required
                     className={classes.input}
@@ -355,8 +400,11 @@ class NewSecretModal extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, onClose, open} = this.props;
-        const {errors, secrets} = this.state;
+        const {classes, onClose, mode, open} = this.props;
+        const {errors, loaded, secrets} = this.state;
+        if (mode === 'update' && loaded) {
+            console.warn('SET THESE ', secrets);
+        }
         return <Dialog open={open} onClose={onClose} onExit={this._resetState}>
             <form onSubmit={this._onSubmit}>
                 <DialogTitle id='create-new-folder-modal'>
@@ -430,7 +478,6 @@ class NewSecretModal extends Component {
                                             :
                                             <IconButton aria-label='Delete' onClick={() => {
                                                 const updatedErrors = {...errors};
-                                                console.warn('updatedErrors: ', updatedErrors);
                                                 delete updatedErrors[keyKey];
                                                 delete updatedErrors[valueKey];
                                                 const updatedSecrets = [...secrets];
@@ -461,17 +508,20 @@ class NewSecretModal extends Component {
     }
 }
 
-NewSecretModal.defaultProps = {
-    open: false
+CreateUpdateSecretModal.defaultProps = {
+    open: false,
+    mode: 'create'
 };
 
-NewSecretModal.propTypes = {
+CreateUpdateSecretModal.propTypes = {
     classes: PropTypes.object.isRequired,
     createFolder: PropTypes.func.isRequired,
     error: PropTypes.string,
     initialPath: PropTypes.string.isRequired,
+    mode: PropTypes.oneOf(['', 'create', 'update']),
     open: PropTypes.bool,
-    onClose: PropTypes.func.isRequired
+    onClose: PropTypes.func.isRequired,
+    secrets: PropTypes.object
 };
 
 /**
@@ -555,4 +605,4 @@ const _styles = (theme) => ({
     valueField: {}
 });
 
-export default connect(_mapStateToProps, _mapDispatchToProps)(withStyles(_styles)(NewSecretModal));
+export default connect(_mapStateToProps, _mapDispatchToProps)(withStyles(_styles)(CreateUpdateSecretModal));

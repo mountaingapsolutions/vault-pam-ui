@@ -15,6 +15,14 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const useHsts = process.env.USE_HSTS !== null && process.env.USE_HSTS !== undefined ? !!process.env.USE_HSTS && process.env.USE_HSTS !== 'false' : true;
 console.log(`Starting server on port ${chalk.yellow(port)}...`);
 
+// Database Init
+const { connection } = require('../src/db/models');
+connection.sync().then(() => {
+    console.log('DB connection sucessful.');
+}, (err) => {
+    console.log(err);
+});
+
 const noCacheUrls = ['/'];
 express().use(compression())
     .disable('x-powered-by')
