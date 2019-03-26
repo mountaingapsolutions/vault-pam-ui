@@ -122,16 +122,24 @@ class SecretsList extends Component {
      * @override
      */
     componentDidMount() {
-        const {history, listSecrets, match, secretsMounts} = this.props;
+        const {history, listMounts, listSecrets, match, secretsMounts} = this.props;
         const {params} = match;
-        const {mount} = params;
-        listSecrets(secretsMounts, mount);
+        const {mount, path} = params;
+
+        if (secretsMounts.length === 0) {
+            listMounts().then(() => {
+                listSecrets(this.props.secretsMounts, mount, path);
+            });
+        } else {
+            listSecrets(secretsMounts, mount, path);
+        }
+
         this.unlisten = history.listen((location, action) => {
             if (action === 'POP') {
                 const {match: newMatch} = this.props;
                 const {params: newParams} = newMatch;
-                const {path} = newParams;
-                listSecrets(secretsMounts, mount, path);
+                const {path: newPath} = newParams;
+                listSecrets(secretsMounts, mount, newPath);
             }
         });
     }
@@ -256,7 +264,7 @@ class SecretsList extends Component {
         } else {
             return <Paper className={classes.paper} elevation={2}>
                 <Typography className={classes.paperMessage} color='textSecondary' variant='h5' >
-                    There appears to be no content in {mount}.
+                    There appears to be no content in {mount}{path ? `/${path}` : ''}.
                 </Typography>
             </Paper>;
         }
@@ -306,6 +314,7 @@ SecretsList.propTypes = {
     deleteSecrets: PropTypes.func.isRequired,
     getSecrets: PropTypes.func.isRequired,
     history: PropTypes.object.isRequired,
+    listMounts: PropTypes.func.isRequired,
     listSecrets: PropTypes.func.isRequired,
     match: PropTypes.object.isRequired,
     secrets: PropTypes.object,
@@ -340,6 +349,7 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
+        listMounts: () => dispatch(kvAction.listMounts()),
         listSecrets: (secretsMounts = [], mountName, path = '') => {
             return new Promise((resolve, reject) => {
                 const mount = secretsMounts.find(m => mountName === m.name.slice(0, -1));
