@@ -1,4 +1,4 @@
-import {Card, CardContent, CircularProgress, Fab, List, ListItem, ListItemIcon, ListItemText, Paper, Typography} from '@material-ui/core';
+import {Card, CardContent, CircularProgress, Fab, Grid, List, ListItem, ListItemIcon, ListItemText, Paper, Typography} from '@material-ui/core';
 import {withStyles} from '@material-ui/core/styles';
 import AddIcon from '@material-ui/icons/Add';
 import FileCopyIcon from '@material-ui/icons/FileCopy';
@@ -32,11 +32,13 @@ class SecretsList extends Component {
 
         this.state = {
             newSecretAnchorElement: null,
+            secretModalInitialPath: '',
             secretModalMode: '',
             isListModalOpen: false
         };
 
         this._onBack = this._onBack.bind(this);
+        this._onCreateUpdateSecretModalClose = this._onCreateUpdateSecretModalClose.bind(this);
         this._openListModal = this._openListModal.bind(this);
         this._closeListModal = this._closeListModal.bind(this);
     }
@@ -81,11 +83,33 @@ class SecretsList extends Component {
      * Toggles the create/update secret modal.
      *
      * @private
+     * @param {string} secretModalInitialPath The initial path for the secrets modal.
      * @param {string} [secretModalMode] The secret modal mode. Either 'create' or 'update'. No value will hide the modal.
      */
-    _toggleCreateUpdateSecretModal(secretModalMode = '') {
+    _toggleCreateUpdateSecretModal(secretModalInitialPath = '', secretModalMode = '') {
         this.setState({
+            secretModalInitialPath,
             secretModalMode
+        });
+    }
+
+    /**
+     * Called when the create/update secrets modal is closed.
+     *
+     * @private
+     * @param {boolean} refresh Whether or not to refresh the secrets list.
+     */
+    _onCreateUpdateSecretModalClose(refresh) {
+        console.warn('refresh: ', refresh);
+        if (refresh) {
+            const {listSecrets, match, secretsMounts} = this.props;
+            const {params} = match;
+            const {mount, path} = params;
+            listSecrets(secretsMounts, mount, path);
+        }
+        this.setState({
+            secretModalInitialPath: '',
+            secretModalMode: ''
         });
     }
 
@@ -157,7 +181,7 @@ class SecretsList extends Component {
                     }</Breadcrumbs>
                     {
                         (selfCapabilities.capabilities || []).includes('create') && <React.Fragment>
-                            <Fab aria-label='new' className={classes.fab} color='primary' size='medium' variant='extended' onClick={() => this._toggleCreateUpdateSecretModal('create')}>
+                            <Fab aria-label='new' className={classes.fab} color='primary' size='medium' variant='extended' onClick={() => this._toggleCreateUpdateSecretModal(paths.join('/'), 'create')}>
                                 <AddIcon className={classes.marginRight}/>
                                 Create Secret
                             </Fab>
@@ -183,9 +207,11 @@ class SecretsList extends Component {
         const {params} = match;
         const {mount, path = ''} = params;
         if (secretsPaths._meta && secretsPaths._meta.inProgress === true) {
-            return <Paper className={classes.paper} elevation={2}>
-                <CircularProgress className={classes.progress}/>
-            </Paper>;
+            return <Grid container justify='center'>
+                <Grid item>
+                    <CircularProgress className={classes.progress}/>
+                </Grid>
+            </Grid>;
         } else if (secretsPaths._meta && secretsPaths._meta.errors && Array.isArray(secretsPaths._meta.errors) && secretsPaths._meta.errors.length > 0) {
             return <Paper className={classes.paper} elevation={2}>
                 <Typography className={classes.paperMessage} color='textPrimary'>{secretsPaths._meta.errors[0]}</Typography>
@@ -202,7 +228,7 @@ class SecretsList extends Component {
                             listSecrets(secretsMounts, mount, currentPath);
                         } else {
                             if ((selfCapabilities.capabilities || []).includes('update')) {
-                                this._toggleCreateUpdateSecretModal('update');
+                                this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'update');
                             } else {
                                 this._openListModal();
                             }
@@ -233,10 +259,8 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, match, secrets} = this.props;
-        const {isListModalOpen, secretModalMode} = this.state;
-        const {params} = match;
-        const {mount, path = ''} = params;
+        const {classes, secrets} = this.props;
+        const {isListModalOpen, secretModalMode, secretModalInitialPath} = this.state;
         return <Card className={classes.card}>
             {this._renderBreadcrumbsArea()}
             {this._renderSecretsListArea()}
@@ -245,7 +269,7 @@ class SecretsList extends Component {
                 window.alert('button clicked!');
                 /* eslint-enable no-alert */
             }} onClose={this._closeListModal}/>
-            <CreateUpdateSecretModal initialPath={`${mount}${path ? `/${path}` : ''}`} mode={secretModalMode} open={!!secretModalMode} onClose={() => this._toggleCreateUpdateSecretModal()}/>
+            <CreateUpdateSecretModal initialPath={secretModalInitialPath} mode={secretModalMode} open={!!secretModalMode} onClose={this._onCreateUpdateSecretModalClose}/>
         </Card>;
     }
 }
@@ -293,7 +317,7 @@ const _mapDispatchToProps = (dispatch) => {
                 const mount = secretsMounts.find(m => mountName === m.name.slice(0, -1));
                 if (mount) {
                     // See https://www.vaultproject.io/docs/secrets/kv/kv-v2.html for additional information. Version 2 KV secrets engine requires an additional /metadata in the query path.
-                    const queryMountPath = mount.options.version === '2' ? `${mountName}/metadata` : mountName;
+                    const queryMountPath = mount.options && mount.options.version === '2' ? `${mountName}/metadata` : mountName;
                     const queryFullPath = `${queryMountPath}/${path}`;
                     Promise.all([
                         dispatch(kvAction.listSecrets(queryFullPath)),
@@ -308,9 +332,9 @@ const _mapDispatchToProps = (dispatch) => {
             return new Promise((resolve, reject) => {
                 const mount = secretsMounts.find(m => mountName === m.name.slice(0, -1));
                 if (mount) {
-                    const queryMountPath = mount.options.version === '2' ? `${mountName}/data` : mountName;
+                    const queryMountPath = mount.options && mount.options.version === '2' ? `${mountName}/data` : mountName;
                     const queryFullPath = `${queryMountPath}/${path}`;
-                    dispatch(kvAction.getSecrets(queryFullPath));
+                    dispatch(kvAction.getSecrets(queryFullPath)).then(resolve).catch(reject);
                 } else {
                     reject();
                 }
@@ -328,7 +352,7 @@ const _mapDispatchToProps = (dispatch) => {
  */
 const _styles = (theme) => ({
     card: {
-        width: '800px'
+        width: 800
     },
     disablePadding: {
         padding: 0
@@ -337,7 +361,7 @@ const _styles = (theme) => ({
         minWidth: 0
     },
     paperMessage: {
-        padding: '40px'
+        padding: 40
     },
     fab: {
         marginLeft: 'auto'
@@ -346,10 +370,10 @@ const _styles = (theme) => ({
         marginRight: theme.spacing.unit
     },
     paper: {
-        margin: '50px',
+        margin: 50,
     },
     progress: {
-        margin: theme.spacing.unit * 2,
+        margin: 50,
     }
 });
 

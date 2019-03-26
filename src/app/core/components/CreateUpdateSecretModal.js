@@ -1,5 +1,6 @@
 import {
     Chip,
+    CircularProgress,
     Dialog,
     DialogActions,
     DialogContent,
@@ -40,6 +41,7 @@ class CreateUpdateSecretModal extends Component {
         errors: {},
         loaded: false,
         newPaths: [''],
+        saving: false,
         secrets: [{
             key: '',
             value: '',
@@ -97,6 +99,10 @@ class CreateUpdateSecretModal extends Component {
                         value: secretsData[key],
                         showPassword: false
                     };
+                }).concat({ // Create an empty row as well.
+                    key: '',
+                    value: '',
+                    showPassword: false
                 }),
                 loaded: true
             };
@@ -206,20 +212,32 @@ class CreateUpdateSecretModal extends Component {
      */
     _onSubmit(event) {
         event.preventDefault();
+        const {mode} = this.props;
         const {errors, newPaths, secrets} = this.state;
         const updatedErrors = {...errors};
         const errorMessage = 'Please fill out this field.';
-        let pathErrorMessage;
-        if (newPaths.length === 1) {
-            pathErrorMessage = this._validateNewPath(newPaths[0]);
-        } else if (newPaths.length > 1) {
-            const lastPathIndex = newPaths[newPaths.length - 1] === '' ? newPaths.length - 2 : newPaths.length - 1;
-            pathErrorMessage = this._validateNewPath(newPaths[lastPathIndex]);
+        // Only need to validate the secrets path is if creating a new secret. Update mode does not allow to change secret paths.
+        if (mode === 'create') {
+            let pathErrorMessage;
+            if (newPaths.length === 1) {
+                pathErrorMessage = this._validateNewPath(newPaths[0]);
+            } else if (newPaths.length > 1) {
+                const lastPathIndex = newPaths[newPaths.length - 1] === '' ? newPaths.length - 2 : newPaths.length - 1;
+                pathErrorMessage = this._validateNewPath(newPaths[lastPathIndex]);
+            }
+            if (pathErrorMessage) {
+                updatedErrors.currentPath = pathErrorMessage;
+            }
         }
-        if (pathErrorMessage) {
-            updatedErrors.currentPath = pathErrorMessage;
+        const secretsToPersist = [...secrets];
+        // Ignore the last secrets row if it's empty.
+        if (secretsToPersist.length > 1) {
+            const {key, value} = secretsToPersist[secretsToPersist.length - 1];
+            if (!key && !value) {
+                secretsToPersist.pop();
+            }
         }
-        secrets.forEach((secret, i) => {
+        secretsToPersist.forEach((secret, i) => {
             if (!secret.key) {
                 updatedErrors[`key-${i}`] = errorMessage;
             } else {
@@ -231,16 +249,28 @@ class CreateUpdateSecretModal extends Component {
                 delete updatedErrors[`value-${i}`];
             }
         });
-        if (Object.keys(updatedErrors).length > 0) {
+        if (Object.keys(updatedErrors).filter(key => !!updatedErrors[key]).length > 0) {
             this.setState({
                 errors: {
                     ...updatedErrors
                 }
             });
         } else {
-            // const {createFolder} = this.props;
-            // createFolder(value);
-            console.warn('TODO - Submit: ', secrets);
+            this.setState({
+                saving: true
+            });
+
+            const {onClose, saveSecret, secretsMounts} = this.props;
+            const promise = saveSecret(secretsMounts, newPaths, secretsToPersist.reduce((secretsData, secret) => {
+                const {key, value} = secret;
+                secretsData[key] = value;
+                return secretsData;
+            }, {}));
+            if (mode === 'create') {
+                promise.then(() => onClose(true)).catch(() => onClose(false));
+            } else {
+                onClose(false);
+            }
         }
     }
 
@@ -303,13 +333,41 @@ class CreateUpdateSecretModal extends Component {
     }
 
     /**
+     * Resets the internal state.
+     *
+     * @private
+     */
+    _resetState() {
+        this.setState({
+            ...this._defaultState
+        });
+    }
+
+    /**
+     * Renders a loader.
+     *
+     * @private
+     * @returns {React.ReactElement}
+     */
+    _renderLoadingProgress() {
+        const {classes} = this.props;
+        return <Paper elevation={1}>
+            <Grid container justify='center'>
+                <Grid item>
+                    <CircularProgress className={classes.loader}/>
+                </Grid>
+            </Grid>
+        </Paper>;
+    }
+
+    /**
      * Renders the paths input field.
      *
      * @private
      * @returns {React.ReactElement}
      */
     _renderPathsInput() {
-        const {classes, initialPath} = this.props;
+        const {classes, initialPath, mode} = this.props;
         const {errors, newPaths} = this.state;
         const paths = initialPath.split('/');
         return <Paper className={classes.marginBottom} elevation={1}>
@@ -320,9 +378,10 @@ class CreateUpdateSecretModal extends Component {
                     fullWidth
                     required
                     className={classes.input}
+                    disabled={mode !== 'create'}
                     error={!!errors.currentPath}
                     name='currentPath'
-                    placeholder='New path'
+                    placeholder={mode === 'create' ? 'New path' : ''}
                     startAdornment={
                         <React.Fragment>
                             {paths.map((path, i) => {
@@ -365,7 +424,7 @@ class CreateUpdateSecretModal extends Component {
                         }
                     }}
                 />
-                <div className={classes.confirmPathContainer}>
+                {mode === 'create' && <div className={classes.confirmPathContainer}>
                     <Divider className={classes.pathDivider}/>
                     <IconButton
                         aria-label='Confirm Path'
@@ -374,7 +433,7 @@ class CreateUpdateSecretModal extends Component {
                         onClick={this._createNewPath}>
                         <CreateNewFolderIcon/>
                     </IconButton>
-                </div>
+                </div>}
             </div>
             {errors.currentPath &&
             <FormHelperText className={classes.pathError} error={true}>{errors.currentPath}</FormHelperText>}
@@ -382,14 +441,97 @@ class CreateUpdateSecretModal extends Component {
     }
 
     /**
-     * Resets the internal state.
+     * Renders the secrets input area.
      *
      * @private
+     * @returns {React.ReactElement}
      */
-    _resetState() {
-        this.setState({
-            ...this._defaultState
-        });
+    _renderSecretsInput() {
+        const {classes} = this.props;
+        const {errors, secrets} = this.state;
+
+        return <Paper elevation={1}>
+            {secrets.map((secret, i) => {
+                const {key = '', value = '', showPassword} = secret;
+                const keyKey = `key-${i}`;
+                const keyError = errors[keyKey];
+                const valueKey = `value-${i}`;
+                const valueError = errors[valueKey];
+                return <List key={`secret-${i}`}>
+                    <ListItem className={classes.listItem}>
+                        <Grid container spacing={16}>
+                            <Grid item className={classes.marginRight} xs={4}>
+                                <TextField
+                                    fullWidth
+                                    required
+                                    error={!!keyError}
+                                    helperText={keyError}
+                                    label='Key'
+                                    margin='dense'
+                                    name={keyKey}
+                                    value={key}
+                                    variant='outlined'
+                                    onChange={this._onValueChange}/>
+                            </Grid>
+                            <Grid item xs={7}>
+                                <TextField
+                                    fullWidth
+                                    required
+                                    error={!!valueError}
+                                    helperText={valueError}
+                                    InputProps={{
+                                        endAdornment: <InputAdornment position='end'>
+                                            <IconButton
+                                                aria-label='Toggle password visibility'
+                                                name={`toggle-${i}`}
+                                                onClick={this._togglePasswordVisibility}
+                                            >
+                                                {showPassword ? <VisibilityOffIcon/> : <VisibilityIcon/>}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    }}
+                                    label='Value'
+                                    margin='dense'
+                                    name={valueKey}
+                                    type={showPassword ? 'text' : 'password'}
+                                    value={value}
+                                    variant='outlined'
+                                    onChange={this._onValueChange}/>
+                            </Grid>
+                        </Grid>
+                        <ListItemSecondaryAction>
+                            {i === secrets.length - 1 ?
+                                <IconButton aria-label='Add' onClick={() => {
+                                    const updatedSecrets = [...secrets];
+                                    updatedSecrets.push({
+                                        key: '',
+                                        value: ''
+                                    });
+                                    this.setState({
+                                        secrets: updatedSecrets
+                                    });
+                                }}>
+                                    <NoteAddIcon/>
+                                </IconButton>
+                                :
+                                <IconButton aria-label='Delete' onClick={() => {
+                                    const updatedErrors = {...errors};
+                                    delete updatedErrors[keyKey];
+                                    delete updatedErrors[valueKey];
+                                    const updatedSecrets = [...secrets];
+                                    updatedSecrets.splice(i, 1);
+                                    this.setState({
+                                        errors: updatedErrors,
+                                        secrets: updatedSecrets
+                                    });
+                                }}>
+                                    <DeleteIcon/>
+                                </IconButton>}
+                        </ListItemSecondaryAction>
+                    </ListItem>
+                </List>;
+            })}
+        </Paper>;
     }
 
     /**
@@ -400,107 +542,23 @@ class CreateUpdateSecretModal extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, onClose, mode, open} = this.props;
-        const {errors, loaded, secrets} = this.state;
-        if (mode === 'update' && loaded) {
-            console.warn('SET THESE ', secrets);
-        }
-        return <Dialog open={open} onClose={onClose} onExit={this._resetState}>
+        const {mode, onClose, open} = this.props;
+        const {loaded, saving} = this.state;
+        return <Dialog open={open} onClose={() => onClose(false)} onExit={this._resetState}>
             <form onSubmit={this._onSubmit}>
                 <DialogTitle id='create-new-folder-modal'>
-                    New Secret
+                    {mode === 'create' ? 'New' : 'Edit'} Secret
                 </DialogTitle>
                 <DialogContent>
                     {this._renderPathsInput()}
-                    <Paper elevation={1}>
-                        {secrets.map((secret, i) => {
-                            const {key = '', value = '', showPassword} = secret;
-                            const keyKey = `key-${i}`;
-                            const keyError = errors[keyKey];
-                            const valueKey = `value-${i}`;
-                            const valueError = errors[valueKey];
-                            return <List key={`secret-${i}`}>
-                                <ListItem className={classes.listItem}>
-                                    <Grid container spacing={16}>
-                                        <Grid item className={classes.marginRight} xs={4}>
-                                            <TextField
-                                                fullWidth
-                                                required
-                                                error={!!keyError}
-                                                helperText={keyError}
-                                                label='Key'
-                                                margin='dense'
-                                                name={keyKey}
-                                                value={key}
-                                                variant='outlined'
-                                                onChange={this._onValueChange}/>
-                                        </Grid>
-                                        <Grid item xs={7}>
-                                            <TextField
-                                                fullWidth
-                                                required
-                                                error={!!valueError}
-                                                helperText={valueError}
-                                                InputProps={{
-                                                    endAdornment: <InputAdornment position='end'>
-                                                        <IconButton
-                                                            aria-label='Toggle password visibility'
-                                                            name={`toggle-${i}`}
-                                                            onClick={this._togglePasswordVisibility}
-                                                        >
-                                                            {showPassword ? <VisibilityOffIcon/> : <VisibilityIcon/>}
-                                                        </IconButton>
-                                                    </InputAdornment>
-                                                }}
-                                                label='Value'
-                                                margin='dense'
-                                                name={valueKey}
-                                                type={showPassword ? 'text' : 'password'}
-                                                value={value}
-                                                variant='outlined'
-                                                onChange={this._onValueChange}/>
-                                        </Grid>
-                                    </Grid>
-                                    <ListItemSecondaryAction>
-                                        {i === secrets.length - 1 ?
-                                            <IconButton aria-label='Add' onClick={() => {
-                                                const updatedSecrets = [...secrets];
-                                                updatedSecrets.push({
-                                                    key: '',
-                                                    value: ''
-                                                });
-                                                this.setState({
-                                                    secrets: updatedSecrets
-                                                });
-                                            }}>
-                                                <NoteAddIcon/>
-                                            </IconButton>
-                                            :
-                                            <IconButton aria-label='Delete' onClick={() => {
-                                                const updatedErrors = {...errors};
-                                                delete updatedErrors[keyKey];
-                                                delete updatedErrors[valueKey];
-                                                const updatedSecrets = [...secrets];
-                                                updatedSecrets.splice(i, 1);
-                                                this.setState({
-                                                    errors: updatedErrors,
-                                                    secrets: updatedSecrets
-                                                });
-                                            }}>
-                                                <DeleteIcon/>
-                                            </IconButton>}
-                                    </ListItemSecondaryAction>
-                                </ListItem>
-                            </List>;
-                        })}
-                    </Paper>
+                    {mode === 'update' && !loaded || saving ? this._renderLoadingProgress() : this._renderSecretsInput()}
                 </DialogContent>
                 <DialogActions>
-                    <Button variant='text' onClick={onClose}>
+                    <Button variant='text' onClick={() => onClose(false)}>
                         Cancel
                     </Button>
-                    <Button type='submit' onClick={this._onSubmit}>
-                        Create
+                    <Button disabled={saving} type='submit' onClick={this._onSubmit}>
+                        {mode === 'create' ? 'Create' : 'Save'}
                     </Button>
                 </DialogActions>
             </form>
@@ -515,13 +573,14 @@ CreateUpdateSecretModal.defaultProps = {
 
 CreateUpdateSecretModal.propTypes = {
     classes: PropTypes.object.isRequired,
-    createFolder: PropTypes.func.isRequired,
+    saveSecret: PropTypes.func.isRequired,
     error: PropTypes.string,
     initialPath: PropTypes.string.isRequired,
     mode: PropTypes.oneOf(['', 'create', 'update']),
     open: PropTypes.bool,
     onClose: PropTypes.func.isRequired,
-    secrets: PropTypes.object
+    secrets: PropTypes.object,
+    secretsMounts: PropTypes.array
 };
 
 /**
@@ -547,11 +606,32 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch, ownProps) => {
     return {
-        createFolder: (path) => {
+        saveSecret: (secretsMounts, newPaths, secrets) => {
             const {initialPath} = ownProps;
             let savePath = initialPath.split('/');
-            savePath.splice(1, 0, 'data'); // The path for creating/saving a KV requires "data" as the second path after the initial mount path.
-            dispatch(kvAction.saveSecret(`${savePath.join('/')}/${path}/${encodeURIComponent(' ')}`)); // Appending an empty space to force creation of a folder.
+            return new Promise((resolve, reject) => {
+                const mount = secretsMounts.find(m => savePath[0] === m.name.slice(0, -1));
+                let secretsData;
+                if (mount) {
+                    const isV2 = mount.options.version === '2';
+                    if (isV2) {
+                        savePath.splice(1, 0, 'data'); // The path for creating/saving a KV requires "data" as the second path after the initial mount path.
+                        secretsData = {
+                            data: {
+                                ...secrets
+                            }
+                        };
+                    } else {
+                        secretsData = {
+                            ...secrets
+                        };
+                    }
+                    const fullSavePath = `${savePath.join('/')}/${newPaths.join('/')}`;
+                    dispatch(kvAction.saveSecret(fullSavePath.endsWith('/') ? fullSavePath.slice(0, -1) : fullSavePath, secretsData)).then(resolve).catch(reject);
+                } else {
+                    reject();
+                }
+            });
         }
     };
 };
@@ -577,6 +657,9 @@ const _styles = (theme) => ({
         display: 'flex',
         marginLeft: 'auto'
     },
+    loader: {
+        margin: 50
+    },
     pathDivider: {
         width: 1,
         height: 28,
@@ -598,11 +681,7 @@ const _styles = (theme) => ({
     listItem: {
         paddingTop: 0,
         paddingBottom: 0
-    },
-    keyField: {
-        width: '35%'
-    },
-    valueField: {}
+    }
 });
 
 export default connect(_mapStateToProps, _mapDispatchToProps)(withStyles(_styles)(CreateUpdateSecretModal));

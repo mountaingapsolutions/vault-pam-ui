@@ -54,13 +54,11 @@ class KvAction extends _Actions {
      * Returns a list of key names at the specified location
      *
      * @param {string} path Specifies the path of the secrets to list
-     * @param {Object} [data] The secrets key value map to save. If not provided, then just the "folder" will be created.
+     * @param {Object} secrets The secrets key value map to save.
      * @returns {function} Redux dispatch function.
      */
-    saveSecret(path, data = {}) {
-        return this._dispatchPost(this.ACTION_TYPES.SAVE_SECRET, `/api/v1/${path}`, {
-            data
-        });
+    saveSecret(path, secrets) {
+        return this._dispatchPost(this.ACTION_TYPES.SAVE_SECRET, `/api/v1/${path}`, secrets);
     }
 }
 
