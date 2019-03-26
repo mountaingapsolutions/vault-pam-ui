@@ -27,7 +27,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     deleteSecrets(path) {
-        return this._dispatchDelete(this.ACTION_TYPES.DELETE_SECRETS, `/api/v1/${path}`);
+        return this._dispatchDelete(this.ACTION_TYPES.DELETE_SECRETS, `/api/v1/${this._encodePath(path)}`);
     }
 
     /**
@@ -37,7 +37,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     getSecrets(path = '') {
-        return this._dispatchGet(this.ACTION_TYPES.GET_SECRETS, `/api/v1/${path}`);
+        return this._dispatchGet(this.ACTION_TYPES.GET_SECRETS, `/api/v1/${this._encodePath(path)}`);
     }
 
     /**
@@ -56,7 +56,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     listSecrets(path = '') {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS, `/api/v1/${path}`, {
+        return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS, `/api/v1/${this._encodePath(path)}`, {
             list: true
         });
     }
@@ -69,7 +69,18 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     saveSecret(path, secrets) {
-        return this._dispatchPost(this.ACTION_TYPES.SAVE_SECRET, `/api/v1/${path}`, secrets);
+        return this._dispatchPost(this.ACTION_TYPES.SAVE_SECRET, `/api/v1/${this._encodePath(path)}`, secrets);
+    }
+
+    /**
+     * Encodes the path, excluding forward slash.
+     *
+     * @private
+     * @param {string} path The path to encode.
+     * @returns {string}
+     */
+    _encodePath(path) {
+        return path.split('/').map(p => encodeURIComponent(p)).join('/');
     }
 }
 
