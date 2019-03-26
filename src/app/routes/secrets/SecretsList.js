@@ -1,6 +1,7 @@
-import {Card, CardContent, CircularProgress, Fab, Grid, List, ListItem, ListItemIcon, ListItemText, Paper, Typography} from '@material-ui/core';
+import {Avatar, Card, CardContent, CircularProgress, Fab, Grid, IconButton, List, ListItem, ListItemAvatar, ListItemIcon, ListItemSecondaryAction, ListItemText, Paper, Typography} from '@material-ui/core';
 import {withStyles} from '@material-ui/core/styles';
 import AddIcon from '@material-ui/icons/Add';
+import DeleteIcon from '@material-ui/icons/Delete';
 import FileCopyIcon from '@material-ui/icons/FileCopy';
 import FolderIcon from '@material-ui/icons/Folder';
 import ListIcon from '@material-ui/icons/List';
@@ -15,6 +16,7 @@ import systemAction from 'app/core/actions/systemAction';
 import Button from 'app/core/components/common/Button';
 import ListModal from 'app/core/components/common/ListModal';
 import CreateUpdateSecretModal from 'app/core/components/CreateUpdateSecretModal';
+import ConfirmationModal from 'app/core/components/ConfirmationModal';
 
 /**
  * The secrets list container.
@@ -31,6 +33,7 @@ class SecretsList extends Component {
         super(props);
 
         this.state = {
+            deleteSecretConfirmation: '',
             newSecretAnchorElement: null,
             secretModalInitialPath: '',
             secretModalMode: '',
@@ -100,7 +103,6 @@ class SecretsList extends Component {
      * @param {boolean} refresh Whether or not to refresh the secrets list.
      */
     _onCreateUpdateSecretModalClose(refresh) {
-        console.warn('refresh: ', refresh);
         if (refresh) {
             const {listSecrets, match, secretsMounts} = this.props;
             const {params} = match;
@@ -235,10 +237,19 @@ class SecretsList extends Component {
                             getSecrets(secretsMounts, mount, currentPath);
                         }
                     }}/>} key={`key-${i}`}>
-                        <ListItemIcon>{
-                            key.endsWith('/') ? <FolderIcon/> : <FileCopyIcon/>
-                        }</ListItemIcon>
+                        <ListItemAvatar>
+                            <Avatar>{
+                                key.endsWith('/') ? <FolderIcon/> : <FileCopyIcon/>
+                            }</Avatar>
+                        </ListItemAvatar>
                         <ListItemText primary={key}/>
+                        {!key.endsWith('/') && <ListItemSecondaryAction>
+                            <IconButton aria-label='Delete' onClick={() => this.setState({
+                                deleteSecretConfirmation: key
+                            })}>
+                                <DeleteIcon/>
+                            </IconButton>
+                        </ListItemSecondaryAction>}
                     </ListItem>;
                 })
             }</List>;
@@ -259,8 +270,10 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, secrets} = this.props;
-        const {isListModalOpen, secretModalMode, secretModalInitialPath} = this.state;
+        const {classes, deleteSecrets, match, secrets, secretsMounts} = this.props;
+        const {params} = match;
+        const {mount, path = ''} = params;
+        const {deleteSecretConfirmation, isListModalOpen, secretModalMode, secretModalInitialPath} = this.state;
         return <Card className={classes.card}>
             {this._renderBreadcrumbsArea()}
             {this._renderSecretsListArea()}
@@ -270,12 +283,27 @@ class SecretsList extends Component {
                 /* eslint-enable no-alert */
             }} onClose={this._closeListModal}/>
             <CreateUpdateSecretModal initialPath={secretModalInitialPath} mode={secretModalMode} open={!!secretModalMode} onClose={this._onCreateUpdateSecretModalClose}/>
+            <ConfirmationModal
+                confirmButtonLabel='Delete'
+                content={`This will permanently delete ${deleteSecretConfirmation} and all its versions. Are you sure you want to do this?`}
+                open={!!deleteSecretConfirmation}
+                title={`Delete ${deleteSecretConfirmation}?`}
+                onClose={confirm => {
+                    if (confirm) {
+                        deleteSecrets(secretsMounts, mount, path, deleteSecretConfirmation);
+                    }
+                    this.setState({
+                        deleteSecretConfirmation: ''
+                    });
+                }}
+            />
         </Card>;
     }
 }
 
 SecretsList.propTypes = {
     classes: PropTypes.object.isRequired,
+    deleteSecrets: PropTypes.func.isRequired,
     getSecrets: PropTypes.func.isRequired,
     history: PropTypes.object.isRequired,
     listSecrets: PropTypes.func.isRequired,
@@ -335,6 +363,24 @@ const _mapDispatchToProps = (dispatch) => {
                     const queryMountPath = mount.options && mount.options.version === '2' ? `${mountName}/data` : mountName;
                     const queryFullPath = `${queryMountPath}/${path}`;
                     dispatch(kvAction.getSecrets(queryFullPath)).then(resolve).catch(reject);
+                } else {
+                    reject();
+                }
+            });
+        },
+        deleteSecrets: (secretsMounts = [], mountName, path, secret) => {
+            return new Promise((resolve, reject) => {
+                const mount = secretsMounts.find(m => mountName === m.name.slice(0, -1));
+                if (mount) {
+                    const queryMountPath = mount.options && mount.options.version === '2' ? `${mountName}/metadata` : mountName;
+                    const queryFullPath = `${queryMountPath}/${path ? `${path}/` : ''}`;
+                    dispatch(kvAction.deleteSecrets(`${queryFullPath}${secret}`))
+                        .then(() => {
+                            dispatch(kvAction.listSecrets(queryFullPath))
+                                .then(resolve)
+                                .catch(reject);
+                        })
+                        .catch(reject);
                 } else {
                     reject();
                 }

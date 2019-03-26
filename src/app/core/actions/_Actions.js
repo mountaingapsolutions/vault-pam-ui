@@ -149,13 +149,13 @@ export default class _Actions {
             /* global fetch */
             fetch(url, initData).then(res => {
                 ok = res.ok;
-                return res.headers.get('content-type').includes('application/json') ? res.json() : res.text();
+                return res.headers.get('content-type').includes('application/json') && res.status !== 204 ? res.json() : res.text();
             }).then(response => {
                 // If response data is already an object, resolve with the data object. Otherwise, wrap it in an object with "response" as the key.
                 const responseData = typeof response === 'object' ? response : {response};
                 // Reject the promise if response status is not OK, but still pass the response data.
                 ok ? resolve(responseData) : reject(responseData);
-            }).catch(err => reject(err));
+            }).catch(reject);
         });
     }
 
