@@ -1,4 +1,4 @@
-import {Avatar, Card, CardContent, CircularProgress, Fab, Grid, IconButton, List, ListItem, ListItemAvatar, ListItemIcon, ListItemSecondaryAction, ListItemText, Paper, Typography} from '@material-ui/core';
+import {Avatar, Card, CardContent, CircularProgress, Fab, Grid, IconButton, List, ListItem, ListItemAvatar, ListItemIcon, ListItemSecondaryAction, ListItemText, Paper, Tooltip, Typography} from '@material-ui/core';
 import {withStyles} from '@material-ui/core/styles';
 import AddIcon from '@material-ui/icons/Add';
 import DeleteIcon from '@material-ui/icons/Delete';
@@ -37,7 +37,8 @@ class SecretsList extends Component {
             newSecretAnchorElement: null,
             secretModalInitialPath: '',
             secretModalMode: '',
-            isListModalOpen: false
+            isListModalOpen: false,
+            loading: false
         };
 
         this._onBack = this._onBack.bind(this);
@@ -54,23 +55,32 @@ class SecretsList extends Component {
      * @param {Array} secretsMounts - array of secrets mounts
      * @param {string} mountName - mount name from url
      * @param {string} path - path from URL
-     * @returns {string}
+     * @returns {Promise}
      */
     _checkCapabilitiesAndListSecrets(secretsMounts = [], mountName, path = '') {
+        this._toggleLoadingState(true);
         return new Promise((resolve, reject) => {
             const {checkSelfCapabilities, listSecrets} = this.props;
             const queryFullPath = this._getQueryFullPath(secretsMounts, mountName, path, 'LIST');
             if (queryFullPath) {
                 checkSelfCapabilities(queryFullPath).then(() => {
                     if ((this.props.selfCapabilities.capabilities || []).includes('list')) {
-                        listSecrets(queryFullPath);
+                        listSecrets(queryFullPath).then(() => {
+                            this._toggleLoadingState(false);
+                        }).catch(() => {
+                            this._toggleLoadingState(false);
+                        });
                     } else {
                         /* eslint-disable no-alert */
                         window.alert('No permission to list!');
                         /* eslint-enable no-alert */
                     }
-                }).catch(reject);
+                }).catch(() => {
+                    this._toggleLoadingState(false);
+                    reject();
+                });
             } else {
+                this._toggleLoadingState(false);
                 reject();
             }
         });
@@ -145,6 +155,18 @@ class SecretsList extends Component {
         this.setState({
             secretModalInitialPath,
             secretModalMode
+        });
+    }
+
+    /**
+     * Sets internal loading state.
+     *
+     * @private
+     * @param {boolean} loading Toggle loading.
+     */
+    _toggleLoadingState(loading) {
+        this.setState({
+            loading
         });
     }
 
@@ -268,7 +290,8 @@ class SecretsList extends Component {
         const {classes, history, getSecrets, match, secretsMounts = {}, secretsPaths = {}, selfCapabilities = {}} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
-        if (secretsPaths._meta && secretsPaths._meta.inProgress === true) {
+        const {loading} = this.state;
+        if (loading) {
             return <Grid container justify='center'>
                 <Grid item>
                     <CircularProgress className={classes.progress}/>
@@ -304,11 +327,13 @@ class SecretsList extends Component {
                         </ListItemAvatar>
                         <ListItemText primary={key}/>
                         {!key.endsWith('/') && <ListItemSecondaryAction>
-                            <IconButton aria-label='Delete' onClick={() => this.setState({
-                                deleteSecretConfirmation: key
-                            })}>
-                                <DeleteIcon/>
-                            </IconButton>
+                            <Tooltip aria-label='Delete' title='Delete'>
+                                <IconButton aria-label='Delete' onClick={() => this.setState({
+                                    deleteSecretConfirmation: key
+                                })}>
+                                    <DeleteIcon/>
+                                </IconButton>
+                            </Tooltip>
                         </ListItemSecondaryAction>}
                     </ListItem>;
                 })
