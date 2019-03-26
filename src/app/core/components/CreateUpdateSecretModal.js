@@ -16,6 +16,7 @@ import {
     ListItemSecondaryAction,
     Paper,
     TextField,
+    Tooltip,
     Typography
 } from '@material-ui/core';
 import {withStyles} from '@material-ui/core/styles';
@@ -259,7 +260,6 @@ class CreateUpdateSecretModal extends Component {
             this.setState({
                 saving: true
             });
-
             const {onClose, saveSecret, secretsMounts} = this.props;
             const promise = saveSecret(secretsMounts, newPaths, secretsToPersist.reduce((secretsData, secret) => {
                 const {key, value} = secret;
@@ -426,17 +426,19 @@ class CreateUpdateSecretModal extends Component {
                 />
                 {mode === 'create' && <div className={classes.confirmPathContainer}>
                     <Divider className={classes.pathDivider}/>
-                    <IconButton
-                        aria-label='Confirm Path'
-                        className={classes.confirmPathIconButton}
-                        color='primary'
-                        onClick={this._createNewPath}>
-                        <CreateNewFolderIcon/>
-                    </IconButton>
+                    <Tooltip aria-label='Create New Path' title='Create New Path'>
+                        <IconButton
+                            aria-label='Create New Path'
+                            className={classes.confirmPathIconButton}
+                            color='primary'
+                            onClick={this._createNewPath}>
+                            <CreateNewFolderIcon/>
+                        </IconButton>
+                    </Tooltip>
                 </div>}
             </div>
             {errors.currentPath &&
-            <FormHelperText className={classes.pathError} error={true}>{errors.currentPath}</FormHelperText>}
+            <FormHelperText error className={classes.pathError}>{errors.currentPath}</FormHelperText>}
         </Paper>;
     }
 
@@ -446,19 +448,19 @@ class CreateUpdateSecretModal extends Component {
      * @private
      * @returns {React.ReactElement}
      */
-    _renderSecretsInput() {
+    _renderSecretsList() {
         const {classes} = this.props;
         const {errors, secrets} = this.state;
 
         return <Paper elevation={1}>
-            {secrets.map((secret, i) => {
-                const {key = '', value = '', showPassword} = secret;
-                const keyKey = `key-${i}`;
-                const keyError = errors[keyKey];
-                const valueKey = `value-${i}`;
-                const valueError = errors[valueKey];
-                return <List key={`secret-${i}`}>
-                    <ListItem className={classes.listItem}>
+            <List>
+                {secrets.map((secret, i) => {
+                    const {key = '', value = '', showPassword} = secret;
+                    const keyKey = `key-${i}`;
+                    const keyError = errors[keyKey];
+                    const valueKey = `value-${i}`;
+                    const valueError = errors[valueKey];
+                    return <ListItem className={classes.listItem} key={`secret-${i}`}>
                         <Grid container spacing={16}>
                             <Grid item className={classes.marginRight} xs={4}>
                                 <TextField
@@ -483,6 +485,7 @@ class CreateUpdateSecretModal extends Component {
                                         endAdornment: <InputAdornment position='end'>
                                             <IconButton
                                                 aria-label='Toggle password visibility'
+                                                className={classes.iconButton}
                                                 name={`toggle-${i}`}
                                                 onClick={this._togglePasswordVisibility}
                                             >
@@ -501,7 +504,7 @@ class CreateUpdateSecretModal extends Component {
                         </Grid>
                         <ListItemSecondaryAction>
                             {i === secrets.length - 1 ?
-                                <IconButton aria-label='Add' onClick={() => {
+                                <IconButton aria-label='Add' className={classes.iconButton} onClick={() => {
                                     const updatedSecrets = [...secrets];
                                     updatedSecrets.push({
                                         key: '',
@@ -514,7 +517,7 @@ class CreateUpdateSecretModal extends Component {
                                     <NoteAddIcon/>
                                 </IconButton>
                                 :
-                                <IconButton aria-label='Delete' onClick={() => {
+                                <IconButton aria-label='Delete' className={classes.iconButton} onClick={() => {
                                     const updatedErrors = {...errors};
                                     delete updatedErrors[keyKey];
                                     delete updatedErrors[valueKey];
@@ -528,10 +531,93 @@ class CreateUpdateSecretModal extends Component {
                                     <DeleteIcon/>
                                 </IconButton>}
                         </ListItemSecondaryAction>
-                    </ListItem>
-                </List>;
-            })}
+                    </ListItem>;
+                })}
+            </List>
         </Paper>;
+    }
+
+    /**
+     * Renders the secrets input area using custom input base inputs.
+     *
+     * @private
+     * @returns {React.ReactElement}
+     */
+    _renderSecretsListWithInputBase() {
+        const {classes} = this.props;
+        const {errors, secrets} = this.state;
+        return secrets.map((secret, i) => {
+            const {key = '', value = '', showPassword} = secret;
+            const keyKey = `key-${i}`;
+            const keyError = errors[keyKey];
+            const valueKey = `value-${i}`;
+            const valueError = errors[valueKey];
+            const togglePasswordLabel = `${showPassword ? 'Hide' : 'Show'} Password`;
+            return <Paper elevation={1} key={`input-row-${i}`}>
+                <div className={classes.inputRow}>
+                    <InputBase
+                        className={`${classes.input} ${classes.keyInput}`}
+                        error={!!keyError}
+                        name={keyKey}
+                        placeholder='Key'
+                        value={key}
+                        onChange={this._onValueChange}
+                    />
+                    <InputBase
+                        fullWidth
+                        className={classes.input}
+                        error={!!valueKey}
+                        name={valueKey}
+                        placeholder='Value'
+                        type={showPassword ? 'text' : 'password'}
+                        value={value}
+                        onChange={this._onValueChange}
+                    />
+                    <Tooltip aria-label={togglePasswordLabel} title={togglePasswordLabel}>
+                        <IconButton
+                            aria-label={togglePasswordLabel}
+                            className={classes.iconButton}
+                            name={`toggle-${i}`}
+                            onClick={this._togglePasswordVisibility}
+                        >
+                            {showPassword ? <VisibilityOffIcon/> : <VisibilityIcon/>}
+                        </IconButton>
+                    </Tooltip>
+                    <Divider className={classes.pathDivider}/>
+                    <Tooltip aria-label='Delete' title='Delete'>
+                        {i === secrets.length - 1 ?
+                            <IconButton aria-label='Add' className={classes.iconButton} onClick={() => {
+                                const updatedSecrets = [...secrets];
+                                updatedSecrets.push({
+                                    key: '',
+                                    value: ''
+                                });
+                                this.setState({
+                                    secrets: updatedSecrets
+                                });
+                            }}>
+                                <NoteAddIcon/>
+                            </IconButton>
+                            :
+                            <IconButton aria-label='Delete' className={classes.iconButton} onClick={() => {
+                                const updatedErrors = {...errors};
+                                delete updatedErrors[keyKey];
+                                delete updatedErrors[valueKey];
+                                const updatedSecrets = [...secrets];
+                                updatedSecrets.splice(i, 1);
+                                this.setState({
+                                    errors: updatedErrors,
+                                    secrets: updatedSecrets
+                                });
+                            }}>
+                                <DeleteIcon/>
+                            </IconButton>}
+                    </Tooltip>
+                </div>
+                {(keyError || valueError) &&
+                <FormHelperText error className={classes.pathError}>{keyError || valueError}</FormHelperText>}
+            </Paper>;
+        });
     }
 
     /**
@@ -542,16 +628,16 @@ class CreateUpdateSecretModal extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {mode, onClose, open} = this.props;
+        const {classes, mode, onClose, open} = this.props;
         const {loaded, saving} = this.state;
-        return <Dialog open={open} onClose={() => onClose(false)} onExit={this._resetState}>
-            <form onSubmit={this._onSubmit}>
+        return <Dialog fullWidth maxWidth='md' open={open} onClose={() => onClose(false)} onExit={this._resetState}>
+            <form autoComplete='off' onSubmit={this._onSubmit}>
                 <DialogTitle id='create-new-folder-modal'>
                     {mode === 'create' ? 'New' : 'Edit'} Secret
                 </DialogTitle>
                 <DialogContent>
                     {this._renderPathsInput()}
-                    {mode === 'update' && !loaded || saving ? this._renderLoadingProgress() : this._renderSecretsInput()}
+                    {mode === 'update' && !loaded || saving ? this._renderLoadingProgress() : this._renderSecretsListWithInputBase()}
                 </DialogContent>
                 <DialogActions>
                     <Button variant='text' onClick={() => onClose(false)}>
@@ -561,6 +647,14 @@ class CreateUpdateSecretModal extends Component {
                         {mode === 'create' ? 'Create' : 'Save'}
                     </Button>
                 </DialogActions>
+                {/* Trick to prevent browser save password popup. See https://stackoverflow.com/questions/32369/disable-browser-save-password-functionality. */}
+                <div className={classes.hidden}>
+                    {/* And for whatever reason, it took 4 of these hidden fields to fully suppress it. */}
+                    <input readOnly type='password' value='hidden'/>
+                    <input readOnly type='password' value='hidden'/>
+                    <input readOnly type='password' value='hidden'/>
+                    <input readOnly type='password' value='hidden'/>
+                </div>
             </form>
         </Dialog>;
     }
@@ -657,6 +751,21 @@ const _styles = (theme) => ({
         display: 'flex',
         marginLeft: 'auto'
     },
+    iconButton: {
+        padding: 10
+    },
+    inputRow: {
+        margin: '10px 0',
+        display: 'flex',
+        alignItems: 'center',
+        width: '100%'
+    },
+    input: {
+        margin: '0 10px'
+    },
+    keyInput: {
+        width: 300
+    },
     loader: {
         margin: 50
     },
@@ -681,6 +790,9 @@ const _styles = (theme) => ({
     listItem: {
         paddingTop: 0,
         paddingBottom: 0
+    },
+    hidden: {
+        display: 'none'
     }
 });
 
