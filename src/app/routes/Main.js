@@ -18,9 +18,7 @@ import kvAction from 'app/core/actions/kvAction';
 import sessionAction from 'app/core/actions/sessionAction';
 import systemAction from 'app/core/actions/systemAction';
 import userAction from 'app/core/actions/userAction';
-import AddSplitModal from 'app/core/components/AddSplitModal';
-import ListModal from 'app/core/components/common/ListModal';
-import SplitRequestModal from 'app/core/components/SplitRequestModal';
+import SecretRequestQueueModal from 'app/core/components/SecretRequestQueueModal';
 import Footer from 'app/core/components/common/Footer';
 import SecretsList from 'app/routes/secrets/SecretsList';
 import Constants from 'app/util/Constants';
@@ -42,20 +40,7 @@ class Main extends Component {
 
         this.state = {
             accountAnchorElement: null,
-            isAddSplitModalOpen: false,
-            isSplitRequestModalOpen: false,
-            isSecretRequestListOpen: false,
-            //TODO - WIRE THE LIST SOURCE TO REDUCER
-            requestList: {
-                '/secret/Request 1': 'John Ho',
-                '/secret/Request 2': 'Jerry Lam',
-                '/secret/Request 3': 'Jay Ramirez',
-                '/secret/Request 4': 'Russell de Castro',
-                '/secret/Request 5': 'Aldo',
-                '/secret/Request 6': 'Hakan',
-                '/secret/Request 7': 'Jane Doe',
-                '/secret/Request 8': 'John Doe'
-            },
+            isSecretRequestsModalOpen: false,
             showRootWarning: false
         };
         this._closeModal = this._closeModal.bind(this);
@@ -182,7 +167,7 @@ class Main extends Component {
     render() {
         const {classes, secretsMounts = {}, sealStatus} = this.props;
         const isVaultSealed = sealStatus && sealStatus.sealed;
-        const {accountAnchorElement, isAddSplitModalOpen, isListModalOpen, isSplitRequestModalOpen, showRootWarning} = this.state;
+        const {accountAnchorElement, isSecretRequestsModalOpen, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
         return <div>
             <AppBar position='static'>
@@ -201,7 +186,7 @@ class Main extends Component {
                         {isVaultSealed ? <LockIcon/> : <LockOpenIcon/>}
                     </div>
                     <div className={classes.sectionDesktop}>
-                        <IconButton color='inherit' onClick={() => this._openModal('isListModalOpen')}>
+                        <IconButton color='inherit' onClick={() => this._openModal('isSecretRequestsModalOpen')}>
                             <Badge badgeContent={17} color='secondary'>
                                 <NotificationsIcon/>
                             </Badge>
@@ -257,20 +242,9 @@ class Main extends Component {
             }} autoHideDuration={12000} ContentProps={{
                 classes: {message: classes.warningMessageContentWidth}
             }} message={rootMessage} open={showRootWarning} onClose={this._onClose}/>
-            <ListModal
-                buttonTitle={'DETAILS'}
-                items={this.state.requestList}
-                listTitle={'Request Queue'}
-                open={isListModalOpen}
-                onClick={() => this._openModal('isSplitRequestModalOpen')}
-                onClose={() => this._closeModal('isListModalOpen')}/>
-            <SplitRequestModal
-                open={isSplitRequestModalOpen}
-                onAdd={() => this._openModal('isAddSplitModalOpen')}
-                onClose={() => this._closeModal('isSplitRequestModalOpen')}/>
-            <AddSplitModal
-                open={isAddSplitModalOpen}
-                onClose={() => this._closeModal('isAddSplitModalOpen')}/>
+            <SecretRequestQueueModal
+                open={isSecretRequestsModalOpen}
+                onClose={() => this._closeModal('isSecretRequestsModalOpen')}/>
             <Footer/>
         </div>;
     }

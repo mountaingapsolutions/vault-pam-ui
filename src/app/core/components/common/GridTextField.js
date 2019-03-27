@@ -2,18 +2,16 @@ import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {
     Grid,
-    Paper,
-    Typography
+    TextField
 } from '@material-ui/core';
 import {withStyles} from '@material-ui/core/styles/index';
-import Constants from 'app/util/Constants';
 import {COLORS} from 'app/core/assets/Styles';
-
+import Constants from 'app/util/Constants';
 
 /**
  * Generic grid layout with items displayed using cards.
  */
-class GridCard extends Component {
+class GridTextField extends Component {
 
     /**
      * Required React Component lifecycle method. Returns a tree of React components that will render to HTML.
@@ -23,26 +21,33 @@ class GridCard extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, items} = this.props;
+        const {classes, items, margin} = this.props;
         const itemKeyList = Object.keys(items);
         const gridValue = Constants.GRID_WIDTH / itemKeyList.length;
-        return <Grid container className={classes.rootGrid} spacing={24}>
+        return <Grid container spacing={24}>
             {itemKeyList.map((item, index) => {
                 return <Grid item key={`${item}-${index}`} xs={gridValue}>
-                    <Paper className={classes.paper}>
-                        <Typography className={classes.textPadding}>
-                            {`${item}: ${items[item]}`}
-                        </Typography>
-                    </Paper>
+                    <TextField
+                        disabled
+                        InputProps={{ classes: { input: classes.textField } }}
+                        label={item}
+                        margin={margin}
+                        value={items[item]}
+                        variant='outlined'/>
                 </Grid>;
             })}
         </Grid>;
     }
 }
 
-GridCard.propTypes = {
+GridTextField.defaultProps = {
+    margin: 'none'
+};
+
+GridTextField.propTypes = {
     classes: PropTypes.object.isRequired,
-    items: PropTypes.object.isRequired
+    items: PropTypes.object.isRequired,
+    margin: PropTypes.string.isRequired
 };
 
 /**
@@ -52,17 +57,12 @@ GridCard.propTypes = {
  * @returns {Object}
  */
 const _styles = () => ({
-    paper: {
-        backgroundColor: COLORS.LIGHT_GREY,
-        flex: 1,
-        flexDirection: 'row'
-    },
-    rootGrid: {
-        padding: 10
-    },
-    textPadding: {
+    textField: {
+        color: COLORS.GREY,
+        fontStyle: 'italic',
+        fontSize: 14,
         padding: 10
     }
 });
 
-export default withStyles(_styles)(GridCard);
+export default withStyles(_styles)(GridTextField);
