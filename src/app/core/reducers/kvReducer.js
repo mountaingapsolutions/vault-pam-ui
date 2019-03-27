@@ -40,6 +40,12 @@ export default (previousState = {
                 ...previousState,
                 secretsPaths: kvAction.injectMetaData((action.data || {}).data || {}, action)
             };
+        case kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES:
+            return {
+                ...previousState,
+                // TODO: Temporary resource for now, pending discussion and review.
+                _secretsPaths: kvAction.injectMetaData((action.data || {}).data || {}, action)
+            };
         default:
             return {...previousState};
     }

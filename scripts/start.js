@@ -37,7 +37,7 @@ const createDevServerConfig = require('../config/webpackDevServer.config');
 
 const useYarn = fs.existsSync(paths.yarnLockFile);
 const isInteractive = process.stdout.isTTY;
-const { connection } = require('../src/db/models');
+const {connection} = require('../src/db/models');
 
 connection.sync().then(() => {
     console.info('DB connection successful.');

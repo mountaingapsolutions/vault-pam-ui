@@ -53,16 +53,16 @@ class SecretsList extends Component {
      * Check self capabilities and then list secrets or secrets key names
      *
      * @private
-     * @param {Object} secretsMounts - object of secrets mounts
      * @param {string} mountName - mount name from url
      * @param {string} path - path from URL
      * @returns {Promise}
      */
-    _checkCapabilitiesAndListSecrets(secretsMounts = {}, mountName, path = '') {
+    _checkCapabilitiesAndListSecrets(mountName, path = '') {
         return new Promise((resolve, reject) => {
-            const {checkSelfCapabilities, listSecrets} = this.props;
-            const queryFullPath = this._getQueryFullPath(secretsMounts, mountName, path, 'LIST');
+            const {checkSelfCapabilities, listSecrets, listSecretsAndCapabilities} = this.props;
+            const queryFullPath = this._getQueryFullPath(mountName, path, 'LIST');
             if (queryFullPath) {
+                listSecretsAndCapabilities(`${mountName}/${path}`, this._getVersionFromMount(mountName));
                 checkSelfCapabilities(queryFullPath).then(() => {
                     if ((this.props.selfCapabilities.capabilities || []).includes('list')) {
                         listSecrets(queryFullPath);
@@ -82,15 +82,14 @@ class SecretsList extends Component {
      * Check self capabilities and then get secrets or secrets key names
      *
      * @private
-     * @param {Object} secretsMounts - object of secrets mounts
      * @param {string} mountName - mount name from url
      * @param {string} path - path from URL
      * @returns {Promise}
      */
-    _checkCapabilitiesAndGetSecrets(secretsMounts = {}, mountName, path = '') {
+    _checkCapabilitiesAndGetSecrets(mountName, path = '') {
         return new Promise((resolve, reject) => {
             const {checkSelfCapabilities, getSecrets} = this.props;
-            const queryFullPath = this._getQueryFullPath(secretsMounts, mountName, path, 'GET');
+            const queryFullPath = this._getQueryFullPath(mountName, path, 'GET');
             if (queryFullPath) {
                 checkSelfCapabilities(queryFullPath).then(() => {
                     if ((this.props.selfCapabilities.capabilities || []).includes('read')) {
@@ -111,21 +110,36 @@ class SecretsList extends Component {
      * Construct query full path from mount name, path, and type of CRUD operation
      *
      * @private
-     * @param {Object} secretsMounts - object of secrets mounts
      * @param {string} mountName - mount name from url
      * @param {string} path - path from URL
      * @param {string} [operation] - CRUD operation name
      * @returns {string}
      */
-    _getQueryFullPath(secretsMounts = {}, mountName, path = '', operation) {
+    _getQueryFullPath(mountName, path = '', operation) {
         let queryFullPath = '';
-        const mount = (secretsMounts.data || []).find(m => mountName === m.name.slice(0, -1));
-        if (mount) {
+        const version = this._getVersionFromMount(mountName);
+        if (version) {
             // See https://www.vaultproject.io/docs/secrets/kv/kv-v2.html for additional information. Version 2 KV secrets engine requires an additional /metadata in the query path.
-            const queryMountPath = mount.options && mount.options.version === '2' ? `${mountName}/${operation === 'GET' ? 'data' : 'metadata'}` : mountName;
+            const queryMountPath = version === 2 ? `${mountName}/${operation === 'GET' ? 'data' : 'metadata'}` : mountName;
             queryFullPath = `${queryMountPath}/${path}`;
         }
         return queryFullPath;
+    }
+
+    /**
+     * Returns the KV version number.
+     *
+     * @private
+     * @param {string} mountName The mount name.
+     * @returns {number}
+     */
+    _getVersionFromMount(mountName) {
+        const {secretsMounts = {}} = this.props;
+        const mount = (secretsMounts.data || []).find(m => mountName === m.name.slice(0, -1));
+        if (mount) {
+            return mount.options && mount.options.version === '2' ? 2 : 1;
+        }
+        return 1;
     }
 
     /**
@@ -186,10 +200,10 @@ class SecretsList extends Component {
      */
     _onCreateUpdateSecretModalClose(refresh) {
         if (refresh) {
-            const {match, secretsMounts} = this.props;
+            const {match} = this.props;
             const {params} = match;
             const {mount, path} = params;
-            this._checkCapabilitiesAndListSecrets(secretsMounts, mount, path);
+            this._checkCapabilitiesAndListSecrets(mount, path);
         }
         this.setState({
             secretModalInitialPath: '',
@@ -210,10 +224,10 @@ class SecretsList extends Component {
 
         if ((secretsMounts.data || []).length === 0) {
             listMounts().then(() => {
-                this._checkCapabilitiesAndListSecrets(this.props.secretsMounts, mount, path);
+                this._checkCapabilitiesAndListSecrets(mount, path);
             });
         } else {
-            this._checkCapabilitiesAndListSecrets(secretsMounts, mount, path);
+            this._checkCapabilitiesAndListSecrets(mount, path);
         }
 
         this.unlisten = history.listen((location, action) => {
@@ -221,7 +235,7 @@ class SecretsList extends Component {
                 const {match: newMatch} = this.props;
                 const {params: newParams} = newMatch;
                 const {path: newPath} = newParams;
-                this._checkCapabilitiesAndListSecrets(secretsMounts, mount, newPath);
+                this._checkCapabilitiesAndListSecrets(mount, newPath);
             }
         });
     }
@@ -243,7 +257,7 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     _renderBreadcrumbsArea() {
-        const {classes, history, match, secretsMounts = {}, selfCapabilities = {}} = this.props;
+        const {classes, history, match, selfCapabilities = {}} = this.props;
         const {params} = match;
         const {mount, path} = params;
         const paths = path ? [mount].concat(path.split('/')) : [mount];
@@ -263,7 +277,7 @@ class SecretsList extends Component {
                                 <Link key={folder} to={url} onClick={event => {
                                     event.preventDefault();
                                     history.push(url);
-                                    this._checkCapabilitiesAndListSecrets(secretsMounts, mount, currentPath);
+                                    this._checkCapabilitiesAndListSecrets(mount, currentPath);
                                 }}>
                                     <Typography color='textSecondary' variant='h6'>{folder}</Typography>
                                 </Link>
@@ -320,14 +334,14 @@ class SecretsList extends Component {
                         event.preventDefault();
                         if (key.includes('/')) {
                             history.push(url);
-                            this._checkCapabilitiesAndListSecrets(secretsMounts, mount, currentPath);
+                            this._checkCapabilitiesAndListSecrets(mount, currentPath);
                         } else {
                             if ((selfCapabilities.capabilities || []).includes('update')) {
                                 this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'update');
                             } else {
                                 this._openListModal();
                             }
-                            this._checkCapabilitiesAndGetSecrets(secretsMounts, mount, currentPath);
+                            this._checkCapabilitiesAndGetSecrets(mount, currentPath);
                         }
                     }}/>} key={`key-${i}`}>
                         <ListItemAvatar>
@@ -365,7 +379,7 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, deleteSecrets, match, secrets, secretsMounts} = this.props;
+        const {classes, deleteSecrets, match, secrets} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
         const {deleteSecretConfirmation, isListModalOpen, secretModalMode, secretModalInitialPath} = this.state;
@@ -385,7 +399,7 @@ class SecretsList extends Component {
                 title={`Delete ${deleteSecretConfirmation}?`}
                 onClose={confirm => {
                     if (confirm) {
-                        deleteSecrets(this._getQueryFullPath(secretsMounts, mount, path, 'DELETE'), deleteSecretConfirmation);
+                        deleteSecrets(this._getQueryFullPath(mount, path, 'DELETE'), deleteSecretConfirmation);
                     }
                     this.setState({
                         deleteSecretConfirmation: ''
@@ -404,6 +418,7 @@ SecretsList.propTypes = {
     history: PropTypes.object.isRequired,
     listMounts: PropTypes.func.isRequired,
     listSecrets: PropTypes.func.isRequired,
+    listSecretsAndCapabilities: PropTypes.func.isRequired,
     match: PropTypes.object.isRequired,
     secrets: PropTypes.object,
     secretsMounts: PropTypes.object,
@@ -456,6 +471,7 @@ const _mapDispatchToProps = (dispatch) => {
                 }
             });
         },
+        listSecretsAndCapabilities: (path, version) => dispatch(kvAction.listSecretsAndCapabilities(path, version)),
         getSecrets: (queryFullPath) => {
             return new Promise((resolve, reject) => {
                 if (queryFullPath) {

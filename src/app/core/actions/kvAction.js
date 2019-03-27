@@ -16,6 +16,7 @@ class KvAction extends _Actions {
             GET_SECRETS: 'GET_SECRETS',
             LIST_MOUNTS: 'LIST_MOUNTS',
             LIST_SECRETS: 'LIST_SECRETS',
+            LIST_SECRETS_AND_CAPABILITIES: 'LIST_SECRETS_AND_CAPABILITIES',
             SAVE_SECRET: 'SAVE_SECRET'
         });
     }
@@ -63,6 +64,19 @@ class KvAction extends _Actions {
             this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS, `/api/v1/${this._encodePath(path)}`, {
                 list: true
             });
+    }
+
+    /**
+     * Returns a list of key names at the specified location with capabilities mixed in.
+     *
+     * @param {string} [path] Specifies the path of the secrets to list.
+     * @param {number} [version] The KV engine version.
+     * @returns {function} Redux dispatch function.
+     */
+    listSecretsAndCapabilities(path = '', version = 2) {
+        return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES, `/rest/secrets/${path}`, {
+            version
+        });
     }
 
     /**
