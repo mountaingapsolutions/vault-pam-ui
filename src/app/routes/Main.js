@@ -18,7 +18,7 @@ import kvAction from 'app/core/actions/kvAction';
 import sessionAction from 'app/core/actions/sessionAction';
 import systemAction from 'app/core/actions/systemAction';
 import userAction from 'app/core/actions/userAction';
-import SecretRequestQueueModal from 'app/core/components/SecretRequestQueueModal';
+import SecretRequestQueueModal from 'app/core/components/secretRequest/SecretRequestQueueModal';
 import Footer from 'app/core/components/common/Footer';
 import SecretsList from 'app/routes/secrets/SecretsList';
 import Constants from 'app/util/Constants';

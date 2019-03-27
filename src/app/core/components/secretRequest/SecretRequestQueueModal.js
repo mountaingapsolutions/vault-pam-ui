@@ -14,9 +14,9 @@ import {
 import {withStyles} from '@material-ui/core/styles/index';
 import {COLORS} from 'app/core/assets/Styles';
 
-import AddSplit from 'app/core/components/AddSplit';
+import AddSplit from 'app/core/components/secretRequest/AddSplit';
 import Constants from 'app/util/Constants';
-import SecretSplitRequestDetails from 'app/core/components/SecretSplitRequestDetails';
+import SecretSplitRequestDetails from 'app/core/components/secretRequest/SecretSplitRequestDetails';
 
 //TODO - WIRE THE LIST SOURCE TO REDUCER
 const requestList = [
