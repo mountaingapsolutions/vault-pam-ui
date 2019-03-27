@@ -2,6 +2,7 @@
 /* global process, __dirname */
 
 const port = process.env.PORT || 80;
+const bodyParser = require('body-parser');
 const chalk = require('chalk');
 const compression = require('compression');
 const express = require('express');
@@ -16,7 +17,7 @@ const useHsts = process.env.USE_HSTS !== null && process.env.USE_HSTS !== undefi
 console.log(`Starting server on port ${chalk.yellow(port)}...`);
 
 // Database Init
-const { connection } = require('./db/models');
+const {connection} = require('./db/models');
 connection.sync().then(() => {
     console.info('DB connection successful.');
 }, (err) => {
@@ -56,6 +57,8 @@ express().use(compression())
         express.static(path.join(__dirname, 'build')).call(this, req, res, next);
     })
     .use('/api', api)
+    // The /api endpoint is just a straight pass-through to Vault API. Using bodyParser on it is not supported.
+    .use(bodyParser.json())
     .get('/validate', validate)
     .post('/login', login)
     .use('/rest', authenticatedRoutes)

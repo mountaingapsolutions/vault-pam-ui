@@ -125,17 +125,11 @@ class Login extends Component {
                 // Redirect!
                 window.location.href = '/';
             }).catch(() => {
-                const {authUser, vaultLookupSelf} = this.props;
-                if (token && vaultLookupSelf.errors) {
+                const {vaultLookupSelf} = this.props;
+                if (vaultLookupSelf.errors) {
                     this.setState({
                         errors: {
                             form: vaultLookupSelf.errors[0]
-                        }
-                    });
-                } else if (username && password && authUser.errors) {
-                    this.setState({
-                        errors: {
-                            form: authUser.errors[0]
                         }
                     });
                 }
@@ -271,7 +265,6 @@ class Login extends Component {
 
 Login.propTypes = {
     authenticate: PropTypes.func.isRequired,
-    authUser: PropTypes.object.isRequired,
     classes: PropTypes.object.isRequired,
     history: PropTypes.object.isRequired,
     vaultLookupSelf: PropTypes.object.isRequired
@@ -306,27 +299,18 @@ const _mapDispatchToProps = (dispatch) => {
          * @returns {function} Redux dispatch function.
          */
         authenticate: (authenticationMap) => {
-            const {authType, token, username, password} = authenticationMap;
-            if (token) {
-                localStorageUtil.setItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN, token);
-                dispatch(sessionAction.setToken(token));
-                return dispatch(sessionAction.validateToken());
-            } else if (username && password) {
-                localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
-                return new Promise((resolve, reject) => {
-                    dispatch(sessionAction.authenticateUserPass(username, password, authType)).then((response) => {
-                        const {client_token: clientToken} = response.data.auth;
+            return new Promise((resolve, reject) => {
+                dispatch(sessionAction.login(authenticationMap)).then((response) => {
+                    const {id: clientToken} = (response.data || {}).data;
+                    if (clientToken) {
                         localStorageUtil.setItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN, clientToken);
                         dispatch(sessionAction.setToken(clientToken));
-                        dispatch(sessionAction.validateToken()).then(resolve).catch(reject);
-                    }).catch(reject);
-                });
-            } else {
-                /* eslint-disable no-console */
-                console.error('Invalid auth data: ', authenticationMap);
-                /* eslint-enable no-console */
-                return null;
-            }
+                        resolve();
+                    } else {
+                        reject();
+                    }
+                }).catch(reject);
+            });
         }
     };
 };
