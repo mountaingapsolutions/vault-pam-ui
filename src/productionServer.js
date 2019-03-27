@@ -7,7 +7,7 @@ const compression = require('compression');
 const express = require('express');
 const path = require('path');
 const hsts = require('hsts');
-const {api, validate} = require('./restServiceMethods');
+const {api, validate, login, authenticatedRoutes} = require('./restServiceMethods');
 
 // Overcome the DEPTH_ZERO_SELF_SIGNED_CERT error.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -57,6 +57,8 @@ express().use(compression())
     })
     .use('/api', api)
     .get('/validate', validate)
+    .post('/login', login)
+    .use('/rest', authenticatedRoutes)
     .get('/*', (req, res) => {
         res.sendFile(path.join(__dirname, 'build', 'index.html'));
     })
