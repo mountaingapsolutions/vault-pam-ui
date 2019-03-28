@@ -35,6 +35,7 @@ export default (previousState = {
                     };
                 }).filter(mount => mount.type !== 'identity' && mount.type !== 'system')}, action) // Filter out the identity and system mounts.
             };
+        // Deprecated?
         case kvAction.ACTION_TYPES.LIST_SECRETS:
             return {
                 ...previousState,
@@ -43,8 +44,7 @@ export default (previousState = {
         case kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES:
             return {
                 ...previousState,
-                // TODO: Temporary resource for now, pending discussion and review.
-                _secretsPaths: kvAction.injectMetaData((action.data || {}).data || {}, action)
+                secretsPaths: kvAction.injectMetaData((action.data || {}).data || {}, action)
             };
         default:
             return {...previousState};

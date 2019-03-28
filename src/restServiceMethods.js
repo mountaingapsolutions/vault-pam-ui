@@ -154,41 +154,58 @@ const authenticatedRoutes = require('express').Router()
             }
             try {
                 const parsedData = JSON.parse(body);
-                const getUrlParts = [...urlParts];
-                if (isV2) {
-                    getUrlParts.splice(1, 0, 'data');
+                if (response.statusCode !== 200) {
+                    res.status(response.statusCode).json(parsedData);
+                    return;
                 }
-                const getUrl = getUrlParts.join('/');
-                const paths = parsedData.data.keys.map(key => `${getUrl}/${key}`);
-                if (paths.length > 0) {
-                    const capabilitiesUrl = `${apiDomain}/v1/sys/capabilities-self`;
-                    console.log(`Checking capabilities with paths ${_yellowBold(JSON.stringify(paths))}.`);
-                    request({
-                        ..._initApiRequest(token, apiUrl),
-                        method: 'POST',
-                        json: {
-                            paths
-                        }
-                    }, (capErr, capRes, capabilities) => {
-                        if (capErr) {
-                            _sendError(capabilitiesUrl, res, error);
-                        } else {
-                            res.json({
-                                ...parsedData,
-                                data: {
-                                    secrets: parsedData.data.keys.map(key => {
+                const paths = parsedData.data.keys.map(key => {
+                    const getUrlParts = [...urlParts];
+                    if (isV2) {
+                        getUrlParts.splice(1, 0, key.endsWith('/') ? 'metadata' : 'data');
+                    }
+                    return `${getUrlParts.join('/')}/${key}`;
+                });
+
+                // Make sure to include listing path.
+                const listingPath = listUrlParts.join('/');
+                paths.push(listingPath);
+
+                // Convert the list of paths to a key/value map for easier access later.
+                const pathsMap = paths.reduce((accumulatedPaths, currentPath) => {
+                    accumulatedPaths[currentPath] = currentPath;
+                    return accumulatedPaths;
+                }, {});
+
+                const capabilitiesUrl = `${apiDomain}/v1/sys/capabilities-self`;
+                console.log(`Checking capabilities with paths ${_yellowBold(JSON.stringify(paths))}.`);
+                request({
+                    ..._initApiRequest(token, capabilitiesUrl),
+                    method: 'POST',
+                    json: {
+                        paths
+                    }
+                }, (capErr, capRes, capabilities) => {
+                    if (capErr) {
+                        _sendError(capabilitiesUrl, res, error);
+                    } else {
+                        res.json({
+                            ...parsedData,
+                            data: {
+                                capabilities: capabilities[listingPath] || [], // Add the capabilities of the listing path to the top level of the response data.
+                                secrets: Object.keys(pathsMap)
+                                    .filter(key => key !== listingPath) // Exclude the listing path.
+                                    .map(key => {
+                                        const keySplit = key.split('/');
+                                        const lastPath = keySplit[keySplit.length - 1];
                                         return {
-                                            name: key,
-                                            capabilities: capabilities[Object.keys(capabilities).find(capabilityKey => capabilityKey.endsWith(key))] || []
+                                            name: lastPath === '' ? `${keySplit[keySplit.length - 2]}/` : lastPath,
+                                            capabilities: capabilities[key] || []
                                         };
                                     })
-                                }
-                            });
-                        }
-                    });
-                } else {
-                    res.json(parsedData);
-                }
+                            }
+                        });
+                    }
+                });
             } catch (err) {
                 _sendError(url, res, err);
             }

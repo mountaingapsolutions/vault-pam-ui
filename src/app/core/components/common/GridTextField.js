@@ -29,7 +29,7 @@ class GridTextField extends Component {
                 return <Grid item key={`${item}-${index}`} xs={gridValue}>
                     <TextField
                         disabled
-                        InputProps={{ classes: { input: classes.textField } }}
+                        InputProps={{classes: {input: classes.textField}}}
                         label={item}
                         margin={margin}
                         value={items[item]}

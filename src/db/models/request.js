@@ -1,5 +1,5 @@
 const connection = require('../connection');
-const { Sequelize } = connection;
+const {Sequelize} = connection;
 
 const Request = connection.define('request', {
     id: {

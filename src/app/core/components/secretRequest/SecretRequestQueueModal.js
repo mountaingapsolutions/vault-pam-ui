@@ -20,37 +20,46 @@ import SecretSplitRequestDetails from 'app/core/components/secretRequest/SecretS
 
 //TODO - WIRE THE LIST SOURCE TO REDUCER
 const requestList = [
-    {request: {id: '123456', key: 'AWS', requester: 'John'},
-        requestDetails: { requestInfo: {
-            Requester: 'John Doe',
-            Type: 'Token',
-            Token: '*************'},
-        splitInfo: [
-            {Shard: 'erbde.wdgts', Recipient: 'John Wayne', Email: 'john_wayne@gmail.com'}
-        ]
+    {
+        request: {id: '123456', key: 'AWS', requester: 'John'},
+        requestDetails: {
+            requestInfo: {
+                Requester: 'John Doe',
+                Type: 'Token',
+                Token: '*************'
+            },
+            splitInfo: [
+                {Shard: 'erbde.wdgts', Recipient: 'John Wayne', Email: 'john_wayne@gmail.com'}
+            ]
         }
     },
-    {request: {id: '76893', key: 'GoogleCloud', requester: 'Jerry'},
-        requestDetails: { requestInfo: {
-            Requester: 'Jerry Buhatin',
-            Type: 'GoogleCloud',
-            Token: '*************'},
-        splitInfo: [
-            {Shard: 'rm760n.ihd', Recipient: 'April Mae', Email: 'april_mae@gmail.com'},
-            {Shard: 'ecv34t.det3', Recipient: 'Michael Peterson', Email: 'michael_p@gmail.com'}
-        ]
+    {
+        request: {id: '76893', key: 'GoogleCloud', requester: 'Jerry'},
+        requestDetails: {
+            requestInfo: {
+                Requester: 'Jerry Buhatin',
+                Type: 'GoogleCloud',
+                Token: '*************'
+            },
+            splitInfo: [
+                {Shard: 'rm760n.ihd', Recipient: 'April Mae', Email: 'april_mae@gmail.com'},
+                {Shard: 'ecv34t.det3', Recipient: 'Michael Peterson', Email: 'michael_p@gmail.com'}
+            ]
         }
     },
-    {request: {id: '23543', key: 'Okta', requester: 'Jay'},
-        requestDetails: { requestInfo: {
-            Requester: 'Jay Daman',
-            Type: 'Okta',
-            Token: '*************'},
-        splitInfo: [
-            {Shard: 'ecv34t.det3', Recipient: 'Michael Peterson', Email: 'michael_p@gmail.com'},
-            {Shard: 'erbde.wdgts', Recipient: 'John Wayne', Email: 'john_wayne@gmail.com'},
-            {Shard: 'rm760n.ihd', Recipient: 'April Mae', Email: 'april_mae@gmail.com'}
-        ]
+    {
+        request: {id: '23543', key: 'Okta', requester: 'Jay'},
+        requestDetails: {
+            requestInfo: {
+                Requester: 'Jay Daman',
+                Type: 'Okta',
+                Token: '*************'
+            },
+            splitInfo: [
+                {Shard: 'ecv34t.det3', Recipient: 'Michael Peterson', Email: 'michael_p@gmail.com'},
+                {Shard: 'erbde.wdgts', Recipient: 'John Wayne', Email: 'john_wayne@gmail.com'},
+                {Shard: 'rm760n.ihd', Recipient: 'April Mae', Email: 'april_mae@gmail.com'}
+            ]
         }
     }
 ];
@@ -148,7 +157,7 @@ class SecretRequestQueueModal extends Component {
                 disabled={!isRequestDetailsActive}
                 key={item.request.id}
                 onClick={() => this._onSelectRequest(requestDetails)}>
-                <ListItemText primary={item.request.requester} secondary={item.request.key} />
+                <ListItemText primary={item.request.requester} secondary={item.request.key}/>
             </ListItem>;
         });
     }

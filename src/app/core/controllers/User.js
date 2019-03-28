@@ -51,8 +51,8 @@ const findById = (id) => {
  * @returns {Object}
  */
 const update = (uid, firstname, lastname) => {
-    return User.update( { firstName: firstname, lastName: lastname },
-        { where: {uid: uid} }
+    return User.update({firstName: firstname, lastName: lastname},
+        {where: {uid: uid}}
     ).then((user) => {
         return user;
     });
@@ -66,9 +66,9 @@ const update = (uid, firstname, lastname) => {
  */
 const deleteUserByUid = (uid) => {
     return User.destroy({
-        where: { uid: uid }
+        where: {uid: uid}
     }).then(() => {
-        return { status: 'ok'};
+        return {status: 'ok'};
     });
 };
 
