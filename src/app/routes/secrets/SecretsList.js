@@ -502,7 +502,8 @@ const _styles = (theme) => ({
         padding: 40
     },
     fab: {
-        marginLeft: 'auto'
+        marginLeft: 'auto',
+        whiteSpace: 'nowrap'
     },
     marginRight: {
         marginRight: theme.spacing.unit
