@@ -36,6 +36,8 @@ import ListModal from 'app/core/components/common/ListModal';
 import CreateUpdateSecretModal from 'app/core/components/CreateUpdateSecretModal';
 import ConfirmationModal from 'app/core/components/ConfirmationModal';
 
+import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
+
 /**
  * The secrets list container.
  */
@@ -278,24 +280,23 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     _renderSecretsListArea() {
-        const {classes, history, getSecrets, listSecretsAndCapabilities, match, secretsMounts = {}, secretsPaths} = this.props;
+        const {classes, errors, getSecrets, history, inProgress, listSecretsAndCapabilities, match, secretsPaths} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
-        const loading = (secretsMounts._meta || {}).inProgress === true || (secretsPaths._meta || {}).inProgress === true;
         const requestAccessLabel = 'Request Access';
         const deleteLabel = 'Delete';
         const openLabel = 'Open';
-        if (loading) {
+        if (inProgress) {
             return <Grid container justify='center'>
                 <Grid item>
                     <CircularProgress className={classes.progress}/>
                 </Grid>
             </Grid>;
-        } else if (secretsPaths._meta && Array.isArray(secretsPaths._meta.errors) && secretsPaths._meta.errors.length > 0) {
+        } else if (errors) {
             return <Paper className={classes.paper} elevation={2}>
                 <Typography
                     className={classes.paperMessage}
-                    color='textPrimary'>{secretsPaths._meta.errors[0]}
+                    color='textPrimary'>{errors}
                 </Typography>
             </Paper>;
         } else if ((secretsPaths.secrets || []).length > 0) {
@@ -422,8 +423,10 @@ class SecretsList extends Component {
 SecretsList.propTypes = {
     classes: PropTypes.object.isRequired,
     deleteSecrets: PropTypes.func.isRequired,
+    errors: PropTypes.string,
     getSecrets: PropTypes.func.isRequired,
     history: PropTypes.object.isRequired,
+    inProgress: PropTypes.bool,
     listMounts: PropTypes.func.isRequired,
     listSecretsAndCapabilities: PropTypes.func.isRequired,
     match: PropTypes.object.isRequired,
@@ -440,7 +443,14 @@ SecretsList.propTypes = {
  * @returns {Object}
  */
 const _mapStateToProps = (state) => {
+    const actionsUsed = [kvAction.ACTION_TYPES.LIST_MOUNTS,
+        kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES,
+        kvAction.ACTION_TYPES.GET_SECRETS,
+        kvAction.ACTION_TYPES.DELETE_SECRETS
+    ];
     return {
+        errors: createErrorsSelector(actionsUsed)(state.actionStatusReducer),
+        inProgress: createInProgressSelector(actionsUsed)(state.actionStatusReducer),
         ...state.localStorageReducer,
         ...state.kvReducer,
         ...state.sessionReducer,

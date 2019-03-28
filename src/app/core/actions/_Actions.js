@@ -127,6 +127,7 @@ export default class _Actions {
         return new Promise((resolve, reject) => {
             let initData = { // Refer to https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch for full init data documentation.
                 method,
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json'
                 }

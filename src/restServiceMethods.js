@@ -47,6 +47,8 @@ const login = (req, res) => {
     }
     // Method 1: authentication through token.
     else if (token) {
+        req.session.vaultToken = token;
+        req.session.vaultDomain = parsedDomain;
         _sendTokenValidationResponse(parsedDomain, token, res);
     }
     // Method 2: authentication through username and password. Upon success, it will still validate the token from method 1.
@@ -68,6 +70,7 @@ const login = (req, res) => {
                     res.status(response.statusCode).json(body);
                     return;
                 }
+
                 const {client_token: clientToken, entity_id: uid} = body.auth || {};
                 if (uid) {
                     const User = require('./services/controllers/User');
@@ -75,6 +78,8 @@ const login = (req, res) => {
                     console.info(`User logged in: ${user}`);
                 }
 
+                req.session.vaultToken = clientToken;
+                req.session.vaultDomain = parsedDomain;
                 _sendTokenValidationResponse(parsedDomain, clientToken, res);
             } catch (err) {
                 _sendError(apiUrl, res, err);
@@ -137,12 +142,37 @@ const authenticatedRoutes = require('express').Router()
         if (!domain || !token) {
             res.status(401).json({errors: ['Unauthorized.']});
         } else {
-            console.info('TODO - validate session.');
-            next();
+            const {vaultToken: sessionToken} = req.session;
+
+            // Always make sure the domain is normalized.
+            const apiDomain = domain.endsWith('/') ? domain.slice(0, -1) : domain;
+            req.session.vaultDomain = apiDomain;
+
+            // Token mismatch, so need to verify through Vault again.
+            if (token !== sessionToken) {
+                console.log(`Token mismatch for the API call ${_yellowBold(req.originalUrl)} between header and stored session. Re-verifying through Vault.`);
+                const apiUrl = `${apiDomain}/v1/auth/token/lookup-self`;
+                request(_initApiRequest(token, apiUrl), (error, response, body) => {
+                    if (error) {
+                        _sendError(req.originalUrl, res, error);
+                        return;
+                    }
+                    const parsedData = JSON.parse(body);
+                    if (response.statusCode !== 200) {
+                        res.status(response.statusCode).json(parsedData);
+                        return;
+                    }
+                    req.session.vaultToken = (parsedData.data || {}).id;
+                    next();
+                });
+            } else {
+                console.info('Move along. Nothing to see here.');
+                next();
+            }
         }
     })
     .get('/secrets/*', (req, res) => {
-        const {'x-vault-domain': domain, 'x-vault-token': token} = req.headers;
+        const {'x-vault-token': token} = req.headers;
         const {params = {}, query, url} = req;
         const urlParts = (params[0] || '').split('/').filter(path => !!path);
         const listUrlParts = [...urlParts];
@@ -150,7 +180,7 @@ const authenticatedRoutes = require('express').Router()
         if (isV2) {
             listUrlParts.splice(1, 0, 'metadata');
         }
-        const apiDomain = domain.endsWith('/') ? domain.slice(0, -1) : domain;
+        const apiDomain = req.session.vaultDomain;
         const apiUrl = `${apiDomain}/v1/${listUrlParts.join('/')}?list=true`;
         console.log(`Listing secrets from ${_yellowBold(apiUrl)}.`);
         request(_initApiRequest(token, apiUrl), (error, response, body) => {
