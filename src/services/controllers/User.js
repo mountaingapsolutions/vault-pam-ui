@@ -1,4 +1,4 @@
-const connection = require('../../../db/connection');
+const connection = require('../db/connection');
 const User = connection.getModel('User');
 
 /**
@@ -30,7 +30,7 @@ const create = (uid, firstName, lastName, email) => {
  * @param {string} email The email.
  * @returns {Object}
  */
-const findOrCreate = (uid, firstName, lastName, email) => {
+const findOrCreate = (uid, firstName = undefined, lastName = undefined, email = undefined) => {
     return findByUid(uid).then(user => {
         if (user) {
             return user;

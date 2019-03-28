@@ -68,7 +68,13 @@ const login = (req, res) => {
                     res.status(response.statusCode).json(body);
                     return;
                 }
-                const {client_token: clientToken} = body.auth || {};
+                const {client_token: clientToken, entity_id: uid} = body.auth || {};
+                if (uid) {
+                    const User = require('./services/controllers/User');
+                    const user = User.findOrCreate(uid);
+                    console.info(`User logged in: ${user}`);
+                }
+
                 _sendTokenValidationResponse(parsedDomain, clientToken, res);
             } catch (err) {
                 _sendError(apiUrl, res, err);
