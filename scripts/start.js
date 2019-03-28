@@ -37,13 +37,6 @@ const createDevServerConfig = require('../config/webpackDevServer.config');
 
 const useYarn = fs.existsSync(paths.yarnLockFile);
 const isInteractive = process.stdout.isTTY;
-const {connection} = require('../src/db/models');
-
-connection.sync().then(() => {
-    console.info('DB connection successful.');
-}, (err) => {
-    console.error(err);
-});
 
 // Warn and crash if required files are missing
 if (!checkRequiredFiles([paths.appHtml, paths.appIndexJs])) {
@@ -115,6 +108,16 @@ checkBrowsers(paths.appPath, isInteractive)
             }
             console.log(chalk.cyan('Starting the development server...\n'));
             openBrowser(urls.localUrlForBrowser);
+
+            const connection = require('../src/db/connection');
+            connection.start()
+                .then(() => {
+                    console.info('DB connection successful. ᕕ( ᐛ )ᕗ\r\n');
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
             return null;
         });
 
