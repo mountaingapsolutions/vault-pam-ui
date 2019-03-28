@@ -1,14 +1,43 @@
-const Sequelize = require('sequelize');
+let promise;
+let sequelize = null;
 
-const connection = new Sequelize(
-    process.env.PAM_DATABASE,
-    process.env.PAM_DATABASE_USER,
-    process.env.PAM_DATABASE_PASSWORD,
-    {
-        dialect: 'postgres',
-        host: process.env.PAM_DATABASE_URL,
-        port: process.env.PAM_DATABASE_PORT
-    }
-);
+const {PAM_DATABASE, PAM_DATABASE_USER, PAM_DATABASE_PASSWORD, PAM_DATABASE_URL, PAM_DATABASE_PORT} = process.env;
+if (PAM_DATABASE && PAM_DATABASE_USER && PAM_DATABASE_PASSWORD && PAM_DATABASE_URL && PAM_DATABASE_PORT) {
+    console.info('All required database variables found. Attempting to establish connection...');
 
-module.exports = connection;
+    promise = new Promise((resolve, reject) => {
+        const Sequelize = require('sequelize');
+        const {models} = require('./models');
+        sequelize = new Sequelize(
+            PAM_DATABASE,
+            PAM_DATABASE_USER,
+            PAM_DATABASE_PASSWORD,
+            {
+                dialect: 'postgres',
+                host: PAM_DATABASE_URL,
+                port: PAM_DATABASE_PORT
+            }
+        );
+        console.info('Initializing models...');
+        Object.keys(models).forEach(key => {
+            console.info(`Initializing ${key}...`);
+            models[key](sequelize);
+        });
+        sequelize.sync({
+            logging: true
+        }).then(resolve).catch(reject);
+    });
+} else {
+    promise = new Promise((resolve, reject) => {
+        reject('Required database variables have not been set. Skipping database connection... (╯°□°)╯︵ ┻━┻');
+    });
+}
+
+const start = () => {
+    console.info('Detecting database configuration...');
+    return promise;
+};
+
+module.exports = {
+    start
+};
