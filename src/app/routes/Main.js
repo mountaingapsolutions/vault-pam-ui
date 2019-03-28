@@ -19,6 +19,7 @@ import sessionAction from 'app/core/actions/sessionAction';
 import systemAction from 'app/core/actions/systemAction';
 import userAction from 'app/core/actions/userAction';
 import SecretRequestQueueModal from 'app/core/components/secretRequest/SecretRequestQueueModal';
+import SettingsModal from 'app/core/components/SettingsModal';
 import Footer from 'app/core/components/common/Footer';
 import SecretsList from 'app/routes/secrets/SecretsList';
 import Constants from 'app/util/Constants';
@@ -41,6 +42,7 @@ class Main extends Component {
         this.state = {
             accountAnchorElement: null,
             isSecretRequestsModalOpen: false,
+            isSettingsModalOpen: false,
             showRootWarning: false
         };
         this._closeModal = this._closeModal.bind(this);
@@ -82,7 +84,7 @@ class Main extends Component {
      * @param {string} modalState The close reason.
      */
     _openModal(modalState) {
-        this.setState({[modalState]: true});
+        this.setState({[modalState]: true, accountAnchorElement: null});
     }
 
     /**
@@ -167,7 +169,7 @@ class Main extends Component {
     render() {
         const {classes, secretsMounts = {}, sealStatus} = this.props;
         const isVaultSealed = sealStatus && sealStatus.sealed;
-        const {accountAnchorElement, isSecretRequestsModalOpen, showRootWarning} = this.state;
+        const {accountAnchorElement, isSecretRequestsModalOpen, isSettingsModalOpen, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
         return <div>
             <AppBar position='static'>
@@ -195,6 +197,9 @@ class Main extends Component {
                             <AccountCircle/>
                         </IconButton>
                         <Menu anchorEl={accountAnchorElement} open={!!accountAnchorElement} onClose={this._toggleAccountMenu}>
+                            <MenuItem onClick={() => this._openModal('isSettingsModalOpen')}>
+                                <img className={classes.marginRight} src='/assets/settings-icon.svg' width='20'/> Settings
+                            </MenuItem>
                             <MenuItem onClick={this._onLogOut}>
                                 <img className={classes.marginRight} src='/assets/logout-icon.svg' width='20'/> Log Out
                             </MenuItem>
@@ -245,6 +250,9 @@ class Main extends Component {
             <SecretRequestQueueModal
                 open={isSecretRequestsModalOpen}
                 onClose={() => this._closeModal('isSecretRequestsModalOpen')}/>
+            <SettingsModal
+                open={isSettingsModalOpen}
+                onClose={() => this._closeModal('isSettingsModalOpen')}/>
             <Footer/>
         </div>;
     }
