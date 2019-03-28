@@ -2,7 +2,6 @@ import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {
     Dialog,
-    DialogActions,
     DialogContent,
     DialogTitle,
     Grid,
@@ -206,8 +205,6 @@ class SecretRequestQueueModal extends Component {
                         </Grid>
                     </Grid>
                 </DialogContent>
-                <DialogActions>
-                </DialogActions>
             </Dialog>
         );
     }

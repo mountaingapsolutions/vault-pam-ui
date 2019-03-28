@@ -6,15 +6,36 @@ const User = require('../../../db/models/user');
  * @param {string} uid The UID.
  * @param {string} firstname The first name.
  * @param {string} lastname The last name.
+ * @returns {Object}
  */
 const create = (uid, firstname, lastname) => {
-    User.create({
-        uid: uid,
+    return User.create({
+        uid,
         firstName: firstname,
         lastName: lastname
     }).then(user => {
         // Send created user to client
         return user;
+    });
+};
+
+/**
+ * Create a User.
+ *
+ * @param {string} uid The UID.
+ * @param {string} firstname The first name.
+ * @param {string} lastname The last name.
+ * @returns {Object}
+ */
+const findOrCreateUser = (uid, firstname, lastname) => {
+    return User.find({
+        where: {uid}
+    }).then(user => {
+        if (user) {
+            return user;
+        } else {
+            return create(uid, firstname, lastname);
+        }
     });
 };
 
@@ -52,7 +73,7 @@ const findById = (id) => {
  */
 const update = (uid, firstname, lastname) => {
     return User.update({firstName: firstname, lastName: lastname},
-        {where: {uid: uid}}
+        {where: {uid}}
     ).then((user) => {
         return user;
     });
@@ -66,7 +87,7 @@ const update = (uid, firstname, lastname) => {
  */
 const deleteUserByUid = (uid) => {
     return User.destroy({
-        where: {uid: uid}
+        where: {uid}
     }).then(() => {
         return {status: 'ok'};
     });
@@ -75,6 +96,7 @@ const deleteUserByUid = (uid) => {
 module.exports = {
     create,
     findAll,
+    findOrCreateUser,
     findById,
     update,
     deleteUserByUid
