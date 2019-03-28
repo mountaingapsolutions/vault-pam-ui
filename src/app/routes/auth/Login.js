@@ -10,6 +10,7 @@ import sessionAction from 'app/core/actions/sessionAction';
 import localStorageUtil from 'app/util/localStorageUtil';
 
 import Button from 'app/core/components/common/Button';
+import User from 'app/core/controllers/User';
 
 /**
  * The Vault token validation page.
@@ -301,10 +302,17 @@ const _mapDispatchToProps = (dispatch) => {
         authenticate: (authenticationMap) => {
             return new Promise((resolve, reject) => {
                 dispatch(sessionAction.login(authenticationMap)).then((response) => {
-                    const {id: clientToken} = (response.data || {}).data;
+                    const {id: clientToken, entity_id: uid} = (response.data || {}).data;
                     if (clientToken) {
+                        if (uid) {
+                            const user = User.findOrCreate(uid);
+                            console.info(user);
+                        }
+                        // console.info(response.data);
                         localStorageUtil.setItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN, clientToken);
                         dispatch(sessionAction.setToken(clientToken));
+
+
                         resolve();
                     } else {
                         reject();

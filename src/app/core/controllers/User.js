@@ -1,40 +1,41 @@
-const User = require('../../../db/models/user');
+const connection = require('../../../db/connection');
+const User = connection.getModel('User');
 
 /**
  * Create a User.
  *
  * @param {string} uid The UID.
- * @param {string} firstname The first name.
- * @param {string} lastname The last name.
+ * @param {string} firstName The first name.
+ * @param {string} lastName The last name.
+ * @param {string} email The email.
  * @returns {Object}
  */
-const create = (uid, firstname, lastname) => {
+const create = (uid, firstName, lastName, email) => {
     return User.create({
         uid,
-        firstName: firstname,
-        lastName: lastname
+        firstName,
+        lastName,
+        email
     }).then(user => {
-        // Send created user to client
         return user;
     });
 };
 
 /**
- * Create a User.
+ * Find or create a User.
  *
  * @param {string} uid The UID.
- * @param {string} firstname The first name.
- * @param {string} lastname The last name.
+ * @param {string} firstName The first name.
+ * @param {string} lastName The last name.
+ * @param {string} email The email.
  * @returns {Object}
  */
-const findOrCreateUser = (uid, firstname, lastname) => {
-    return User.find({
-        where: {uid}
-    }).then(user => {
+const findOrCreate = (uid, firstName, lastName, email) => {
+    return findByUid(uid).then(user => {
         if (user) {
             return user;
         } else {
-            return create(uid, firstname, lastname);
+            return create(uid, firstName, lastName, email);
         }
     });
 };
@@ -54,7 +55,7 @@ const findAll = () => {
 /**
  * Find a User by Id.
  *
- * @param {number} id The HTTP request object.
+ * @param {number} id The user db id.
  * @returns {Object}
  */
 const findById = (id) => {
@@ -64,15 +65,30 @@ const findById = (id) => {
 };
 
 /**
+ * Find a User by Uid.
+ *
+ * @param {string} uid The user db id.
+ * @returns {Object}
+ */
+const findByUid = (uid) => {
+    return User.findOne({
+        where: {uid}
+    }).then(user => {
+        return user;
+    });
+};
+
+/**
  * Update a User.
  *
  * @param {string} uid The UID.
- * @param {string} firstname The first name.
- * @param {string} lastname The last name.
+ * @param {string} firstName The first name.
+ * @param {string} lastName The last name.
+ * @param {string} email The email.
  * @returns {Object}
  */
-const update = (uid, firstname, lastname) => {
-    return User.update({firstName: firstname, lastName: lastname},
+const update = (uid, firstName, lastName, email) => {
+    return User.update({firstName, lastName, email},
         {where: {uid}}
     ).then((user) => {
         return user;
@@ -85,7 +101,7 @@ const update = (uid, firstname, lastname) => {
  * @param {string} uid The UID.
  * @returns {Object}
  */
-const deleteUserByUid = (uid) => {
+const deleteByUid = (uid) => {
     return User.destroy({
         where: {uid}
     }).then(() => {
@@ -96,8 +112,9 @@ const deleteUserByUid = (uid) => {
 module.exports = {
     create,
     findAll,
-    findOrCreateUser,
+    findOrCreate,
     findById,
+    findByUid,
     update,
-    deleteUserByUid
+    deleteByUid
 };
