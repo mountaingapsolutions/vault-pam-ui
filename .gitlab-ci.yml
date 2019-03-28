@@ -1,3 +1,7 @@
+.common_template: &branch_definition
+  only:
+    - master
+
 .node_template: &node_definition
   image: node:10.15.3
   cache:
@@ -13,6 +17,7 @@ stages:
 test:
   <<: *node_definition
   stage: test
+  <<: *branch_definition
   script:
     - npm install
     - npm run lint
@@ -22,6 +27,7 @@ test:
 build:
   <<: *node_definition
   stage: build
+  <<: *branch_definition
   script:
     - npm run build
   artifacts:
@@ -33,6 +39,7 @@ build:
 deploy:
   image: python:3.5
   stage: deploy
+  <<: *branch_definition
   variables:
     AWS_DEFAULT_REGION: "us-east-1"
     EB_APP_NAME: "vault-pam-ui"

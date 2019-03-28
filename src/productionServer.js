@@ -5,7 +5,9 @@ const port = process.env.PORT || 80;
 const bodyParser = require('body-parser');
 const chalk = require('chalk');
 const compression = require('compression');
+const cookieParser = require('cookie-parser');
 const express = require('express');
+const session = require('express-session');
 const path = require('path');
 const hsts = require('hsts');
 const {api, validate, login, authenticatedRoutes} = require('./restServiceMethods');
@@ -47,6 +49,16 @@ express().use(compression())
     .use(hsts({
         force: true,
         preload: true
+    }))
+    .use(cookieParser())
+    .use(session({
+        key: 'entity_id',
+        secret: process.env.SESSION_SECRET,
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+            maxAge: 600000
+        }
     }))
     .use('/', (req, res, next) => {
         if (noCacheUrls.includes(req.originalUrl)) {
