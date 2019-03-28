@@ -8,7 +8,6 @@ import {
     Grid,
     Grow,
     IconButton,
-    InputAdornment,
     Paper,
     TextField,
     Typography
@@ -93,7 +92,10 @@ class SettingsModal extends Component {
         return (
             <Grow in={true}>
                 <Paper className={classes.paperChangePassword}>
-                    <Grid container justify='center' spacing={16}>
+                    <Typography className={classes.cardTitle} color='primary'>
+                        CHANGE PASSWORD:
+                    </Typography>
+                    <Grid container justify='center' spacing={8}>
                         <Grid item>
                             <TextField
                                 className={classes.textField}
@@ -107,22 +109,18 @@ class SettingsModal extends Component {
                         <Grid item>
                             <TextField
                                 className={classes.textField}
-                                InputProps={{
-                                    endAdornment: <InputAdornment position="end">
-                                        <IconButton
-                                            aria-label="Toggle password visibility"
-                                            onClick={this._onHideShowPassword}
-                                        >
-                                            {showPassword ? <VisibilityOff/> : <Visibility/>}
-                                        </IconButton>
-                                    </InputAdornment>
-                                }}
                                 label='Confirm Password'
                                 margin='none'
                                 type={showPassword ? 'text' : 'password'}
                                 value={confirmPassword}
                                 variant='outlined'
                                 onChange={this._handleChange('confirmPassword')}/>
+                        </Grid>
+                        <Grid item>
+                            <IconButton
+                                onClick={this._onHideShowPassword}>
+                                {showPassword ? <VisibilityOff/> : <Visibility/>}
+                            </IconButton>
                         </Grid>
                     </Grid>
                     <div className={classes.buttonsContainer}>
@@ -178,7 +176,12 @@ class SettingsModal extends Component {
                     </Typography>
                 </DialogTitle>
                 <DialogContent>
-                    <GridTextField items={userInfo} margin='normal'/>
+                    <Paper className={classes.paperChangePassword}>
+                        <Typography className={classes.alignLeft} color='primary'>
+                            USER DETAILS:
+                        </Typography>
+                        <GridTextField items={userInfo} margin='normal'/>
+                    </Paper>
                     {isChangePasswordOnDisplay ?
                         this._renderChangePassword() :
                         this._renderChangePasswordButton()}
@@ -209,12 +212,19 @@ const _styles = () => ({
     alignRight: {
         textAlign: 'right'
     },
+    alignLeft: {
+        textAlign: 'left'
+    },
     buttonCancel: {
         color: COLORS.ERROR_RED
     },
     buttonsContainer: {
         textAlign: 'right',
         marginTop: 10
+    },
+    cardTitle: {
+        textAlign: 'left',
+        paddingBottom: 20
     },
     paperChangePassword: {
         marginTop: 10,
