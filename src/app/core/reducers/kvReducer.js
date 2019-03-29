@@ -22,29 +22,29 @@ export default (previousState = {
         case kvAction.ACTION_TYPES.GET_SECRETS:
             return {
                 ...previousState,
-                secrets: kvAction.injectMetaData((action.data || {}).data || {}, action)
+                secrets: (action.data || {}).data || {}
             };
         case kvAction.ACTION_TYPES.LIST_MOUNTS:
             const mounts = (action.data || {}).data || {};
             return {
                 ...previousState,
-                secretsMounts: kvAction.injectMetaData({data: Object.keys(mounts).map(key => {
+                secretsMounts: {data: Object.keys(mounts).map(key => {
                     return {
                         ...mounts[key],
                         name: key
                     };
-                }).filter(mount => mount.type !== 'identity' && mount.type !== 'system')}, action) // Filter out the identity and system mounts.
+                }).filter(mount => mount.type !== 'identity' && mount.type !== 'system')}// Filter out the identity and system mounts.
             };
         // Deprecated?
         case kvAction.ACTION_TYPES.LIST_SECRETS:
             return {
                 ...previousState,
-                secretsPaths: kvAction.injectMetaData((action.data || {}).data || {}, action)
+                secretsPaths: (action.data || {}).data || {}, action
             };
         case kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES:
             return {
                 ...previousState,
-                secretsPaths: kvAction.injectMetaData((action.data || {}).data || {}, action)
+                secretsPaths: (action.data || {}).data || {}
             };
         default:
             return {...previousState};

@@ -33,6 +33,8 @@ import {connect} from 'react-redux';
 import kvAction from 'app/core/actions/kvAction';
 import Button from 'app/core/components/common/Button';
 
+import {createInProgressSelector} from 'app/util/actionStatusSelector';
+
 /**
  * Modal to create or modify a secret.
  */
@@ -81,9 +83,9 @@ class CreateUpdateSecretModal extends Component {
      * @returns {Object}
      */
     static getDerivedStateFromProps(props, state) {
-        const {mode, secrets} = props;
+        const {inProgress, mode, secrets} = props;
         const {loaded} = state;
-        if (mode === 'update' && !loaded && secrets && secrets._meta && !secrets._meta.inProgress) {
+        if (mode === 'update' && !loaded && inProgress === false) {
             // Check if KV engine is version 2, as the resource data is different.
             const isV2 = secrets.data && secrets.metadata && secrets.data && secrets.metadata.version;
             let secretsData;
@@ -91,7 +93,6 @@ class CreateUpdateSecretModal extends Component {
                 secretsData = {...secrets.data};
             } else {
                 secretsData = {...secrets};
-                delete secretsData._meta;
             }
             return {
                 secrets: Object.keys(secretsData).map(key => {
@@ -310,11 +311,11 @@ class CreateUpdateSecretModal extends Component {
      *
      * @private
      * @param {SyntheticMouseEvent} event The event.
+     * @param {string} name The button name.
      */
-    _togglePasswordVisibility(event) {
+    _togglePasswordVisibility(event, name) {
         event.preventDefault();
         const {secrets} = this.state;
-        const {name} = event.target;
         if (name) {
             const nameParts = name.split('-');
             const index = parseInt(nameParts[1], 10);
@@ -486,8 +487,7 @@ class CreateUpdateSecretModal extends Component {
                                             <IconButton
                                                 aria-label='Toggle password visibility'
                                                 className={classes.iconButton}
-                                                name={`toggle-${i}`}
-                                                onClick={this._togglePasswordVisibility}
+                                                onClick={(e) => {this._togglePasswordVisibility(e, `toggle-${i}`);}}
                                             >
                                                 {showPassword ? <VisibilityOffIcon/> : <VisibilityIcon/>}
                                             </IconButton>
@@ -577,8 +577,7 @@ class CreateUpdateSecretModal extends Component {
                         <IconButton
                             aria-label={togglePasswordLabel}
                             className={classes.iconButton}
-                            name={`toggle-${i}`}
-                            onClick={this._togglePasswordVisibility}
+                            onClick={(e) => {this._togglePasswordVisibility(e, `toggle-${i}`);}}
                         >
                             {showPassword ? <VisibilityOffIcon/> : <VisibilityIcon/>}
                         </IconButton>
@@ -669,6 +668,7 @@ CreateUpdateSecretModal.propTypes = {
     classes: PropTypes.object.isRequired,
     saveSecret: PropTypes.func.isRequired,
     error: PropTypes.string,
+    inProgress: PropTypes.bool,
     initialPath: PropTypes.string.isRequired,
     mode: PropTypes.oneOf(['', 'create', 'update']),
     open: PropTypes.bool,
@@ -685,7 +685,9 @@ CreateUpdateSecretModal.propTypes = {
  * @returns {Object}
  */
 const _mapStateToProps = (state) => {
+    const actionsUsed = [kvAction.ACTION_TYPES.GET_SECRETS];
     return {
+        inProgress: createInProgressSelector(actionsUsed)(state.actionStatusReducer),
         ...state.kvReducer
     };
 };

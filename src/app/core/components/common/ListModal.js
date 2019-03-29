@@ -41,7 +41,7 @@ class ListModal extends Component {
                 </DialogTitle>
                 <DialogContent>
                     <Paper className={classes.paper} elevation={2}>
-                        {Object.keys(items).filter(item => item !== '_meta').map((item, index) => {
+                        {Object.keys(items).map((item, index) => {
                             return (
                                 <ListItem dense divider key={index}>
                                     <ListItemText primary={item} secondary={items[item]} />

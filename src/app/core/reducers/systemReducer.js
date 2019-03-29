@@ -19,9 +19,9 @@ export default (previousState = {
 }, action) => {
     switch (action.type) {
         case systemAction.ACTION_TYPES.GET_SELF_CAPABILITIES:
-            return {...previousState, selfCapabilities: systemAction.injectMetaData(action.data || {}, action)};
+            return {...previousState, selfCapabilities: action.data || {}, action};
         case systemAction.ACTION_TYPES.GET_SEAL_STATUS:
-            return {...previousState, sealStatus: systemAction.injectMetaData(action.data || {}, action)};
+            return {...previousState, sealStatus: action.data || {}, action};
         default:
             return {...previousState};
     }
