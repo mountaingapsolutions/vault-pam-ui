@@ -302,19 +302,24 @@ class SecretsList extends Component {
         } else if ((secretsPaths.secrets || []).length > 0) {
             return <List>{
                 (secretsPaths.secrets || []).map((secret, i) => {
-                    const {capabilities, name} = secret;
+                    const {capabilities, data = {}, name} = secret;
                     const currentPath = path ? `${path}/${name}` : name;
                     const url = `/secrets/${mount}/${currentPath}`;
+                    const isWrapped = !!data.wrap_info;
+                    const canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped;
+                    const canUpdate = capabilities.some(capability => capability === 'update' || capability === 'root');
+                    const requiresRequest = capabilities.includes('deny') && !name.endsWith('/') || isWrapped;
+                    const canDelete = capabilities.includes('delete');
                     return <ListItem button component={(props) => <Link to={url} {...props} onClick={event => {
                         event.preventDefault();
                         if (name.includes('/')) {
                             history.push(url);
                             listSecretsAndCapabilities(mount, currentPath, this._getVersionFromMount(mount));
                         } else {
-                            if (capabilities.some(capability => capability === 'update' || capability === 'root')) {
+                            if (canUpdate) {
                                 this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'update');
                                 getSecrets(mount, currentPath, this._getVersionFromMount(mount));
-                            } else if (capabilities.includes('read')) {
+                            } else if (canOpen) {
                                 this._openListModal();
                                 getSecrets(mount, currentPath, this._getVersionFromMount(mount));
                             } else {
@@ -330,8 +335,8 @@ class SecretsList extends Component {
                             }</Avatar>
                         </ListItemAvatar>
                         <ListItemText primary={name}/>
-                        {capabilities.some(capability => capability === 'list' || 'deny') && !name.endsWith('/') && <ListItemSecondaryAction>
-                            <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
+                        <ListItemSecondaryAction>
+                            {requiresRequest && <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
                                 <IconButton aria-label={requestAccessLabel} onClick={() => {
                                     /* eslint-disable no-alert */
                                     window.alert('TODO: Launch request access modal.');
@@ -339,27 +344,23 @@ class SecretsList extends Component {
                                 }}>
                                     <LockIcon/>
                                 </IconButton>
-                            </Tooltip>
-                        </ListItemSecondaryAction>}
-                        {capabilities.includes('read') && !name.endsWith('/') && <ListItemSecondaryAction>
-                            <Tooltip aria-label={openLabel} title={openLabel}>
+                            </Tooltip>}
+                            {canOpen && <Tooltip aria-label={openLabel} title={openLabel}>
                                 <IconButton aria-label={openLabel} onClick={() => {
                                     this._openListModal();
                                     getSecrets(mount, currentPath, this._getVersionFromMount(mount));
                                 }}>
                                     <LockOpenIcon/>
                                 </IconButton>
-                            </Tooltip>
-                        </ListItemSecondaryAction>}
-                        {capabilities.includes('delete') && !name.endsWith('/') && <ListItemSecondaryAction>
-                            <Tooltip aria-label={deleteLabel} title={deleteLabel}>
+                            </Tooltip>}
+                            {canDelete && <Tooltip aria-label={deleteLabel} title={deleteLabel}>
                                 <IconButton aria-label={deleteLabel} onClick={() => this.setState({
                                     deleteSecretConfirmation: name
                                 })}>
                                     <DeleteIcon/>
                                 </IconButton>
-                            </Tooltip>
-                        </ListItemSecondaryAction>}
+                            </Tooltip>}
+                        </ListItemSecondaryAction>
                     </ListItem>;
                 })
             }</List>;
@@ -445,7 +446,6 @@ SecretsList.propTypes = {
 const _mapStateToProps = (state) => {
     const actionsUsed = [kvAction.ACTION_TYPES.LIST_MOUNTS,
         kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES,
-        kvAction.ACTION_TYPES.GET_SECRETS,
         kvAction.ACTION_TYPES.DELETE_SECRETS
     ];
     return {

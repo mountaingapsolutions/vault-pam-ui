@@ -224,25 +224,42 @@ const authenticatedRoutes = require('express').Router()
                     }
                 }, (capErr, capRes, capabilities) => {
                     if (capErr) {
-                        _sendError(capabilitiesUrl, res, error);
-                    } else {
+                        _sendError(capabilitiesUrl, capRes, error);
+                        return;
+                    }
+                    const promises = [];
+                    const secrets = Object.keys(pathsMap)
+                        .filter(key => key !== listingPath) // Exclude the listing path.
+                        .map(key => {
+                            const keySplit = key.split('/');
+                            const lastPath = keySplit[keySplit.length - 1];
+                            const secret = {
+                                name: lastPath === '' ? `${keySplit[keySplit.length - 2]}/` : lastPath,
+                                capabilities: capabilities[key] || []
+                            };
+
+                            const canRead = (capabilities[key] || []).includes('read');
+                            if (canRead && !key.endsWith('/')) {
+                                promises.push(new Promise((secretResolve) => {
+                                    request(_initApiRequest(token, `${apiDomain}/v1/${key}`), (secretErr, secretRes, secretBody) => {
+                                        if (secretBody) {
+                                            secret.data = JSON.parse(secretBody);
+                                        }
+                                        secretResolve();
+                                    });
+                                }));
+                            }
+                            return secret;
+                        });
+                    Promise.all(promises).then(() => {
                         res.json({
                             ...parsedData,
                             data: {
                                 capabilities: capabilities[listingPath] || [], // Add the capabilities of the listing path to the top level of the response data.
-                                secrets: Object.keys(pathsMap)
-                                    .filter(key => key !== listingPath) // Exclude the listing path.
-                                    .map(key => {
-                                        const keySplit = key.split('/');
-                                        const lastPath = keySplit[keySplit.length - 1];
-                                        return {
-                                            name: lastPath === '' ? `${keySplit[keySplit.length - 2]}/` : lastPath,
-                                            capabilities: capabilities[key] || []
-                                        };
-                                    })
+                                secrets
                             }
                         });
-                    }
+                    });
                 });
             } catch (err) {
                 _sendError(url, res, err);
