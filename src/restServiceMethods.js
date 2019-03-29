@@ -190,11 +190,12 @@ const authenticatedRoutes = require('express').Router()
             }
             try {
                 const parsedData = JSON.parse(body);
-                if (response.statusCode !== 200) {
-                    res.status(response.statusCode).json(parsedData);
+                const {statusCode} = response;
+                if (statusCode !== 200 && statusCode !== 404) {
+                    res.status(statusCode).json(parsedData);
                     return;
                 }
-                const paths = parsedData.data.keys.map(key => {
+                const paths = (((parsedData || {}).data || {}).keys || []).map(key => {
                     const getUrlParts = [...urlParts];
                     if (isV2) {
                         getUrlParts.splice(1, 0, key.endsWith('/') ? 'metadata' : 'data');

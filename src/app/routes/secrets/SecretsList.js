@@ -251,7 +251,7 @@ class SecretsList extends Component {
                         })
                     }</Breadcrumbs>
                     {
-                        (secretsPaths.capabilities || []).includes('create') && <React.Fragment>
+                        (secretsPaths.capabilities || []).some(capability => capability === 'create' || capability === 'root') && <React.Fragment>
                             <Fab
                                 aria-label='new'
                                 className={classes.fab}
@@ -311,7 +311,7 @@ class SecretsList extends Component {
                             history.push(url);
                             listSecretsAndCapabilities(mount, currentPath, this._getVersionFromMount(mount));
                         } else {
-                            if (capabilities.includes('update')) {
+                            if (capabilities.some(capability => capability === 'update' || capability === 'root')) {
                                 this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'update');
                                 getSecrets(mount, currentPath, this._getVersionFromMount(mount));
                             } else if (capabilities.includes('read')) {
@@ -330,7 +330,7 @@ class SecretsList extends Component {
                             }</Avatar>
                         </ListItemAvatar>
                         <ListItemText primary={name}/>
-                        {capabilities.includes('deny') && !name.endsWith('/') && <ListItemSecondaryAction>
+                        {capabilities.some(capability => capability === 'list' || 'deny') && !name.endsWith('/') && <ListItemSecondaryAction>
                             <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
                                 <IconButton aria-label={requestAccessLabel} onClick={() => {
                                     /* eslint-disable no-alert */
