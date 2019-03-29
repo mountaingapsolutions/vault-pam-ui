@@ -59,7 +59,7 @@ const findAll = () => {
  * @returns {Object}
  */
 const findById = (id) => {
-    return User.findById(id).then(user => {
+    return User.findByPk(id).then(user => {
         return user;
     });
 };

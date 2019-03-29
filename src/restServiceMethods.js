@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 const chalk = require('chalk');
 const request = require('request');
+const User = require('./services/controllers/User');
 
 /**
  * Pass-through to the designated Vault server API endpoint.
@@ -29,6 +30,54 @@ const api = (req, res) => {
             .pipe(res);
     }
 };
+
+/**
+ * All user related routes.
+ */
+/* eslint-disable new-cap */
+const userService = require('express').Router()
+/* eslint-enable new-cap */
+    .get('/id/:id', (req, res) => {
+        const id = req.params.id;
+        User.findById(id).then(user => {
+            res.json(user);
+        });
+    })
+    .get('/uid/:uid', (req, res) => {
+        const uid = req.params.uid;
+        User.findByUid(uid).then(user => {
+            res.json(user);
+        });
+    })
+    .post('/create', (req, res) => {
+        const userParam = {
+            uid: req.body.uid,
+            firstName: req.body.firstName,
+            lastName: req.body.lastName,
+            email: req.body.email
+        };
+        User.create(...userParam).then(user => {
+            res.json(user);
+        });
+    })
+    .put('/update', (req, res) => {
+        const userParam = {
+            uid: req.body.uid,
+            firstName: req.body.firstName,
+            lastName: req.body.lastName,
+            email: req.body.email
+        };
+        User.update(...userParam).then(user => {
+            res.json(user);
+        });
+    })
+    .delete('/delete', (req, res) => {
+        const uid = req.params.uid;
+        User.deleteByUid(uid).then(user => {
+            res.json(user);
+        });
+    })
+    ;
 
 /**
  * Pass-through to Vault server as the IdP to authenticate. If successful, then a session will be stored.
@@ -73,7 +122,6 @@ const login = (req, res) => {
 
                 const {client_token: clientToken, entity_id: uid} = body.auth || {};
                 if (uid) {
-                    const User = require('./services/controllers/User');
                     User.findOrCreate(uid).then(user => {
                         console.info(`User UID logged in: ${user.uid}`);
                     });
@@ -368,5 +416,6 @@ module.exports = {
     api,
     login,
     validate,
-    authenticatedRoutes
+    authenticatedRoutes,
+    userService
 };
