@@ -74,8 +74,9 @@ const login = (req, res) => {
                 const {client_token: clientToken, entity_id: uid} = body.auth || {};
                 if (uid) {
                     const User = require('./services/controllers/User');
-                    const user = User.findOrCreate(uid);
-                    console.info(`User logged in: ${user}`);
+                    User.findOrCreate(uid).then(user => {
+                        console.info(`User UID logged in: ${user.uid}`);
+                    });
                 }
 
                 req.session.vaultToken = clientToken;
