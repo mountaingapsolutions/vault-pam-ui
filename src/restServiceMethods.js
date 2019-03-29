@@ -70,7 +70,14 @@ const login = (req, res) => {
                     res.status(response.statusCode).json(body);
                     return;
                 }
-                const {client_token: clientToken} = body.auth || {};
+
+                const {client_token: clientToken, entity_id: uid} = body.auth || {};
+                if (uid) {
+                    const User = require('./services/controllers/User');
+                    const user = User.findOrCreate(uid);
+                    console.info(`User logged in: ${user}`);
+                }
+
                 req.session.vaultToken = clientToken;
                 req.session.vaultDomain = parsedDomain;
                 _sendTokenValidationResponse(parsedDomain, clientToken, res);

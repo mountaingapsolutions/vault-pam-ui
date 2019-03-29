@@ -12,6 +12,7 @@
     "express-session": "^1.15.6",
     "hsts": "^2.2.0",
     "pg": "^7.9.0",
+    "pg-hstore": "^2.3.2",
     "request": "^2.88.0",
     "sequelize": "^5.1.1"
   },
@@ -80,7 +81,7 @@
     "startprod": "node productionServer",
     "prebuild": "rm -rf dist && rm -f vault-pam-ui.zip",
     "build": "GENERATE_SOURCEMAP=false node scripts/build.js",
-    "postbuild": "mkdir dist && mv build dist/build && cp -R src/db dist && cp package.json dist/package.json && cp src/restServiceMethods.js dist/restServiceMethods.js && cp src/productionServer.js dist/productionServer.js && cp robots.txt dist/robots.txt && node scripts/dist.js",
+    "postbuild": "mkdir dist && mv build dist/build && cp -R src/services dist && cp package.json dist/package.json && cp src/restServiceMethods.js dist/restServiceMethods.js && cp src/productionServer.js dist/productionServer.js && cp robots.txt dist/robots.txt && node scripts/dist.js",
     "lint": "eslint --ext .js,.jsx --format table .",
     "test": "node scripts/test.js"
   },

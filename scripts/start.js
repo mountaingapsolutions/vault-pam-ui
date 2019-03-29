@@ -107,7 +107,7 @@ checkBrowsers(paths.appPath, isInteractive)
             console.log(chalk.cyan('Starting the development server...\n'));
             openBrowser(urls.localUrlForBrowser);
 
-            const connection = require('../src/db/connection');
+            const connection = require('../src/services/db/connection');
             connection.start()
                 .then(() => {
                     console.info('DB connection successful. ᕕ( ᐛ )ᕗ\r\n');

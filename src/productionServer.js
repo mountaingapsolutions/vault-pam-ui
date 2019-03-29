@@ -73,7 +73,7 @@ express().use(compression())
         console.log(`Server is now listening on port ${chalk.yellow(port)}...`);
 
         // Database startup.
-        const connection = require('./db/connection');
+        const connection = require('./services/db/connection');
         connection.start()
             .then(() => {
                 console.info('DB connection successful. ᕕ( ᐛ )ᕗ\r\n');

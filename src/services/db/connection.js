@@ -1,5 +1,6 @@
 let promise;
 let sequelize = null;
+let dataModel = {};
 
 const {PAM_DATABASE, PAM_DATABASE_USER, PAM_DATABASE_PASSWORD, PAM_DATABASE_URL, PAM_DATABASE_PORT} = process.env;
 if (PAM_DATABASE && PAM_DATABASE_USER && PAM_DATABASE_PASSWORD && PAM_DATABASE_URL && PAM_DATABASE_PORT) {
@@ -19,9 +20,11 @@ if (PAM_DATABASE && PAM_DATABASE_USER && PAM_DATABASE_PASSWORD && PAM_DATABASE_U
             }
         );
         console.info('Initializing models...');
-        Object.keys(models).forEach(key => {
+        Object.keys(models).map(key => {
             console.info(`Initializing ${key}...`);
-            models[key](sequelize);
+            const model = models[key](sequelize);
+            dataModel[key] = model;
+            return model;
         });
         sequelize.sync({
             logging: true
@@ -38,6 +41,12 @@ const start = () => {
     return promise;
 };
 
+const getModel = (modelName) => {
+    console.info(`Fetching data model ${modelName}`);
+    return dataModel[modelName];
+};
+
 module.exports = {
-    start
+    start,
+    getModel
 };
