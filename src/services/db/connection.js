@@ -32,7 +32,7 @@ if (PAM_DATABASE && PAM_DATABASE_USER && PAM_DATABASE_PASSWORD && PAM_DATABASE_U
     });
 } else {
     promise = new Promise((resolve, reject) => {
-        reject('Required database variables have not been set. Skipping database connection... (╯°□°)╯︵ ┻━┻');
+        reject('Required database variables have not been set. (╯°□°)╯︵ ┻━┻');
     });
 }
 

@@ -114,6 +114,7 @@ checkBrowsers(paths.appPath, isInteractive)
                 })
                 .catch((error) => {
                     console.error(error);
+                    process.exit(1);
                 });
 
             return null;

@@ -15,6 +15,8 @@ const {api, validate, login, authenticatedRoutes} = require('./restServiceMethod
 // Overcome the DEPTH_ZERO_SELF_SIGNED_CERT error.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
+require('dotenv').config();
+
 const useHsts = process.env.USE_HSTS !== null && process.env.USE_HSTS !== undefined ? !!process.env.USE_HSTS && process.env.USE_HSTS !== 'false' : true;
 console.log(`Starting server on port ${chalk.yellow(port)}...`);
 
@@ -72,17 +74,18 @@ express().use(compression())
     .listen(port, () => {
         console.log(`Server is now listening on port ${chalk.yellow(port)}...`);
 
+        if (!process.env.SESSION_SECRET) {
+            console.warn(`The environment variable ${chalk.yellow.bold('SESSION_SECRET')} was not set. Defaulting to the classic xkcd password...`);
+        }
+
         // Database startup.
         const connection = require('./services/db/connection');
         connection.start()
             .then(() => {
                 console.info('DB connection successful. ᕕ( ᐛ )ᕗ\r\n');
-
-                if (!process.env.SESSION_SECRET) {
-                    console.warn(`The environment variable ${chalk.yellow.bold('SESSION_SECRET')} was not set. Defaulting to the classic xkcd password...`);
-                }
             })
             .catch((error) => {
                 console.error(error);
+                process.exit(1);
             });
     });
