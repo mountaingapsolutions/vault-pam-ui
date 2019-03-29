@@ -45,7 +45,7 @@ express().use(compression())
     .use(cookieParser())
     .use(session({
         key: 'entity_id',
-        secret: process.env.SESSION_SECRET,
+        secret: process.env.SESSION_SECRET || 'correct horse battery staple',
         resave: false,
         saveUninitialized: false,
         cookie: {
@@ -77,6 +77,10 @@ express().use(compression())
         connection.start()
             .then(() => {
                 console.info('DB connection successful. ᕕ( ᐛ )ᕗ\r\n');
+
+                if (!process.env.SESSION_SECRET) {
+                    console.warn(`The environment variable ${chalk.yellow.bold('SESSION_SECRET')} was not set. Defaulting to the classic xkcd password...`);
+                }
             })
             .catch((error) => {
                 console.error(error);

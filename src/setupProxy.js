@@ -7,7 +7,7 @@ module.exports = (app) => {
     app.use(cookieParser());
     app.use(session({
         key: 'entity_id',
-        secret: process.env.SESSION_SECRET,
+        secret: process.env.SESSION_SECRET || 'correct horse battery staple',
         resave: false,
         saveUninitialized: false,
         cookie: {
