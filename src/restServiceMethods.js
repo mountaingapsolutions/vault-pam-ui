@@ -76,8 +76,7 @@ const userService = require('express').Router()
         User.deleteByUid(uid).then(user => {
             res.json(user);
         });
-    })
-    ;
+    });
 
 /**
  * Pass-through to Vault server as the IdP to authenticate. If successful, then a session will be stored.
@@ -96,9 +95,7 @@ const login = (req, res) => {
     }
     // Method 1: authentication through token.
     else if (token) {
-        req.session.vaultToken = token;
-        req.session.vaultDomain = parsedDomain;
-        _sendTokenValidationResponse(parsedDomain, token, res);
+        _sendTokenValidationResponse(parsedDomain, token, req, res);
     }
     // Method 2: authentication through username and password. Upon success, it will still validate the token from method 1.
     else if (username && password) {
@@ -120,16 +117,8 @@ const login = (req, res) => {
                     return;
                 }
 
-                const {client_token: clientToken, entity_id: uid} = body.auth || {};
-                if (uid) {
-                    User.findOrCreate(uid).then(user => {
-                        console.info(`User UID logged in: ${user.uid}`);
-                    });
-                }
-
-                req.session.vaultToken = clientToken;
-                req.session.vaultDomain = parsedDomain;
-                _sendTokenValidationResponse(parsedDomain, clientToken, res);
+                const {client_token: clientToken} = body.auth || {};
+                _sendTokenValidationResponse(parsedDomain, clientToken, req, res);
             } catch (err) {
                 _sendError(apiUrl, res, err);
             }
@@ -162,17 +151,12 @@ const validate = (req, res) => {
                 _sendVaultDomainError(url, res, error);
                 return;
             }
-            try {
-                const sealStatusResponse = JSON.parse(body);
-                const responseKeys = Object.keys(sealStatusResponse);
-                // Validation approach to checking for a proper Vault server is to check that the response contains the required sealed, version, and cluster_name keys.
-                if (responseKeys.includes('sealed') && responseKeys.includes('version') && responseKeys.includes('cluster_name')) {
-                    res.json(sealStatusResponse);
-                } else {
-                    _sendVaultDomainError(url, res, sealStatusResponse);
-                }
-            } catch (err) {
-                _sendVaultDomainError(url, res, err);
+            const responseKeys = Object.keys(body);
+            // Validation approach to checking for a proper Vault server is to check that the response contains the required sealed, version, and cluster_name keys.
+            if (responseKeys.includes('sealed') && responseKeys.includes('version') && responseKeys.includes('cluster_name')) {
+                res.json(body);
+            } else {
+                _sendVaultDomainError(url, res, body);
             }
         });
     }
@@ -191,11 +175,13 @@ const authenticatedRoutes = require('express').Router()
         if (!domain || !token) {
             res.status(401).json({errors: ['Unauthorized.']});
         } else {
-            const {vaultToken: sessionToken} = req.session;
+            const {token: sessionToken} = req.session.user || {};
 
             // Always make sure the domain is normalized.
             const apiDomain = domain.endsWith('/') ? domain.slice(0, -1) : domain;
-            req.session.vaultDomain = apiDomain;
+            _setSessionData(req, {
+                domain: apiDomain
+            });
 
             // Token mismatch, so need to verify through Vault again.
             if (token !== sessionToken) {
@@ -206,12 +192,15 @@ const authenticatedRoutes = require('express').Router()
                         _sendError(req.originalUrl, res, error);
                         return;
                     }
-                    const parsedData = JSON.parse(body);
                     if (response.statusCode !== 200) {
-                        res.status(response.statusCode).json(parsedData);
+                        res.status(response.statusCode).json(body);
                         return;
                     }
-                    req.session.vaultToken = (parsedData.data || {}).id;
+                    const {entity_id: entityId, id: clientToken} = body.data || {};
+                    _setSessionData(req, {
+                        token: clientToken,
+                        entityId
+                    });
                     next();
                 });
             } else {
@@ -220,6 +209,9 @@ const authenticatedRoutes = require('express').Router()
             }
         }
     })
+    /**
+     * Fetches secret lists and data. TODO: Clean this up and refactor after the requirements are finalized.
+     */
     .get('/secrets/*', (req, res) => {
         const {'x-vault-token': token} = req.headers;
         const {params = {}, query, url} = req;
@@ -229,7 +221,7 @@ const authenticatedRoutes = require('express').Router()
         if (isV2) {
             listUrlParts.splice(1, 0, 'metadata');
         }
-        const apiDomain = req.session.vaultDomain;
+        const apiDomain = req.session.user.domain;
         const apiUrl = `${apiDomain}/v1/${listUrlParts.join('/')}?list=true`;
         console.log(`Listing secrets from ${_yellowBold(apiUrl)}.`);
         request(_initApiRequest(token, apiUrl), (error, response, body) => {
@@ -238,13 +230,12 @@ const authenticatedRoutes = require('express').Router()
                 return;
             }
             try {
-                const parsedData = JSON.parse(body);
                 const {statusCode} = response;
                 if (statusCode !== 200 && statusCode !== 404) {
-                    res.status(statusCode).json(parsedData);
+                    res.status(statusCode).json(body);
                     return;
                 }
-                const paths = (((parsedData || {}).data || {}).keys || []).map(key => {
+                const paths = (((body || {}).data || {}).keys || []).map(key => {
                     const getUrlParts = [...urlParts];
                     if (isV2) {
                         getUrlParts.splice(1, 0, key.endsWith('/') ? 'metadata' : 'data');
@@ -288,20 +279,69 @@ const authenticatedRoutes = require('express').Router()
 
                             const canRead = (capabilities[key] || []).includes('read');
                             if (canRead && !key.endsWith('/')) {
+                                const {wrapInfoMap = {}} = req.session.user;
                                 promises.push(new Promise((secretResolve) => {
-                                    request(_initApiRequest(token, `${apiDomain}/v1/${key}`), (secretErr, secretRes, secretBody) => {
-                                        if (secretBody) {
-                                            secret.data = JSON.parse(secretBody);
-                                        }
-                                        secretResolve();
-                                    });
+                                    const getSecretApiUrl = `${apiDomain}/v1/${key}`;
+                                    if (!wrapInfoMap[getSecretApiUrl]) {
+                                        request(_initApiRequest(token, getSecretApiUrl), (secretErr, secretRes, secretBody) => {
+                                            if (secretBody) {
+                                                const {wrap_info: wrapInfo} = secretBody;
+                                                // If the secret is wrapped (from Control Groups), cache it in the user's session.
+                                                if (wrapInfo) {
+                                                    request({
+                                                        ..._initApiRequest(token, `${apiDomain}/v1/sys/control-group/request`),
+                                                        method: 'POST',
+                                                        json: {
+                                                            accessor: wrapInfo.accessor
+                                                        }
+                                                    }, (reqReq, reqRes, reqBody) => {
+                                                        if (reqBody) {
+                                                            wrapInfoMap[getSecretApiUrl] = {
+                                                                ...secretBody,
+                                                                request_info: reqBody.data
+                                                            };
+                                                            secret.data = wrapInfoMap[getSecretApiUrl];
+                                                            _setSessionData(req, {
+                                                                wrapInfoMap
+                                                            });
+                                                        }
+                                                        secretResolve();
+                                                    });
+                                                } else {
+                                                    secretResolve();
+                                                }
+                                            }
+                                        });
+                                    } else {
+                                        const cachedWrapInfo = wrapInfoMap[getSecretApiUrl];
+                                        secret.data = cachedWrapInfo;
+                                        request({
+                                            ..._initApiRequest(token, `${apiDomain}/v1/sys/control-group/request`),
+                                            method: 'POST',
+                                            json: {
+                                                accessor: cachedWrapInfo.wrap_info.accessor
+                                            }
+                                        }, (reqReq, reqRes, reqBody) => {
+                                            if (reqBody) {
+                                                wrapInfoMap[getSecretApiUrl] = {
+                                                    ...cachedWrapInfo,
+                                                    request_info: reqBody.data
+                                                };
+                                                secret.data = wrapInfoMap[getSecretApiUrl];
+                                                _setSessionData(req, {
+                                                    wrapInfoMap
+                                                });
+                                            }
+                                            secretResolve();
+                                        });
+                                    }
                                 }));
                             }
                             return secret;
                         });
                     Promise.all(promises).then(() => {
                         res.json({
-                            ...parsedData,
+                            ...body,
                             data: {
                                 capabilities: capabilities[listingPath] || [], // Add the capabilities of the listing path to the top level of the response data.
                                 secrets
@@ -375,7 +415,8 @@ const _initApiRequest = (token, apiUrl) => {
         headers: {
             'x-vault-token': token
         },
-        uri: apiUrl
+        uri: apiUrl,
+        json: true
     };
 };
 
@@ -385,9 +426,10 @@ const _initApiRequest = (token, apiUrl) => {
  * @private
  * @param {string} domain The valid Vault domain.
  * @param {string} token The token to validate.
+ * @param {Object} req The HTTP request object.
  * @param {Object} res The HTTP response object.
  */
-const _sendTokenValidationResponse = (domain, token, res) => {
+const _sendTokenValidationResponse = (domain, token, req, res) => {
     const apiUrl = `${domain}/v1/auth/token/lookup-self`;
     request(_initApiRequest(token, apiUrl), (error, response, body) => {
         if (error) {
@@ -395,12 +437,38 @@ const _sendTokenValidationResponse = (domain, token, res) => {
             return;
         }
         try {
-            res.status(response.statusCode).json(JSON.parse(body));
+            const {entity_id: entityId} = body.data || {};
+            if (entityId) {
+                User.findOrCreate(entityId).then(user => {
+                    console.log(`User UID logged in: ${user.uid}`);
+                });
+            }
+            _setSessionData(req, {
+                domain,
+                token,
+                entityId
+            });
+            res.status(response.statusCode).json(body);
         } catch (err) {
             _sendVaultDomainError(apiUrl, res, err);
         }
     });
 };
+
+/**
+ * Sets session data onto the request.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @param {Object} sessionUserData The session user data to set.
+ */
+const _setSessionData = (req, sessionUserData) => {
+    req.session.user = {
+        ...req.session.user,
+        ...sessionUserData
+    };
+};
+
 /**
  * Outputs the input value as yellow and bold.
  *

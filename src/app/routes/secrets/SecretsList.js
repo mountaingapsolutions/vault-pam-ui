@@ -309,6 +309,7 @@ class SecretsList extends Component {
                     const canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped;
                     const canUpdate = capabilities.some(capability => capability === 'update' || capability === 'root');
                     const requiresRequest = capabilities.includes('deny') && !name.endsWith('/') || isWrapped;
+                    const isApproved = isWrapped && (data.request_info || {}).approved;
                     const canDelete = capabilities.includes('delete');
                     return <ListItem button component={(props) => <Link to={url} {...props} onClick={event => {
                         event.preventDefault();
@@ -322,6 +323,12 @@ class SecretsList extends Component {
                             } else if (canOpen) {
                                 this._openListModal();
                                 getSecrets(mount, currentPath, this._getVersionFromMount(mount));
+                            } else if (isApproved) {
+                                /* eslint-disable no-alert */
+                                if (window.confirm(`You have been granted access to ${name}. Be careful, you can only access this data once. If you need access again in the future you will need to get authorized again.`)) {
+                                    window.alert('TODO: Unwrap secret and open modal.');
+                                }
+                                /* eslint-enable no-alert */
                             } else {
                                 /* eslint-disable no-alert */
                                 window.alert('TODO: Launch request access modal.');
@@ -334,9 +341,9 @@ class SecretsList extends Component {
                                 name.endsWith('/') ? <FolderIcon/> : <FileCopyIcon/>
                             }</Avatar>
                         </ListItemAvatar>
-                        <ListItemText primary={name}/>
+                        <ListItemText primary={name} secondary={requiresRequest ? `Request type: ${isWrapped ? `Control Groups (approved: ${isApproved})` : 'Default'}` : ''}/>
                         <ListItemSecondaryAction>
-                            {requiresRequest && <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
+                            {requiresRequest && !isApproved && <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
                                 <IconButton aria-label={requestAccessLabel} onClick={() => {
                                     /* eslint-disable no-alert */
                                     window.alert('TODO: Launch request access modal.');
@@ -349,6 +356,17 @@ class SecretsList extends Component {
                                 <IconButton aria-label={openLabel} onClick={() => {
                                     this._openListModal();
                                     getSecrets(mount, currentPath, this._getVersionFromMount(mount));
+                                }}>
+                                    <LockOpenIcon/>
+                                </IconButton>
+                            </Tooltip>}
+                            {isApproved && <Tooltip aria-label={openLabel} title={openLabel}>
+                                <IconButton aria-label={openLabel} onClick={() => {
+                                    /* eslint-disable no-alert */
+                                    if (window.confirm(`You have been granted access to ${name}. Be careful, you can only access this data once. If you need access again in the future you will need to get authorized again.`)) {
+                                        window.alert('TODO: Unwrap secret and open modal.');
+                                    }
+                                    /* eslint-enable no-alert */
                                 }}>
                                     <LockOpenIcon/>
                                 </IconButton>
