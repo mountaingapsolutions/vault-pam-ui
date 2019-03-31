@@ -144,7 +144,10 @@ const validate = (req, res) => {
     } else {
         const url = `${domain.endsWith('/') ? domain.slice(0, -1) : domain}/v1/sys/seal-status`;
         console.log(`Validating ${_yellowBold(url)}.`);
-        request(url, (error, response, body) => {
+        request({
+            url,
+            json: true
+        }, (error, response, body) => {
             if (error) {
                 console.log(`Received error from ${url}:`);
                 console.error(error);
