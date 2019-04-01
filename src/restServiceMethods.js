@@ -37,6 +37,10 @@ const api = (req, res) => {
 /* eslint-disable new-cap */
 const userService = require('express').Router()
 /* eslint-enable new-cap */
+    .use((req, res, next) => {
+        console.log('User service was called: ', Date.now());
+        next();
+    })
     .get('/id/:id', (req, res) => {
         const id = req.params.id;
         User.findById(id).then(user => {
@@ -73,8 +77,8 @@ const userService = require('express').Router()
     })
     .delete('/delete', (req, res) => {
         const uid = req.params.uid;
-        User.deleteByUid(uid).then(user => {
-            res.json(user);
+        User.deleteByUid(uid).then(status => {
+            res.json(status);
         });
     });
 
@@ -212,6 +216,7 @@ const authenticatedRoutes = require('express').Router()
             }
         }
     })
+    .use('/user', userService)
     /**
      * Fetches secret lists and data. TODO: Clean this up and refactor after the requirements are finalized.
      */

@@ -10,7 +10,7 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const hsts = require('hsts');
-const {api, validate, login, authenticatedRoutes, userService} = require('./restServiceMethods');
+const {api, validate, login, authenticatedRoutes} = require('./restServiceMethods');
 
 // Overcome the DEPTH_ZERO_SELF_SIGNED_CERT error.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -68,7 +68,6 @@ express().use(compression())
     .get('/validate', validate)
     .post('/login', login)
     .use('/rest', authenticatedRoutes)
-    .use('/user', userService)
     .get('/*', (req, res) => {
         res.sendFile(path.join(__dirname, 'build', 'index.html'));
     })

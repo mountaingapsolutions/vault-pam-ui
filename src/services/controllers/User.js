@@ -105,7 +105,7 @@ const deleteByUid = (uid) => {
     return User.destroy({
         where: {uid}
     }).then(() => {
-        return {status: 'ok'};
+        return {status: 'ok', uid};
     });
 };
 
