@@ -399,7 +399,7 @@ const _sendTokenValidationResponse = (domain, token, req, res) => {
             const {entity_id: entityId} = body.data || {};
             if (entityId) {
                 User.findOrCreate(entityId).then(user => {
-                    console.log(`User UID logged in: ${user.uid}`);
+                    console.log(`Entity ID logged in: ${user.entityId}`);
                 });
             }
             _setSessionData(req, {

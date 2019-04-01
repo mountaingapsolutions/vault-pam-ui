@@ -6,11 +6,11 @@ module.exports = (sequelize) => {
             primaryKey: true,
             autoIncrement: true
         },
-        requesterUid: {
+        requesterEntityId: {
             type: Sequelize.STRING,
             allowNull: false
         },
-        requesteeUid: {
+        requesteeEntityId: {
             type: Sequelize.STRING,
             allowNull: false
         },

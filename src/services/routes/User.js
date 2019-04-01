@@ -13,15 +13,15 @@ const UserService = require('express').Router()
             res.json(user);
         });
     })
-    .get('/uid/:uid', (req, res) => {
-        const uid = req.params.uid;
-        UserController.findByUid(uid).then(user => {
+    .get('/entityId/:entityId', (req, res) => {
+        const entityId = req.params.entityId;
+        UserController.findByEntityId(entityId).then(user => {
             res.json(user);
         });
     })
     .post('/create', (req, res) => {
         const userParam = {
-            uid: req.body.uid,
+            entityId: req.body.entityId,
             firstName: req.body.firstName,
             lastName: req.body.lastName,
             email: req.body.email
@@ -32,7 +32,7 @@ const UserService = require('express').Router()
     })
     .put('/update', (req, res) => {
         const userParam = {
-            uid: req.body.uid,
+            entityId: req.body.entityId,
             firstName: req.body.firstName,
             lastName: req.body.lastName,
             email: req.body.email
@@ -42,8 +42,8 @@ const UserService = require('express').Router()
         });
     })
     .delete('/delete', (req, res) => {
-        const uid = req.params.uid;
-        UserController.deleteByUid(uid).then(status => {
+        const entityId = req.params.entityId;
+        UserController.deleteByEntityId(entityId).then(status => {
             res.json(status);
         });
     });

@@ -13,22 +13,22 @@ const RequestService = require('express').Router()
             res.json(request);
         });
     })
-    .get('/requester/:uid', (req, res) => {
-        const uid = req.params.uid;
-        RequestController.findAllByRequester(uid).then(requests => {
+    .get('/requester/:entityId', (req, res) => {
+        const entityId = req.params.entityId;
+        RequestController.findAllByRequester(entityId).then(requests => {
             res.json(requests);
         });
     })
-    .get('/requestee/:uid', (req, res) => {
-        const uid = req.params.uid;
-        RequestController.findAllByRequestee(uid).then(requests => {
+    .get('/requestee/:entityId', (req, res) => {
+        const entityId = req.params.entityId;
+        RequestController.findAllByRequestee(entityId).then(requests => {
             res.json(requests);
         });
     })
     .post('/create', (req, res) => {
         const params = {
-            requesterUid: req.body.requesterUid,
-            requesteeUid: req.body.requesteeUid,
+            requesterEntityId: req.body.requesterEntityId,
+            requesteeEntityId: req.body.requesteeEntityId,
             requestData: req.body.requestData,
             type: req.body.type,
             status: req.body.status,

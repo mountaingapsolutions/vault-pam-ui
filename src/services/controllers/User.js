@@ -4,15 +4,15 @@ const User = connection.getModel('User');
 /**
  * Create a User.
  *
- * @param {string} uid The UID.
+ * @param {string} entityId The entity id.
  * @param {string} firstName The first name.
  * @param {string} lastName The last name.
  * @param {string} email The email.
  * @returns {Object}
  */
-const create = (uid, firstName, lastName, email) => {
+const create = (entityId, firstName, lastName, email) => {
     return User.create({
-        uid,
+        entityId,
         firstName,
         lastName,
         email
@@ -24,18 +24,18 @@ const create = (uid, firstName, lastName, email) => {
 /**
  * Find or create a User.
  *
- * @param {string} uid The UID.
+ * @param {string} entityId The entity id.
  * @param {string} firstName The first name.
  * @param {string} lastName The last name.
  * @param {string} email The email.
  * @returns {Object}
  */
-const findOrCreate = (uid, firstName = undefined, lastName = undefined, email = undefined) => {
-    return findByUid(uid).then(user => {
+const findOrCreate = (entityId, firstName = undefined, lastName = undefined, email = undefined) => {
+    return findByUid(entityId).then(user => {
         if (user) {
             return user;
         } else {
-            return create(uid, firstName, lastName, email);
+            return create(entityId, firstName, lastName, email);
         }
     });
 };
@@ -65,14 +65,14 @@ const findById = (id) => {
 };
 
 /**
- * Find a User by Uid.
+ * Find a User by entity id.
  *
- * @param {string} uid The user db id.
+ * @param {string} entityId The entity id.
  * @returns {Object}
  */
-const findByUid = (uid) => {
+const findByEntityId = (entityId) => {
     return User.findOne({
-        where: {uid}
+        where: {entityId}
     }).then(user => {
         return user;
     });
@@ -81,31 +81,31 @@ const findByUid = (uid) => {
 /**
  * Update a User.
  *
- * @param {string} uid The UID.
+ * @param {string} entityId The entity id.
  * @param {string} firstName The first name.
  * @param {string} lastName The last name.
  * @param {string} email The email.
  * @returns {Object}
  */
-const update = (uid, firstName, lastName, email) => {
+const update = (entityId, firstName, lastName, email) => {
     return User.update({firstName, lastName, email},
-        {where: {uid}}
+        {where: {entityId}}
     ).then((user) => {
         return user;
     });
 };
 
 /**
- * Delete a User by Id.
+ * Delete a User by entity id.
  *
- * @param {string} uid The UID.
+ * @param {string} entityId The entity id.
  * @returns {Object}
  */
-const deleteByUid = (uid) => {
+const deleteByEntityId = (entityId) => {
     return User.destroy({
-        where: {uid}
+        where: {entityId}
     }).then(() => {
-        return {status: 'ok', uid};
+        return {status: 'ok', entityId};
     });
 };
 
@@ -114,7 +114,7 @@ module.exports = {
     findAll,
     findOrCreate,
     findById,
-    findByUid,
+    findByEntityId,
     update,
-    deleteByUid
+    deleteByEntityId
 };

@@ -6,7 +6,7 @@ module.exports = (sequelize) => {
             primaryKey: true,
             autoIncrement: true
         },
-        uid: {
+        entityId: {
             type: Sequelize.STRING,
             allowNull: false
         },
