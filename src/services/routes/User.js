@@ -1,4 +1,4 @@
-const UserController = require('../../../services/controllers/User');
+const UserController = require('../controllers/User');
 
 /* eslint-disable new-cap */
 const UserService = require('express').Router()

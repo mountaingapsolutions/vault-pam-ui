@@ -1,4 +1,4 @@
-const RequestController = require('../../../services/controllers/Request');
+const RequestController = require('../controllers/Request');
 
 /* eslint-disable new-cap */
 const RequestService = require('express').Router()

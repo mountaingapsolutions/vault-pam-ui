@@ -2,7 +2,7 @@
 const chalk = require('chalk');
 const request = require('request');
 const User = require('./services/controllers/User');
-const ServiceRoutes = require('./app/routes/services');
+const ServiceRoutes = require('./services/routes');
 
 /**
  * Pass-through to the designated Vault server API endpoint.
