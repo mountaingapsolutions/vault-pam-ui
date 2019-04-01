@@ -31,7 +31,7 @@ const create = (entityId, firstName, lastName, email) => {
  * @returns {Object}
  */
 const findOrCreate = (entityId, firstName = undefined, lastName = undefined, email = undefined) => {
-    return findByUid(entityId).then(user => {
+    return findByEntityId(entityId).then(user => {
         if (user) {
             return user;
         } else {
