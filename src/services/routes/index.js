@@ -4,12 +4,9 @@ const request = require('request');
 const User = require('services/controllers/User');
 const controlGroupService = require('services/routes/controlGroupService');
 const secretsService = require('services/routes/secretsService');
-const UserService = require('services/routes/User');
-const RequestService = require('services/routes/Request');
+const userService = require('services/routes/userService');
+const requestService = require('services/routes/requestService');
 const {initApiRequest, setSessionData} = require('services/utils');
-
-console.warn('UserService: ', UserService);
-console.warn('RequestService: ', RequestService);
 
 /**
  * Pass-through to the designated Vault server API endpoint.
@@ -173,8 +170,8 @@ const authenticatedRoutes = require('express').Router()
             }
         }
     })
-    .use('/user', UserService)
-    .use('/request', RequestService)
+    .use('/user', userService)
+    .use('/request', requestService)
     .use('/control-group', controlGroupService)
     .use('/secrets', secretsService)
     .use((req, res) => {
