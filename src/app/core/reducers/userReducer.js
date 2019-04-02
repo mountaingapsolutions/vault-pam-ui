@@ -15,7 +15,11 @@ import Constants from 'app/util/Constants';
  * @returns {Object} The updated state.
  */
 export default (previousState = {
-    user: {},
+    user: {
+        Name: Constants.DEFAULT_EMPTY_FIELD_VALUE,
+        Email: Constants.DEFAULT_EMPTY_FIELD_VALUE,
+        Engine: Constants.DEFAULT_EMPTY_FIELD_VALUE
+    },
     users: []
 }, action) => {
     switch (action.type) {
