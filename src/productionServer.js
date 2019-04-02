@@ -10,12 +10,17 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const hsts = require('hsts');
-const {api, validate, login, authenticatedRoutes} = require('./restServiceMethods');
+
+// Import any environment variables.
+require('dotenv').config();
+
+// Add the root project directory to the app module search path:
+require('app-module-path').addPath(path.join(__dirname));
+
+const {api, validate, login, authenticatedRoutes} = require('services/routes');
 
 // Overcome the DEPTH_ZERO_SELF_SIGNED_CERT error.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
-require('dotenv').config();
 
 const useHsts = process.env.USE_HSTS !== null && process.env.USE_HSTS !== undefined ? !!process.env.USE_HSTS && process.env.USE_HSTS !== 'false' : true;
 console.log(`Starting server on port ${chalk.yellow(port)}...`);

@@ -12,8 +12,13 @@ process.on('unhandledRejection', err => {
     throw err;
 });
 
+// Add the root project directory to the app module search path:
+const path = require('path');
+require('app-module-path').addPath(path.join(__dirname, '..'));
+require('app-module-path').addPath(path.join(__dirname, '..', 'src'));
+
 // Ensure environment variables are read.
-require('../config/env');
+require('config/env');
 
 
 const fs = require('fs');
@@ -29,9 +34,9 @@ const {
     prepareUrls,
 } = require('react-dev-utils/WebpackDevServerUtils');
 const openBrowser = require('react-dev-utils/openBrowser');
-const paths = require('../config/paths');
-const configFactory = require('../config/webpack.config');
-const createDevServerConfig = require('../config/webpackDevServer.config');
+const paths = require('config/paths');
+const configFactory = require('config/webpack.config');
+const createDevServerConfig = require('config/webpackDevServer.config');
 
 const useYarn = fs.existsSync(paths.yarnLockFile);
 const isInteractive = process.stdout.isTTY;
@@ -107,7 +112,7 @@ checkBrowsers(paths.appPath, isInteractive)
             console.log(chalk.cyan('Starting the development server...\n'));
             openBrowser(urls.localUrlForBrowser);
 
-            const connection = require('../src/services/db/connection');
+            const connection = require('services/db/connection');
             connection.start()
                 .then(() => {
                     console.info('DB connection successful. ᕕ( ᐛ )ᕗ\r\n');

@@ -1,4 +1,4 @@
-const connection = require('../db/connection');
+const connection = require('services/db/connection');
 const User = connection.getModel('User');
 
 /**

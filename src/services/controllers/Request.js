@@ -1,4 +1,4 @@
-const Request = require('../db/models/request');
+const Request = require('services/db/models/request');
 
 /**
  * Create a Request.

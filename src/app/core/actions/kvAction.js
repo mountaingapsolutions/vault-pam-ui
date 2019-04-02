@@ -17,6 +17,7 @@ class KvAction extends _Actions {
             LIST_MOUNTS: 'LIST_MOUNTS',
             LIST_SECRETS: 'LIST_SECRETS',
             LIST_SECRETS_AND_CAPABILITIES: 'LIST_SECRETS_AND_CAPABILITIES',
+            LIST_REQUESTS: 'LIST_REQUESTS',
             SAVE_SECRET: 'SAVE_SECRET'
         });
     }
@@ -58,9 +59,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     listSecrets(path = '', useApiKey = false) {
-        return useApiKey ? this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS, `/api/v1/${this._encodePath(path)}`, {
-            list: true
-        }, {'X-Vault-Token': process.env.REACT_APP_API_TOKEN}) :
+        return useApiKey ? this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS, `/api/v1/${this._encodePath(path)}`, {list: true}, {'X-Vault-Token': process.env.REACT_APP_API_TOKEN}) :
             this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS, `/api/v1/${this._encodePath(path)}`, {
                 list: true
             });
@@ -88,6 +87,15 @@ class KvAction extends _Actions {
      */
     saveSecret(path, secrets) {
         return this._dispatchPost(this.ACTION_TYPES.SAVE_SECRET, `/api/v1/${this._encodePath(path)}`, secrets);
+    }
+
+    /**
+     * Lists the current secrets requests.
+     *
+     * @returns {function} Redux dispatch function.
+     */
+    listRequests() {
+        return this._dispatchGet(this.ACTION_TYPES.LIST_REQUESTS, '/rest/control-group/requests');
     }
 
     /**

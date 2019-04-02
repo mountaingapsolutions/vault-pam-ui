@@ -1,7 +1,7 @@
-const UserController = require('../controllers/User');
+const UserController = require('services/controllers/User');
 
 /* eslint-disable new-cap */
-const UserService = require('express').Router()
+module.exports = require('express').Router()
 /* eslint-enable new-cap */
     .use((req, res, next) => {
         console.log('User service was called: ', Date.now());
@@ -47,7 +47,3 @@ const UserService = require('express').Router()
             res.json(status);
         });
     });
-
-module.exports = {
-    UserService
-};

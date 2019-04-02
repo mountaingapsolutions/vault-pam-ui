@@ -1,6 +1,6 @@
 // Database models to be declared here.
-const User = require('./user');
-const Request = require('./request');
+const User = require('services/db/models/user');
+const Request = require('services/db/models/request');
 
 const models = {
     User,

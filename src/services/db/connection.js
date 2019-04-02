@@ -8,7 +8,7 @@ if (PAM_DATABASE && PAM_DATABASE_USER && PAM_DATABASE_PASSWORD && PAM_DATABASE_U
 
     promise = new Promise((resolve, reject) => {
         const Sequelize = require('sequelize');
-        const {models} = require('./models');
+        const {models} = require('services/db/models');
         sequelize = new Sequelize(
             PAM_DATABASE,
             PAM_DATABASE_USER,

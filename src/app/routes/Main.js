@@ -1,7 +1,24 @@
 /* global window */
 
 import {withStyles} from '@material-ui/core/styles';
-import {AppBar, Badge, Card, CardContent, Grid, IconButton, List, ListItem, ListItemIcon, ListItemSecondaryAction, ListItemText, Menu, MenuItem, Snackbar, Toolbar, Typography} from '@material-ui/core';
+import {
+    AppBar,
+    Badge,
+    Card,
+    CardContent,
+    Grid,
+    IconButton,
+    List,
+    ListItem,
+    ListItemIcon,
+    ListItemSecondaryAction,
+    ListItemText,
+    Menu,
+    MenuItem,
+    Snackbar,
+    Toolbar,
+    Typography
+} from '@material-ui/core';
 import AccountCircle from '@material-ui/icons/AccountCircle';
 import Button from 'app/core/components/common/Button';
 import CloseIcon from '@material-ui/icons/Close';
@@ -43,6 +60,7 @@ class Main extends Component {
             accountAnchorElement: null,
             isSecretRequestsModalOpen: false,
             isUserProfileModalOpen: false,
+            notificationAnchorElement: null,
             showRootWarning: false
         };
         this._closeModal = this._closeModal.bind(this);
@@ -139,7 +157,7 @@ class Main extends Component {
      * @override
      */
     componentDidMount() {
-        const {checkSession} = this.props;
+        const {checkSession, listRequests} = this.props;
         checkSession().then(() => {
             const {listMounts, getSealStatus, vaultLookupSelf} = this.props;
 
@@ -157,6 +175,7 @@ class Main extends Component {
             //     console.log('Users returned: ', users);
             // });
         });
+        listRequests();
     }
 
     /**
@@ -167,9 +186,9 @@ class Main extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, secretsMounts = {}, sealStatus} = this.props;
+        const {classes, listRequests, secretsMounts = {}, secretsRequests = [], sealStatus} = this.props;
         const isVaultSealed = sealStatus && sealStatus.sealed;
-        const {accountAnchorElement, isSecretRequestsModalOpen, isUserProfileModalOpen, showRootWarning} = this.state;
+        const {accountAnchorElement, isSecretRequestsModalOpen, isUserProfileModalOpen, notificationAnchorElement, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
         return <div>
             <AppBar position='static'>
@@ -189,11 +208,46 @@ class Main extends Component {
                     </div>
                     <div className={classes.sectionDesktop}>
                         <IconButton color='inherit' onClick={() => this._openModal('isSecretRequestsModalOpen')}>
-                            <Badge badgeContent={17} color='secondary'>
+                            <Badge badgeContent='Mock data!' color='secondary'>
                                 <NotificationsIcon/>
                             </Badge>
                         </IconButton>
-                        <IconButton aria-haspopup='true' aria-owns={accountAnchorElement ? 'material-appbar' : undefined} color='inherit' onClick={this._toggleAccountMenu}>
+                        <IconButton color='inherit' onClick={(event) => {
+                            console.warn('notificationAnchorElement: ', notificationAnchorElement);
+                            listRequests();
+                            this.setState({
+                                notificationAnchorElement: event.currentTarget
+                            });
+                        }}>
+                            {
+                                secretsRequests && secretsRequests.length > 0 ?
+                                    <Badge badgeContent={secretsRequests.length} color='secondary'>
+                                        <NotificationsIcon/>
+                                    </Badge> :
+                                    <NotificationsIcon/>
+                            }
+                        </IconButton>
+                        <Menu anchorEl={notificationAnchorElement} open={!!notificationAnchorElement} onClose={() => {
+                            this.setState({
+                                notificationAnchorElement: null
+                            });
+                        }}>
+                            {secretsRequests.map((request, i) => {
+                                const {request_entity, request_path} = request.data;
+                                return <MenuItem key={`request-${i}`} onClick={() => {
+                                }}>
+                                    {
+                                        `${request_path} - ${request_entity.name}`
+                                    }
+                                </MenuItem>;
+                            })
+                            }
+                        </Menu>
+                        <IconButton
+                            aria-haspopup='true'
+                            aria-owns={accountAnchorElement ? 'material-appbar' : undefined}
+                            color='inherit'
+                            onClick={this._toggleAccountMenu}>
                             <AccountCircle/>
                         </IconButton>
                         <Menu anchorEl={accountAnchorElement} open={!!accountAnchorElement} onClose={this._toggleAccountMenu}>
@@ -219,7 +273,10 @@ class Main extends Component {
                             <List>{
                                 (secretsMounts.data || []).map(mount => {
                                     const {description, name, type} = mount;
-                                    return <ListItem button component={(props) => <Link to={`secrets/${name}`} {...props}/>} key={name}>
+                                    return <ListItem
+                                        button
+                                        component={(props) => <Link to={`secrets/${name}`} {...props}/>}
+                                        key={name}>
                                         <ListItemIcon>{
                                             this._renderIconFromType(type)
                                         }</ListItemIcon>
@@ -262,13 +319,15 @@ Main.propTypes = {
     checkSession: PropTypes.func.isRequired,
     classes: PropTypes.object.isRequired,
     listMounts: PropTypes.func.isRequired,
+    listRequests: PropTypes.func.isRequired,
     listUsers: PropTypes.func.isRequired,
     secretsMounts: PropTypes.object,
     vaultDomain: PropTypes.object.isRequired,
     vaultLookupSelf: PropTypes.object.isRequired,
     users: PropTypes.array,
     getSealStatus: PropTypes.func.isRequired,
-    sealStatus: PropTypes.object.isRequired
+    sealStatus: PropTypes.object.isRequired,
+    secretsRequests: PropTypes.array
 };
 
 /**
@@ -306,6 +365,7 @@ const _mapDispatchToProps = (dispatch) => {
         },
         listMounts: () => dispatch(kvAction.listMounts()),
         listUsers: () => dispatch(userAction.listUsers()),
+        listRequests: () => dispatch(kvAction.listRequests()),
         getSealStatus: () => dispatch(systemAction.getSealStatus())
     };
 };

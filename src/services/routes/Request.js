@@ -1,7 +1,7 @@
-const RequestController = require('../controllers/Request');
+const RequestController = require('services/controllers/Request');
 
 /* eslint-disable new-cap */
-const RequestService = require('express').Router()
+module.exports = require('express').Router()
 /* eslint-enable new-cap */
     .use((req, res, next) => {
         console.log('Request service was called: ', Date.now());
@@ -54,7 +54,3 @@ const RequestService = require('express').Router()
             res.json(user);
         });
     });
-
-module.exports = {
-    RequestService
-};

@@ -16,7 +16,8 @@ import kvAction from 'app/core/actions/kvAction';
 export default (previousState = {
     secrets: {},
     secretsMounts: {},
-    secretsPaths: {}
+    secretsPaths: {},
+    secretsRequests: []
 }, action) => {
     switch (action.type) {
         case kvAction.ACTION_TYPES.GET_SECRETS:
@@ -35,11 +36,16 @@ export default (previousState = {
                     };
                 }).filter(mount => mount.type !== 'identity' && mount.type !== 'system')}// Filter out the identity and system mounts.
             };
+        case kvAction.ACTION_TYPES.LIST_REQUESTS:
+            return {
+                ...previousState,
+                secretsRequests: action.data || []
+            };
         // Deprecated?
         case kvAction.ACTION_TYPES.LIST_SECRETS:
             return {
                 ...previousState,
-                secretsPaths: (action.data || {}).data || {}, action
+                secretsPaths: (action.data || {}).data || {}
             };
         case kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES:
             return {

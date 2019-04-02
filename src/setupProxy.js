@@ -1,4 +1,4 @@
-const {api, validate, login, authenticatedRoutes} = require('./restServiceMethods');
+const {api, validate, login, authenticatedRoutes} = require('services/routes');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
