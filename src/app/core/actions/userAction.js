@@ -34,11 +34,11 @@ class UserAction extends _Actions {
     /**
      * Gets the properties of an existing username.
      *
-     * @param {string} username The username for the user.
+     * @param {string} entityId The userId for the user.
      * @returns {function} Redux dispatch function.
      */
-    getUser(username) {
-        return this._dispatchGet(this.ACTION_TYPES.GET_USER, `/api/v1/auth/userpass/users/${username}`);
+    getUser(entityId) {
+        return this._dispatchGet(this.ACTION_TYPES.GET_USER, `/rest/user/entityId/${entityId}`);
     }
 
     /**

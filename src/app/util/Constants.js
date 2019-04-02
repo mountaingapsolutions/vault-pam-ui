@@ -10,7 +10,7 @@ class Constants {
      */
     constructor() {
         this.APP_TITLE = 'Vault PAM UI';
-        this.GRID_WIDTH = 12;
+        this.DEFAULT_EMPTY_FIELD_VALUE = 'Empty';
         this.SECRET_REQUEST_ACTIVE_VIEW = {
             SECRET_REQUEST_DETAILS: 'SECRET_REQUEST_DETAILS',
             SECRET_REQUEST_ADD_SPLIT: 'SECRET_REQUEST_ADD_SPLIT'

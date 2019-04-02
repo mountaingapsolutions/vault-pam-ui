@@ -1,5 +1,7 @@
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
+import {connect} from 'react-redux';
+import userAction from 'app/core/actions/userAction';
 import {
     Dialog,
     DialogActions,
@@ -21,17 +23,10 @@ import {COLORS} from 'app/core/assets/Styles';
 import Button from 'app/core/components/common/Button';
 import GridTextField from 'app/core/components/common/GridTextField';
 
-//TODO - WIRE THE DATA SOURCE TO REDUCER
-const userInfo = {
-    name: 'John Doe',
-    email: 'john_doe@gmail.com',
-    password: '*************'
-};
-
 /**
  * Settings with Change Password Modal component.
  */
-class SettingsModal extends Component {
+class UserProfileModal extends Component {
 
     /**
      * The constructor method. Executed upon class instantiation.
@@ -49,6 +44,20 @@ class SettingsModal extends Component {
         };
         this._onCloseOpenChangePassword = this._onCloseOpenChangePassword.bind(this);
         this._onHideShowPassword = this._onHideShowPassword.bind(this);
+    }
+
+    /**
+     * Required React Component lifecycle method. Invoked when a component did update. This method is not called for the initial render.
+     *
+     * @protected
+     * @override
+     * @param {Object} prevProps - previous set of props.
+     */
+    componentDidUpdate(prevProps) {
+        const {entityId, getUser} = this.props;
+        if (entityId !== prevProps.entityId) {
+            getUser(entityId);
+        }
     }
 
     /**
@@ -99,6 +108,7 @@ class SettingsModal extends Component {
                         <Grid item>
                             <TextField
                                 className={classes.textField}
+                                InputProps={{classes: {input: classes.textField}}}
                                 label='New Password'
                                 margin='none'
                                 type={showPassword ? 'text' : 'password'}
@@ -109,6 +119,7 @@ class SettingsModal extends Component {
                         <Grid item>
                             <TextField
                                 className={classes.textField}
+                                InputProps={{classes: {input: classes.textField}}}
                                 label='Confirm Password'
                                 margin='none'
                                 type={showPassword ? 'text' : 'password'}
@@ -129,7 +140,6 @@ class SettingsModal extends Component {
                         </Button>
                         <Button
                             className={classes.buttonCancel}
-                            variant='text'
                             onClick={this._onCloseOpenChangePassword}>
                             CANCEL
                         </Button>
@@ -162,7 +172,7 @@ class SettingsModal extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, onClose, open} = this.props;
+        const {classes, onClose, open, user} = this.props;
         const {isChangePasswordOnDisplay} = this.state;
         return (
             <Dialog
@@ -172,7 +182,7 @@ class SettingsModal extends Component {
                 open={open}>
                 <DialogTitle disableTypography className={classes.title}>
                     <Typography color='textSecondary'>
-                        SETTINGS
+                        USER PROFILE
                     </Typography>
                 </DialogTitle>
                 <DialogContent>
@@ -180,7 +190,7 @@ class SettingsModal extends Component {
                         <Typography className={classes.alignLeft} color='primary'>
                             USER DETAILS:
                         </Typography>
-                        <GridTextField items={userInfo} margin='normal'/>
+                        <GridTextField items={user} margin='none'/>
                     </Paper>
                     {isChangePasswordOnDisplay ?
                         this._renderChangePassword() :
@@ -196,10 +206,17 @@ class SettingsModal extends Component {
     }
 }
 
-SettingsModal.propTypes = {
+UserProfileModal.defaultProps = {
+    entityId: ''
+};
+
+UserProfileModal.propTypes = {
     classes: PropTypes.object.isRequired,
+    entityId: PropTypes.string.isRequired,
+    getUser: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
-    open: PropTypes.bool.isRequired
+    open: PropTypes.bool.isRequired,
+    user: PropTypes.object,
 };
 
 /**
@@ -213,10 +230,8 @@ const _styles = () => ({
         textAlign: 'right'
     },
     alignLeft: {
+        paddingBottom: 20,
         textAlign: 'left'
-    },
-    buttonCancel: {
-        color: COLORS.ERROR_RED
     },
     buttonsContainer: {
         textAlign: 'right',
@@ -232,11 +247,42 @@ const _styles = () => ({
         textAlign: 'center'
     },
     textField: {
-        paddingRight: 10
+        fontSize: 14,
+        padding: 10,
+        width: 250
     },
     title: {
         backgroundColor: COLORS.LIGHT_GREY
     }
 });
 
-export default withStyles(_styles)(SettingsModal);
+/**
+ * Returns a map of methods used for dispatching actions to the store.
+ *
+ * @private
+ * @param {function} dispatch Redux dispatch function.
+ * @param {Object} props components props.
+ * @returns {Object}
+ */
+const _mapDispatchToProps = (dispatch) => {
+    return {
+        getUser: entityId => dispatch(userAction.getUser(entityId))
+    };
+};
+
+/**
+ * Returns the Redux store's state that is relevant to this class as props.
+ *
+ * @private
+ * @param {Object} state - The initial state.
+ * @returns {Object}
+ */
+const _mapStateToProps = (state) => {
+    const {data} = state.sessionReducer.vaultLookupSelf;
+    return {
+        user: state.userReducer && state.userReducer.user,
+        entityId: data && data.data.entity_id
+    };
+};
+
+export default connect(_mapStateToProps, _mapDispatchToProps)(withStyles(_styles)(UserProfileModal));
