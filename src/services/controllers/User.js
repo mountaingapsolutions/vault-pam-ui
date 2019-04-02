@@ -8,14 +8,16 @@ const User = connection.getModel('User');
  * @param {string} firstName The first name.
  * @param {string} lastName The last name.
  * @param {string} email The email.
+ * @param {string} engineType The engine type used to login.
  * @returns {Object}
  */
-const create = (entityId, firstName, lastName, email) => {
+const create = (entityId, firstName, lastName, email, engineType) => {
     return User.create({
         entityId,
         firstName,
         lastName,
-        email
+        email,
+        engineType
     }).then(user => {
         return user;
     });
@@ -26,16 +28,17 @@ const create = (entityId, firstName, lastName, email) => {
  *
  * @param {string} entityId The entity id.
  * @param {string} firstName The first name.
+ * @param {string} engineType The engine type used to login.
  * @param {string} lastName The last name.
  * @param {string} email The email.
  * @returns {Object}
  */
-const findOrCreate = (entityId, firstName = undefined, lastName = undefined, email = undefined) => {
+const findOrCreate = (entityId, firstName = undefined, engineType = undefined, lastName = undefined, email = undefined) => {
     return findByEntityId(entityId).then(user => {
         if (user) {
             return user;
         } else {
-            return create(entityId, firstName, lastName, email);
+            return create(entityId, firstName, lastName, email, engineType);
         }
     });
 };
