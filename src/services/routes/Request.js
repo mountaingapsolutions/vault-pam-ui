@@ -13,6 +13,12 @@ const RequestService = require('express').Router()
             res.json(request);
         });
     })
+    .get('/requestId/:requestId', (req, res) => {
+        const requestId = req.params.requestId;
+        RequestController.findByRequestId(requestId).then(request => {
+            res.json(request);
+        });
+    })
     .get('/requester/:entityId', (req, res) => {
         const entityId = req.params.entityId;
         RequestController.findAllByRequester(entityId).then(requests => {
@@ -27,6 +33,7 @@ const RequestService = require('express').Router()
     })
     .post('/create', (req, res) => {
         const params = {
+            requestId: req.body.requestId,
             requesterEntityId: req.body.requesterEntityId,
             requesteeEntityId: req.body.requesteeEntityId,
             requestData: req.body.requestData,
@@ -36,6 +43,15 @@ const RequestService = require('express').Router()
         };
         RequestController.create(...params).then(request => {
             res.json(request);
+        });
+    })
+    .put('/update', (req, res) => {
+        const params = {
+            requestId: req.body.requestId,
+            status: req.body.status
+        };
+        RequestController.updateStatus(...params).then(user => {
+            res.json(user);
         });
     });
 

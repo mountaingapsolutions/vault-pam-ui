@@ -3,6 +3,7 @@ const Request = require('../db/models/request');
 /**
  * Create a Request.
  *
+ * @param {string} requestId The request id.
  * @param {string} requesterEntityId The requester.
  * @param {string} requesteeEntityId The requestee.
  * @param {string} requestData The request data.
@@ -11,8 +12,9 @@ const Request = require('../db/models/request');
  * @param {string} engineType The engine type.
  * @returns {Object}
  */
-const create = (requesterEntityId, requesteeEntityId, requestData, type, status, engineType) => {
+const create = (requestId, requesterEntityId, requesteeEntityId, requestData, type, status, engineType) => {
     return Request.create({
+        requestId,
         requesterEntityId,
         requesteeEntityId,
         requestData,
@@ -21,29 +23,6 @@ const create = (requesterEntityId, requesteeEntityId, requestData, type, status,
         engineType
     }).then(request => {
         return request;
-    });
-};
-
-/**
- * Find or create a Request.
- *
- * @param {string} requesterEntityId The requester.
- * @param {string} requesteeEntityId The requestee.
- * @param {string} requestData The request data.
- * @param {string} type The type.
- * @param {string} status The status.
- * @param {string} engineType The engine type.
- * @returns {Object}
- */
-const findOrCreate = (requesterEntityId, requesteeEntityId, requestData, type, status, engineType) => {
-    return Request.find({
-        where: {requesterEntityId, requesteeEntityId, engineType}
-    }).then(request => {
-        if (request) {
-            return request;
-        } else {
-            return create(requesterEntityId, requesteeEntityId, requestData, type, status, engineType);
-        }
     });
 };
 
@@ -69,6 +48,19 @@ const findById = (id) => {
         return request;
     });
 };
+
+/**
+ * Find requests by request id.
+ *
+ * @param {number} requestId The request db id.
+ * @returns {Object}
+ */
+const findByRequestId = (requestId) => {
+    return Request.findById(requestId).then(request => {
+        return request;
+    });
+};
+
 
 /**
  * Find all requests by requester.
@@ -99,51 +91,26 @@ const findAllByRequestee = (entityId) => {
 };
 
 /**
- * Update a Request by Requester.
+ * Update a Request Status by Request Id.
  *
- * @param {string} requesterEntityId The requester.
- * @param {string} requesteeEntityId The requestee.
- * @param {string} requestData The request data.
- * @param {string} type The request type.
+ * @param {string} requestId The request id.
  * @param {string} status The request status.
- * @param {string} engineType The secret engine type.
  * @returns {Object}
  */
-const updateByRequester = (requesterEntityId, requesteeEntityId, requestData, type, status, engineType) => {
-    return Request.update({requesteeEntityId, requestData, type, status, engineType},
-        {where: {requesterEntityId}}
+const updateStatus = (requestId, status) => {
+    return Request.update({status},
+        {where: {requestId}}
     ).then((request) => {
         return request;
     });
 };
-
-/**
- * Update a Request by Requestee.
- *
- * @param {string} requesterEntityId The requester.
- * @param {string} requesteeEntityId The requestee.
- * @param {string} requestData The request data.
- * @param {string} type The type.
- * @param {string} status The status.
- * @param {string} engineType The engine type.
- * @returns {Object}
- */
-const updateByRequestee = (requesterEntityId, requesteeEntityId, requestData, type, status, engineType) => {
-    return Request.update({requesterEntityId, requestData, type, status, engineType},
-        {where: {requesteeEntityId}}
-    ).then((request) => {
-        return request;
-    });
-};
-
 
 module.exports = {
     create,
     findAll,
-    findOrCreate,
     findAllByRequester,
     findAllByRequestee,
     findById,
-    updateByRequester,
-    updateByRequestee
+    findByRequestId,
+    updateStatus
 };
