@@ -2,7 +2,7 @@
 const chalk = require('chalk');
 const request = require('request');
 const User = require('./services/controllers/User');
-const ServiceRoutes = require('./services/routes');
+const {UserService, RequestService} = require('./services/routes');
 
 /**
  * Pass-through to the designated Vault server API endpoint.
@@ -166,8 +166,8 @@ const authenticatedRoutes = require('express').Router()
             }
         }
     })
-    .use('/user', ServiceRoutes.UserService)
-    .use('/request', ServiceRoutes.RequestService)
+    .use('/user', UserService)
+    .use('/request', RequestService)
     /**
      * Fetches secret lists and data. TODO: Clean this up and refactor after the requirements are finalized.
      */
