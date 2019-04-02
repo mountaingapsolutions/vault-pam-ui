@@ -8,15 +8,15 @@ module.exports = (sequelize) => {
             autoIncrement: true
         },
         requestId: {
-            type: Sequelize.CHAR(36),
+            type: Sequelize.UUID,
             allowNull: false
         },
         requesterEntityId: {
-            type: Sequelize.CHAR(36),
+            type: Sequelize.UUID,
             allowNull: false
         },
         requesteeEntityId: {
-            type: Sequelize.CHAR(36),
+            type: Sequelize.UUID,
             allowNull: false
         },
         requestData: Sequelize.STRING,
