@@ -8,7 +8,7 @@ module.exports = (sequelize) => {
             autoIncrement: true
         },
         entityId: {
-            type: Sequelize.CHAR(36),
+            type: Sequelize.UUID,
             allowNull: false
         },
         firstName: Sequelize.CHAR(255),
