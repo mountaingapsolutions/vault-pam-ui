@@ -7,24 +7,108 @@ module.exports = require('express').Router()
         console.log('Request service was called: ', Date.now());
         next();
     })
+    /**
+     * @swagger
+     * /rest/request/id/{id}:
+     *   get:
+     *     tags:
+     *       - Request
+     *     name: Get request by id
+     *     summary: Get request by id
+     *     parameters:
+     *       - name: id
+     *         in: path
+     *         schema:
+     *           type: number
+     *         required:
+     *           - id
+     *     responses:
+     *       200:
+     *         description: Request found
+     *       404:
+     *         description: Request not found
+     */
     .get('/id/:id', (req, res) => {
         const id = req.params.id;
         RequestController.findById(id).then(request => {
             res.json(request);
         });
     })
+    /**
+     * @swagger
+     * /rest/request/requestId/{requestId}:
+     *   get:
+     *     tags:
+     *       - Request
+     *     name: Get request by requestId
+     *     summary: Get request by requestId
+     *     parameters:
+     *       - name: requestId
+     *         in: path
+     *         schema:
+     *           type: number
+     *         required:
+     *           - requestId
+     *     responses:
+     *       200:
+     *         description: Request found
+     *       404:
+     *         description: Request not found
+     */
     .get('/requestId/:requestId', (req, res) => {
         const requestId = req.params.requestId;
         RequestController.findByRequestId(requestId).then(request => {
             res.json(request);
         });
     })
+    /**
+     * @swagger
+     * /rest/request/requester/{entityId}:
+     *   get:
+     *     tags:
+     *       - Request
+     *     name: Get all requests by requester entityId
+     *     summary: Get all requests by requester entityId
+     *     parameters:
+     *       - name: entityId
+     *         in: path
+     *         schema:
+     *           type: string
+     *         required:
+     *           - entityId
+     *     responses:
+     *       200:
+     *         description: Requests found
+     *       404:
+     *         description: Requests not found
+     */
     .get('/requester/:entityId', (req, res) => {
         const entityId = req.params.entityId;
         RequestController.findAllByRequester(entityId).then(requests => {
             res.json(requests);
         });
     })
+    /**
+     * @swagger
+     * /rest/request/requestee/{entityId}:
+     *   get:
+     *     tags:
+     *       - Request
+     *     name: Get all requests by requestee entityId
+     *     summary: Get all requests by requestee entityId
+     *     parameters:
+     *       - name: entityId
+     *         in: path
+     *         schema:
+     *           type: string
+     *         required:
+     *           - entityId
+     *     responses:
+     *       200:
+     *         description: Requests found
+     *       404:
+     *         description: Requests not found
+     */
     .get('/requestee/:entityId', (req, res) => {
         const entityId = req.params.entityId;
         RequestController.findAllByRequestee(entityId).then(requests => {
@@ -32,25 +116,14 @@ module.exports = require('express').Router()
         });
     })
     .post('/create', (req, res) => {
-        const params = {
-            requestId: req.body.requestId,
-            requesterEntityId: req.body.requesterEntityId,
-            requesteeEntityId: req.body.requesteeEntityId,
-            requestData: req.body.requestData,
-            type: req.body.type,
-            status: req.body.status,
-            engineType: req.body.engineType
-        };
-        RequestController.create(...params).then(request => {
+        const {requestId, requesterEntityId, requesteeEntityId, requestData, type, status, engineType} = req.body;
+        RequestController.create(requestId, requesterEntityId, requesteeEntityId, requestData, type, status, engineType).then(request => {
             res.json(request);
         });
     })
     .put('/update', (req, res) => {
-        const params = {
-            requestId: req.body.requestId,
-            status: req.body.status
-        };
-        RequestController.updateStatus(...params).then(user => {
+        const {requestId, status} = req.body;
+        RequestController.updateStatus(requestId, status).then(user => {
             res.json(user);
         });
     });
