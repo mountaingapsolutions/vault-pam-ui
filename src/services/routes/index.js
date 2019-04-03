@@ -2,11 +2,11 @@
 const chalk = require('chalk');
 const request = require('request');
 const User = require('services/controllers/User');
-const controlGroupService = require('services/routes/controlGroupService');
-const secretsService = require('services/routes/secretsService');
+const {router: controlGroupServiceRouter} = require('services/routes/controlGroupService');
+const {router: secretsServiceRouter} = require('services/routes/secretsService');
 const userService = require('services/routes/userService');
 const requestService = require('services/routes/requestService');
-const {initApiRequest, setSessionData} = require('services/utils');
+const {initApiRequest, sendError, setSessionData} = require('services/utils');
 
 /**
  * Pass-through to the designated Vault server API endpoint.
@@ -66,7 +66,7 @@ const login = (req, res) => {
             }
         }, (error, response, body) => {
             if (error) {
-                _sendError(apiUrl, res, error);
+                sendError(apiUrl, res, error);
                 return;
             }
             try {
@@ -78,7 +78,7 @@ const login = (req, res) => {
                 const {client_token: clientToken} = body.auth || {};
                 _sendTokenValidationResponse(parsedDomain, clientToken, req, res);
             } catch (err) {
-                _sendError(apiUrl, res, err);
+                sendError(apiUrl, res, err);
             }
         });
     }
@@ -150,7 +150,7 @@ const authenticatedRoutes = require('express').Router()
                 const apiUrl = `${apiDomain}/v1/auth/token/lookup-self`;
                 request(initApiRequest(token, apiUrl), (error, response, body) => {
                     if (error) {
-                        _sendError(req.originalUrl, res, error);
+                        sendError(req.originalUrl, res, error);
                         return;
                     }
                     if (response.statusCode !== 200) {
@@ -172,29 +172,14 @@ const authenticatedRoutes = require('express').Router()
     })
     .use('/user', userService)
     .use('/request', requestService)
-    .use('/control-group', controlGroupService)
-    .use('/secrets', secretsService)
+    .use('/control-group', controlGroupServiceRouter)
+    .use('/secrets', secretsServiceRouter)
     .use((req, res) => {
         console.warn('found nothing: ', req.url);
         res.status(400).json({
             errors: ['These are\'t the droids you\'re looking for.']
         });
     });
-
-/**
- * Sends the standard error response.
- *
- * @private
- * @param {Object} url The requested Vault server url.
- * @param {Object} res The HTTP response object.
- * @param {string|Object} error The error.
- */
-const _sendError = (url, res, error) => {
-    console.warn(`Error in retrieving url "${url}": `, error);
-    res.status(400).json({
-        errors: [typeof error === 'string' ? error : error.toString()]
-    });
-};
 
 /**
  * Sends the a Vault domain error response.
@@ -236,7 +221,7 @@ const _sendTokenValidationResponse = (domain, token, req, res) => {
     const apiUrl = `${domain}/v1/auth/token/lookup-self`;
     request(initApiRequest(token, apiUrl), (error, response, body) => {
         if (error) {
-            _sendError(apiUrl, res, error);
+            sendError(apiUrl, res, error);
             return;
         }
         try {

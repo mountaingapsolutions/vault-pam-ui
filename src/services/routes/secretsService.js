@@ -1,10 +1,11 @@
 /* eslint-disable no-console */
 const chalk = require('chalk');
 const request = require('request');
+const {getControlGroupPaths} = require('services/routes/controlGroupService');
 const {initApiRequest, sendError, setSessionData} = require('services/utils');
 
 /* eslint-disable new-cap */
-module.exports = require('express').Router()
+const router = require('express').Router()
 /* eslint-enable new-cap */
 /**
  * Fetches secret lists and data. TODO: Clean this up and refactor after the requirements are finalized.
@@ -12,7 +13,21 @@ module.exports = require('express').Router()
  * @param {Object} req The HTTP request object.
  * @param {Object} res The HTTP response object.
  */
-    .get('/*', (req, res) => {
+    .get('/*', async (req, res) => {
+        // Check for Control Group policies.
+        const {controlGroupPaths} = req.session.user;
+        if (!controlGroupPaths) {
+            let paths = {};
+            try {
+                paths = await getControlGroupPaths(req);
+            } catch (err) {
+                console.error(err);
+            }
+            console.log('Setting Control Group paths in session user data: ', paths);
+            setSessionData(req, {
+                controlGroupPaths: paths || {}
+            });
+        }
         const {params = {}, query, url} = req;
         const urlParts = (params[0] || '').split('/').filter(path => !!path);
         const listUrlParts = [...urlParts];
@@ -77,6 +92,7 @@ module.exports = require('express').Router()
                             };
 
                             const canRead = (capabilities[key] || []).includes('read');
+                            // TODO CHECK FOR PENDING REQUESTS!!!
                             if (canRead && !key.endsWith('/')) {
                                 const {wrapInfoMap = {}} = req.session.user;
                                 promises.push(new Promise((secretResolve) => {
@@ -153,3 +169,7 @@ module.exports = require('express').Router()
             }
         });
     });
+
+module.exports = {
+    router
+};

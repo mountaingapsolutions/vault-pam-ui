@@ -18,6 +18,7 @@ class KvAction extends _Actions {
             LIST_SECRETS: 'LIST_SECRETS',
             LIST_SECRETS_AND_CAPABILITIES: 'LIST_SECRETS_AND_CAPABILITIES',
             LIST_REQUESTS: 'LIST_REQUESTS',
+            REQUEST_SECRET: 'REQUEST_SECRET',
             SAVE_SECRET: 'SAVE_SECRET'
         });
     }
@@ -75,6 +76,20 @@ class KvAction extends _Actions {
     listSecretsAndCapabilities(path = '', version = 2) {
         return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES, `/rest/secrets/${path}`, {
             version
+        });
+    }
+
+    /**
+     * Requests access to a secret.
+     *
+     * @param {string} path Specifies the path of the secrets to request.
+     * @param {Object} data The request data.
+     * @returns {function} Redux dispatch function.
+     */
+    requestSecret(path, data) {
+        return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/control-group/request', {
+            path,
+            data
         });
     }
 

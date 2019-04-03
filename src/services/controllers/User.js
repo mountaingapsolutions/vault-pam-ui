@@ -91,7 +91,6 @@ const findByEntityId = (entityId) => {
  * @returns {Object}
  */
 const update = (entityId, firstName, lastName, email) => {
-    console.log('USER CONTROLLER');
     return User.update({firstName, lastName, email},
         {where: {entityId}, returning: true}
     ).then((user) => {

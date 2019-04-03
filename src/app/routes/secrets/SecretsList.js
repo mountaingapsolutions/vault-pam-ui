@@ -55,6 +55,7 @@ class SecretsList extends Component {
         this.state = {
             deleteSecretConfirmation: '',
             newSecretAnchorElement: null,
+            requestSecretConfirmation: null,
             secretModalInitialPath: '',
             secretModalMode: '',
             isListModalOpen: false
@@ -114,7 +115,6 @@ class SecretsList extends Component {
         this.props.history.goBack();
     }
 
-
     /**
      * Handle for Notification click is triggered.
      *
@@ -169,6 +169,25 @@ class SecretsList extends Component {
         this.setState({
             secretModalInitialPath: '',
             secretModalMode: ''
+        });
+    }
+
+    /**
+     * Handle for Notification click is triggered.
+     *
+     * @private
+     * @param {string} currentPath The path after the mount point.
+     * @param {Object} requestData The request data.
+     */
+    _openRequestSecretModal(currentPath, requestData) {
+        const {match} = this.props;
+        const {params} = match;
+        const {mount} = params;
+        this.setState({
+            requestSecretConfirmation: {
+                path: `${mount}/${this._getVersionFromMount(mount) === 2 ? 'data/' : ''}${currentPath}`,
+                requestData
+            }
         });
     }
 
@@ -330,9 +349,7 @@ class SecretsList extends Component {
                                 }
                                 /* eslint-enable no-alert */
                             } else {
-                                /* eslint-disable no-alert */
-                                window.alert('TODO: Launch request access modal.');
-                                /* eslint-enable no-alert */
+                                this._openRequestSecretModal(currentPath, data.wrap_info);
                             }
                         }
                     }}/>} key={`key-${i}`}>
@@ -344,11 +361,7 @@ class SecretsList extends Component {
                         <ListItemText primary={name} secondary={requiresRequest ? `Request type: ${isWrapped ? `Control Groups (approved: ${isApproved})` : 'Default'}` : ''}/>
                         <ListItemSecondaryAction>
                             {requiresRequest && !isApproved && <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
-                                <IconButton aria-label={requestAccessLabel} onClick={() => {
-                                    /* eslint-disable no-alert */
-                                    window.alert('TODO: Launch request access modal.');
-                                    /* eslint-enable no-alert */
-                                }}>
+                                <IconButton aria-label={requestAccessLabel} onClick={() => this._openRequestSecretModal(currentPath, data.wrap_info)}>
                                     <LockIcon/>
                                 </IconButton>
                             </Tooltip>}
@@ -399,10 +412,10 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, deleteSecrets, match, secrets} = this.props;
+        const {classes, deleteSecrets, match, requestSecret, secrets} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
-        const {deleteSecretConfirmation, isListModalOpen, secretModalMode, secretModalInitialPath} = this.state;
+        const {deleteSecretConfirmation, isListModalOpen, requestSecretConfirmation, secretModalMode, secretModalInitialPath} = this.state;
         return <Card className={classes.card}>
             {this._renderBreadcrumbsArea()}
             {this._renderSecretsListArea()}
@@ -435,6 +448,20 @@ class SecretsList extends Component {
                     });
                 }}
             />
+            <ConfirmationModal
+                content={`The path ${(requestSecretConfirmation || {}).path} has been locked through Control Groups. Request access?`}
+                open={!!requestSecretConfirmation}
+                title='Privilege Access Request'
+                onClose={confirm => {
+                    if (confirm) {
+                        const {path: requestPath, requestData} = requestSecretConfirmation;
+                        requestSecret(requestPath, requestData);
+                    }
+                    this.setState({
+                        requestSecretConfirmation: null
+                    });
+                }}
+            />
         </Card>;
     }
 }
@@ -449,6 +476,7 @@ SecretsList.propTypes = {
     listMounts: PropTypes.func.isRequired,
     listSecretsAndCapabilities: PropTypes.func.isRequired,
     match: PropTypes.object.isRequired,
+    requestSecret: PropTypes.func.isRequired,
     secrets: PropTypes.object,
     secretsMounts: PropTypes.object,
     secretsPaths: PropTypes.object
@@ -505,7 +533,8 @@ const _mapDispatchToProps = (dispatch) => {
                     })
                     .catch(reject);
             });
-        }
+        },
+        requestSecret: (path, requestData) => dispatch(kvAction.requestSecret(path, requestData))
     };
 };
 
