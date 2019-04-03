@@ -61,7 +61,7 @@ class UserProfileModal extends Component {
      */
     componentDidUpdate(prevProps) {
         const {entityId, getUser, user} = this.props;
-        const isUserProfileUpdated = user.Email !== prevProps.user.Email || user.Name !== prevProps.user.Name;
+        const isUserProfileUpdated = user && user.Email !== prevProps.user.Email || user.Name !== prevProps.user.Name;
         entityId !== prevProps.entityId && getUser(entityId);
         isUserProfileUpdated && this.setState({isEditProfileOnDisplay: false});
     }
