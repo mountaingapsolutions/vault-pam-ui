@@ -1,6 +1,5 @@
 module.exports = (sequelize) => {
     const Sequelize = require('sequelize');
-    /* eslint-disable new-cap */
     return sequelize.define('request', {
         id: {
             type: Sequelize.INTEGER,
@@ -20,9 +19,8 @@ module.exports = (sequelize) => {
             allowNull: false
         },
         requestData: Sequelize.STRING,
-        type: Sequelize.CHAR(20),
-        status: Sequelize.CHAR(20),
-        engineType: Sequelize.CHAR(25),
+        type: Sequelize.STRING,
+        status: Sequelize.STRING,
+        engineType: Sequelize.STRING
     });
-    /* eslint-enable new-cap */
 };

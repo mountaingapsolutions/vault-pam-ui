@@ -1,6 +1,5 @@
 module.exports = (sequelize) => {
     const Sequelize = require('sequelize');
-    /* eslint-disable new-cap */
     return sequelize.define('user', {
         id: {
             type: Sequelize.INTEGER,
@@ -11,10 +10,9 @@ module.exports = (sequelize) => {
             type: Sequelize.UUID,
             allowNull: false
         },
-        firstName: Sequelize.CHAR(255),
-        lastName: Sequelize.CHAR(255),
-        email: Sequelize.CHAR(255),
-        engineType: Sequelize.CHAR(25),
+        firstName: Sequelize.STRING,
+        lastName: Sequelize.STRING,
+        email: Sequelize.STRING,
+        engineType: Sequelize.STRING
     });
-    /* eslint-enable new-cap */
 };
