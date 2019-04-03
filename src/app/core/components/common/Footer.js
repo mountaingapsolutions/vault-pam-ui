@@ -34,19 +34,21 @@ class Footer extends Component {
     render() {
         const {classes, activeVaultDomain, vaultVersion} = this.props;
         return (
-            <AppBar className={classes.footer} position='fixed'>
-                <div className={classes.footerTextContainer}>
-                    <Typography inline className={classes.textActiveDomain} variant='caption'>
-                        {`${activeVaultDomain}`}
-                    </Typography>
-                    <Typography inline className={classes.textSeparator} variant='caption'>
-                        |
-                    </Typography>
-                    <Typography inline className={classes.textVersion} variant='caption'>
-                        {`Vault ${vaultVersion}`}
-                    </Typography>
-                </div>
-            </AppBar>
+            <div className={classes.footerRootContainer}>
+                <AppBar className={classes.footer} position='fixed'>
+                    <div className={classes.footerTextContainer}>
+                        <Typography inline className={classes.textActiveDomain} variant='caption'>
+                            {`${activeVaultDomain}`}
+                        </Typography>
+                        <Typography inline className={classes.textSeparator} variant='caption'>
+                            |
+                        </Typography>
+                        <Typography inline className={classes.textVersion} variant='caption'>
+                            {`Vault ${vaultVersion}`}
+                        </Typography>
+                    </div>
+                </AppBar>
+            </div>
         );
     }
 }
@@ -105,6 +107,9 @@ const _styles = () => ({
         padding: 16,
         textAlign: 'center',
         top: 'auto'
+    },
+    footerRootContainer: {
+        margin: 70
     },
     footerTextContainer: {
         flexDirection: 'row'
