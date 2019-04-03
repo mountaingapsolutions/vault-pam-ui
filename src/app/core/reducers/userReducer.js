@@ -28,6 +28,8 @@ export default (previousState = {
             return {...previousState, users: ((data || {}).data || {}).keys || []};
         case userAction.ACTION_TYPES.GET_USER:
             return {...previousState, user: _remapUserData(action.data || {})};
+        case userAction.ACTION_TYPES.UPDATE_USER_DETAILS:
+            return {...previousState, user: _remapUserData(action.data ? action.data[1][0] : {})};
         default:
             return {...previousState};
     }

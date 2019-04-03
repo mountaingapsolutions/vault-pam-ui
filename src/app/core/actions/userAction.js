@@ -15,6 +15,7 @@ class UserAction extends _Actions {
             DELETE_USER: 'DELETE_USER',
             GET_USER: 'GET_USER',
             LIST_USERS: 'LIST_USERS',
+            UPDATE_USER_DETAILS: 'UPDATE_USER_DETAILS',
             UPDATE_USER_PASSWORD: 'UPDATE_USER_PASSWORD',
             UPDATE_USER_POLICIES: 'UPDATE_USER_POLICIES'
         });
@@ -34,13 +35,22 @@ class UserAction extends _Actions {
     /**
      * Gets the properties of an existing username.
      *
-     * @param {string} entityId The userId for the user.
+     * @param {string} entityId The entityId for the user.
      * @returns {function} Redux dispatch function.
      */
     getUser(entityId) {
         return this._dispatchGet(this.ACTION_TYPES.GET_USER, `/rest/user/entityId/${entityId}`);
     }
 
+    /**
+     * Update the properties of an existing username.
+     *
+     * @param {Object} data The new user data.
+     * @returns {function} Redux dispatch function.
+     */
+    updateUser(data) {
+        return this._dispatchPut(this.ACTION_TYPES.UPDATE_USER_DETAILS, '/rest/user/update', data);
+    }
     /**
      * Deletes the specified user.
      *

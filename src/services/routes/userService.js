@@ -31,13 +31,8 @@ module.exports = require('express').Router()
         });
     })
     .put('/update', (req, res) => {
-        const userParam = {
-            entityId: req.body.entityId,
-            firstName: req.body.firstName,
-            lastName: req.body.lastName,
-            email: req.body.email
-        };
-        UserController.update(...userParam).then(user => {
+        const {entityId, email, firstName, lastName} = req.body;
+        UserController.update(entityId, firstName, lastName, email).then(user => {
             res.json(user);
         });
     })
