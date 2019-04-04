@@ -15,6 +15,7 @@ class UserAction extends _Actions {
             DELETE_USER: 'DELETE_USER',
             GET_USER: 'GET_USER',
             LIST_USERS: 'LIST_USERS',
+            LOGOUT: 'LOGOUT',
             UPDATE_USER_DETAILS: 'UPDATE_USER_DETAILS',
             UPDATE_USER_PASSWORD: 'UPDATE_USER_PASSWORD',
             UPDATE_USER_POLICIES: 'UPDATE_USER_POLICIES'
@@ -85,6 +86,15 @@ class UserAction extends _Actions {
         return this._dispatchPost(this.ACTION_TYPES.UPDATE_USER_POLICIES, `/api/v1/auth/userpass/users/${username}/policies`, {
             policies
         });
+    }
+
+    /**
+     * Logout current user.
+     *
+     * @returns {function} Redux dispatch function.
+     */
+    logOut() {
+        return this._dispatchPost(this.ACTION_TYPES.LOGOUT, '/rest/user/logout');
     }
 }
 

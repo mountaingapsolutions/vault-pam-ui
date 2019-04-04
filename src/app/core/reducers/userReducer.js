@@ -20,6 +20,7 @@ export default (previousState = {
         Email: Constants.DEFAULT_EMPTY_FIELD_VALUE,
         Engine: Constants.DEFAULT_EMPTY_FIELD_VALUE
     },
+    isLoggedIn: true,
     users: []
 }, action) => {
     switch (action.type) {
@@ -28,6 +29,9 @@ export default (previousState = {
             return {...previousState, users: ((data || {}).data || {}).keys || []};
         case userAction.ACTION_TYPES.GET_USER:
             return {...previousState, user: _remapUserData(action.data || {})};
+        case userAction.ACTION_TYPES.LOGOUT:
+            const isLoggedIn = action.data && action.data.status && action.data.status !== 'ok';
+            return {...previousState, isLoggedIn};
         case userAction.ACTION_TYPES.UPDATE_USER_DETAILS:
             return {...previousState, user: _remapUserData(action.data ? action.data[1][0] : {})};
         default:

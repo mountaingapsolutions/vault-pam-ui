@@ -113,8 +113,7 @@ class Main extends Component {
      */
     _onLogOut(event) {
         event.preventDefault();
-        localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
-        window.location.href = '/';
+        this.props.logOut();
     }
 
     /**
@@ -176,6 +175,21 @@ class Main extends Component {
             // });
         });
         listRequests();
+    }
+
+    /**
+     * Required React Component lifecycle method. Invoked when a component did update. This method is not called for the initial render.
+     *
+     * @protected
+     * @override
+     * @param {Object} prevProps - previous set of props.
+     */
+    componentDidUpdate(prevProps) {
+        const {isLoggedIn} = this.props;
+        if (prevProps.isLoggedIn !== isLoggedIn && !isLoggedIn) {
+            localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
+            window.location.href = '/';
+        }
     }
 
     /**
@@ -327,7 +341,9 @@ Main.propTypes = {
     users: PropTypes.array,
     getSealStatus: PropTypes.func.isRequired,
     sealStatus: PropTypes.object.isRequired,
-    secretsRequests: PropTypes.array
+    secretsRequests: PropTypes.array,
+    logOut: PropTypes.func.isRequired,
+    isLoggedIn: PropTypes.bool
 };
 
 /**
@@ -366,7 +382,8 @@ const _mapDispatchToProps = (dispatch) => {
         listMounts: () => dispatch(kvAction.listMounts()),
         listUsers: () => dispatch(userAction.listUsers()),
         listRequests: () => dispatch(kvAction.listRequests()),
-        getSealStatus: () => dispatch(systemAction.getSealStatus())
+        getSealStatus: () => dispatch(systemAction.getSealStatus()),
+        logOut: () => dispatch(userAction.logOut())
     };
 };
 
