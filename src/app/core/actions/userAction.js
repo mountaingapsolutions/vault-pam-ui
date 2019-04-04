@@ -81,8 +81,8 @@ class UserAction extends _Actions {
      *
      * @returns {function} Redux dispatch function.
      */
-    logOut() {
-        return this._dispatchPost(this.ACTION_TYPES.LOGOUT, '/rest/user/logout');
+    logout() {
+        return this._dispatchPost(this.ACTION_TYPES.LOGOUT, '/logout');
     }
 }
 

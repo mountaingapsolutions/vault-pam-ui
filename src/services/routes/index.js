@@ -91,6 +91,23 @@ const login = (req, res) => {
 };
 
 /**
+ * Logs out current active user.
+ *
+ * @param {Object} req The HTTP request object.
+ * @param {Object} res The HTTP response object.
+ */
+const logout = (req, res) => {
+    req.session.destroy(err => {
+        if (err) {
+            sendError(req.originalUrl, res, err);
+        } else {
+            req.session = null;
+            res.json({status: 'ok'});
+        }
+    });
+};
+
+/**
  * Validates the Vault domain.
  *
  * @param {Object} req The HTTP request object.
@@ -261,6 +278,7 @@ const _yellowBold = (value) => {
 module.exports = {
     api,
     login,
+    logout,
     validate,
     authenticatedRoutes
 };

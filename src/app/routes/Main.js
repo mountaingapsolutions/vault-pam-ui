@@ -168,8 +168,9 @@ class Main extends Component {
      * @param {Object} prevProps - previous set of props.
      */
     componentDidUpdate(prevProps) {
-        const {isLoggedIn} = this.props;
-        if (prevProps.isLoggedIn !== isLoggedIn && !isLoggedIn) {
+        const {isLoggedIn, vaultLookupSelf} = this.props;
+        const isRootLoggedIn = vaultLookupSelf.data && vaultLookupSelf.data.data.policies.includes('root');
+        if (prevProps.isLoggedIn !== isLoggedIn || !isRootLoggedIn && localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN) === null) {
             localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
             window.location.href = '/';
         }
@@ -362,7 +363,7 @@ const _mapDispatchToProps = (dispatch) => {
         listMounts: () => dispatch(kvAction.listMounts()),
         listRequests: () => dispatch(kvAction.listRequests()),
         getSealStatus: () => dispatch(systemAction.getSealStatus()),
-        logout: () => dispatch(userAction.logOut())
+        logout: () => dispatch(userAction.logout())
     };
 };
 

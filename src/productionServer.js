@@ -17,7 +17,7 @@ require('dotenv').config();
 // Add the root project directory to the app module search path:
 require('app-module-path').addPath(path.join(__dirname));
 
-const {api, validate, login, authenticatedRoutes} = require('services/routes');
+const {api, validate, login, logout, authenticatedRoutes} = require('services/routes');
 
 // Overcome the DEPTH_ZERO_SELF_SIGNED_CERT error.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -72,6 +72,7 @@ express().use(compression())
     .use(bodyParser.json())
     .get('/validate', validate)
     .post('/login', login)
+    .post('/logout', logout)
     .use('/rest', authenticatedRoutes)
     .get('/*', (req, res) => {
         res.sendFile(path.join(__dirname, 'build', 'index.html'));

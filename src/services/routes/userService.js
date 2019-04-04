@@ -160,26 +160,4 @@ module.exports = require('express').Router()
         UserController.deleteByEntityId(entityId).then(status => {
             res.json(status);
         });
-    })
-    /**
-     * @swagger
-     * /rest/user/logout:
-     *   post:
-     *     tags:
-     *       - User
-     *     name: Logout user
-     *     summary: Logout user
-     *     responses:
-     *       200:
-     *         description: User logged out
-     */
-    .post('/logout', (req, res) => {
-        req.session.destroy(err => {
-            if (err) {
-                res.json({err});
-            } else {
-                req.session = null;
-                res.json({status: 'ok'});
-            }
-        });
     });
