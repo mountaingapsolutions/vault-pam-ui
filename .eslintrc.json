@@ -94,6 +94,10 @@
     }],
     "react/prefer-es6-class": ["error", "always"],
     "react/require-render-return": 0,
+    "react/sort-prop-types": ["error", {
+      "ignoreCase": true,
+      "sortShapeProp": true
+    }],
     "require-jsdoc": ["warn", {
       "require": {
         "FunctionDeclaration": true,

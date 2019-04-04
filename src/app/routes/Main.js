@@ -65,7 +65,6 @@ class Main extends Component {
         };
         this._closeModal = this._closeModal.bind(this);
         this._onClose = this._onClose.bind(this);
-        this._onLogOut = this._onLogOut.bind(this);
         this._openModal = this._openModal.bind(this);
         this._toggleAccountMenu = this._toggleAccountMenu.bind(this);
     }
@@ -103,17 +102,6 @@ class Main extends Component {
      */
     _openModal(modalState) {
         this.setState({[modalState]: true, accountAnchorElement: null});
-    }
-
-    /**
-     * Handle for when value change is triggered.
-     *
-     * @private
-     * @param {SyntheticMouseEvent} event The event.
-     */
-    _onLogOut(event) {
-        event.preventDefault();
-        this.props.logOut();
     }
 
     /**
@@ -168,11 +156,6 @@ class Main extends Component {
             }
             getSealStatus();
             listMounts();
-            // TODO Display the result of listUsers
-            // listUsers().then(() => {
-            //     const {users} = this.props;
-            //     console.log('Users returned: ', users);
-            // });
         });
         listRequests();
     }
@@ -200,7 +183,7 @@ class Main extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, listRequests, secretsMounts = {}, secretsRequests = [], sealStatus} = this.props;
+        const {classes, listRequests, logout, secretsMounts = {}, secretsRequests = [], sealStatus} = this.props;
         const isVaultSealed = sealStatus && sealStatus.sealed;
         const {accountAnchorElement, isSecretRequestsModalOpen, isUserProfileModalOpen, notificationAnchorElement, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
@@ -267,7 +250,7 @@ class Main extends Component {
                             <MenuItem onClick={() => this._openModal('isUserProfileModalOpen')}>
                                 <img className={classes.marginRight} src='/assets/settings-icon.svg' width='20'/> Profile
                             </MenuItem>
-                            <MenuItem onClick={this._onLogOut}>
+                            <MenuItem onClick={logout}>
                                 <img className={classes.marginRight} src='/assets/logout-icon.svg' width='20'/> Log Out
                             </MenuItem>
                         </Menu>
@@ -331,18 +314,16 @@ class Main extends Component {
 Main.propTypes = {
     checkSession: PropTypes.func.isRequired,
     classes: PropTypes.object.isRequired,
+    getSealStatus: PropTypes.func.isRequired,
+    isLoggedIn: PropTypes.bool,
     listMounts: PropTypes.func.isRequired,
     listRequests: PropTypes.func.isRequired,
-    listUsers: PropTypes.func.isRequired,
-    secretsMounts: PropTypes.object,
-    vaultDomain: PropTypes.object.isRequired,
-    vaultLookupSelf: PropTypes.object.isRequired,
-    users: PropTypes.array,
-    getSealStatus: PropTypes.func.isRequired,
+    logout: PropTypes.func.isRequired,
     sealStatus: PropTypes.object.isRequired,
+    secretsMounts: PropTypes.object,
     secretsRequests: PropTypes.array,
-    logOut: PropTypes.func.isRequired,
-    isLoggedIn: PropTypes.bool
+    vaultDomain: PropTypes.object.isRequired,
+    vaultLookupSelf: PropTypes.object.isRequired
 };
 
 /**
@@ -379,10 +360,9 @@ const _mapDispatchToProps = (dispatch) => {
             });
         },
         listMounts: () => dispatch(kvAction.listMounts()),
-        listUsers: () => dispatch(userAction.listUsers()),
         listRequests: () => dispatch(kvAction.listRequests()),
         getSealStatus: () => dispatch(systemAction.getSealStatus()),
-        logOut: () => dispatch(userAction.logOut())
+        logout: () => dispatch(userAction.logOut())
     };
 };
 

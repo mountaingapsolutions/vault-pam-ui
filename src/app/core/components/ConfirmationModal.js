@@ -54,9 +54,9 @@ ConfirmationModal.propTypes = {
     classes: PropTypes.object.isRequired,
     confirmButtonLabel: PropTypes.string,
     content: PropTypes.string,
-    title: PropTypes.string,
+    onClose: PropTypes.func.isRequired,
     open: PropTypes.bool,
-    onClose: PropTypes.func.isRequired
+    title: PropTypes.string
 };
 
 /**

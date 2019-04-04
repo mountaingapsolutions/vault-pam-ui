@@ -666,13 +666,13 @@ CreateUpdateSecretModal.defaultProps = {
 
 CreateUpdateSecretModal.propTypes = {
     classes: PropTypes.object.isRequired,
-    saveSecret: PropTypes.func.isRequired,
     error: PropTypes.string,
-    inProgress: PropTypes.bool,
     initialPath: PropTypes.string.isRequired,
+    inProgress: PropTypes.bool,
     mode: PropTypes.oneOf(['', 'create', 'update']),
-    open: PropTypes.bool,
     onClose: PropTypes.func.isRequired,
+    open: PropTypes.bool,
+    saveSecret: PropTypes.func.isRequired,
     secrets: PropTypes.object,
     secretsMounts: PropTypes.object
 };

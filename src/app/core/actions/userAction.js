@@ -14,22 +14,10 @@ class UserAction extends _Actions {
         super('UserAction', {
             DELETE_USER: 'DELETE_USER',
             GET_USER: 'GET_USER',
-            LIST_USERS: 'LIST_USERS',
             LOGOUT: 'LOGOUT',
             UPDATE_USER_DETAILS: 'UPDATE_USER_DETAILS',
             UPDATE_USER_PASSWORD: 'UPDATE_USER_PASSWORD',
             UPDATE_USER_POLICIES: 'UPDATE_USER_POLICIES'
-        });
-    }
-
-    /**
-     * List available userpass users.
-     *
-     * @returns {function} Redux dispatch function.
-     */
-    listUsers() {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_USERS, '/api/v1/auth/userpass/users', {
-            list: true
         });
     }
 
