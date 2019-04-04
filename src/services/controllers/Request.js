@@ -44,7 +44,7 @@ const findAll = () => {
  * @returns {Object}
  */
 const findById = (id) => {
-    return Request.findById(id).then(request => {
+    return Request.findByPk(id).then(request => {
         return request;
     });
 };
