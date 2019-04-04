@@ -45,14 +45,39 @@ const getActiveRequestsByEntityId = async (req, entityId) => {
     return result;
 };
 
+
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
 /**
- * Fetches secret lists and data. TODO: Clean this up and refactor after the requirements are finalized.
- *
- * @param {Object} req The HTTP request object.
- * @param {Object} res The HTTP response object.
+ * @swagger
+ * /rest/secrets/{path}:
+ *   get:
+ *     tags:
+ *       - Secrets
+ *     name: List secrets.
+ *     summary: Retrieves the list of secrets by path.
+ *     parameters:
+ *       - name: path
+ *         in: path
+ *         description: The Vault secrets path.
+ *         schema:
+ *           type: string
+ *         required: true
+ *       - name: version
+ *         in: query
+ *         description: The version of the Vault KV secrets engine.
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 2
+ *           default: 2
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: Success.
+ *       404:
+ *         description: Not found.
  */
     .get('/*', async (req, res) => {
         // Check for Control Group policies.
@@ -137,7 +162,6 @@ const router = require('express').Router()
                             };
 
                             const canRead = (capabilities[key] || []).includes('read');
-                            // TODO CHECK FOR PENDING REQUESTS!!!
                             if (canRead && !key.endsWith('/')) {
                                 promises.push(new Promise((secretResolve) => {
                                     const getSecretApiUrl = `${domain}/v1/${key}`;
@@ -155,17 +179,6 @@ const router = require('express').Router()
                                                 };
                                                 secretResolve();
                                             }).catch(secretResolve);
-                                        request(initApiRequest(token, getSecretApiUrl), (secretErr, secretRes, secretBody) => {
-                                            if (secretBody) {
-                                                secret.data = secretBody;
-                                                const {wrap_info: wrapInfo} = secretBody;
-                                                if (wrapInfo) {
-                                                    // Just immediately revoke the accessor. A new one will be generated upon a user requesting access. The initial wrap_info accessor is only to inform the user that this secret is wrapped.
-                                                    revokeAccessor(req, wrapInfo.accessor);
-                                                }
-                                                secretResolve();
-                                            }
-                                        });
                                     } else {
                                         request(initApiRequest(token, getSecretApiUrl), (secretErr, secretRes, secretBody) => {
                                             if (secretBody) {

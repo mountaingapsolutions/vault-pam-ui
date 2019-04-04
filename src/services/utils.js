@@ -14,8 +14,7 @@ const SESSION_USER_DATA_MAP = {
     CONTROL_GROUP_PATHS: 'controlGroupPaths',
     DOMAIN: 'domain',
     ENTITY_ID: 'entityId',
-    TOKEN: 'token',
-    WRAP_INFO_MAP: 'wrapInfoMap'
+    TOKEN: 'token'
 };
 
 /**

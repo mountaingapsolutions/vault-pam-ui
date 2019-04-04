@@ -55,7 +55,8 @@ class SecretsList extends Component {
         this.state = {
             deleteSecretConfirmation: '',
             newSecretAnchorElement: null,
-            requestSecretConfirmationPath: null,
+            requestSecretCancellation: null,
+            requestSecretConfirmation: null,
             secretModalInitialPath: '',
             secretModalMode: '',
             isListModalOpen: false
@@ -164,7 +165,7 @@ class SecretsList extends Component {
             const {listSecretsAndCapabilities, match} = this.props;
             const {params} = match;
             const {mount, path} = params;
-            listSecretsAndCapabilities(mount, path, this._getVersionFromMount(mount));
+            listSecretsAndCapabilities(path, this._getVersionFromMount(mount));
         }
         this.setState({
             secretModalInitialPath: '',
@@ -173,17 +174,15 @@ class SecretsList extends Component {
     }
 
     /**
-     * Handle for Notification click is triggered.
+     * Handle when a secret that requires a request is clicked.
      *
      * @private
-     * @param {string} currentPath The path after the mount point.
+     * @param {string} name The name of the secret.
+     * @param {boolean} isRequest True if request, false if cancel.
      */
-    _openRequestSecretModal(currentPath) {
-        const {match} = this.props;
-        const {params} = match;
-        const {mount} = params;
+    _toggleRequestSecretModal(name, isRequest = true) {
         this.setState({
-            requestSecretConfirmationPath: `${mount}/${this._getVersionFromMount(mount) === 2 ? 'data/' : ''}${currentPath}`
+            [isRequest ? 'requestSecretConfirmation' : 'requestSecretCancellation']: name
         });
     }
 
@@ -200,10 +199,10 @@ class SecretsList extends Component {
 
         if ((secretsMounts.data || []).length === 0) {
             listMounts().then(() => {
-                listSecretsAndCapabilities(mount, path, this._getVersionFromMount(mount));
+                listSecretsAndCapabilities(path, this._getVersionFromMount(mount));
             });
         } else {
-            listSecretsAndCapabilities(mount, path, this._getVersionFromMount(mount));
+            listSecretsAndCapabilities(path, this._getVersionFromMount(mount));
         }
 
         this.unlisten = history.listen((location, action) => {
@@ -211,7 +210,7 @@ class SecretsList extends Component {
                 const {match: newMatch} = this.props;
                 const {params: newParams} = newMatch;
                 const {path: newPath} = newParams;
-                listSecretsAndCapabilities(mount, newPath, this._getVersionFromMount(mount));
+                listSecretsAndCapabilities(newPath, this._getVersionFromMount(mount));
             }
         });
     }
@@ -257,7 +256,7 @@ class SecretsList extends Component {
                                 <Link key={folder} to={url} onClick={event => {
                                     event.preventDefault();
                                     history.push(url);
-                                    listSecretsAndCapabilities(mount, currentPath, this._getVersionFromMount(mount));
+                                    listSecretsAndCapabilities(currentPath, this._getVersionFromMount(mount));
                                 }}>
                                     <Typography color='textSecondary' variant='h6'>{folder}</Typography>
                                 </Link>
@@ -266,7 +265,8 @@ class SecretsList extends Component {
                         })
                     }</Breadcrumbs>
                     {
-                        (secretsPaths.capabilities || []).some(capability => capability === 'create' || capability === 'root') && <React.Fragment>
+                        (secretsPaths.capabilities || []).some(capability => capability === 'create' || capability === 'root') &&
+                        <React.Fragment>
                             <Fab
                                 aria-label='new'
                                 className={classes.fab}
@@ -325,19 +325,24 @@ class SecretsList extends Component {
                     const canUpdate = capabilities.some(capability => capability === 'update' || capability === 'root');
                     const requiresRequest = capabilities.includes('deny') && !name.endsWith('/') || isWrapped;
                     const isApproved = isWrapped && (data.request_info || {}).approved;
+                    const requestDate = data.request_info && isWrapped ? new Date(data.wrap_info.creation_time) : null;
                     const canDelete = capabilities.includes('delete');
+                    let secondaryText = requiresRequest ? `Request type: ${isWrapped ? 'Control Groups' : 'Default'}` : '';
+                    if (requestDate) {
+                        secondaryText += ` (Requested at ${requestDate.toLocaleString()})`;
+                    }
                     return <ListItem button component={(props) => <Link to={url} {...props} onClick={event => {
                         event.preventDefault();
                         if (name.includes('/')) {
                             history.push(url);
-                            listSecretsAndCapabilities(mount, currentPath, this._getVersionFromMount(mount));
+                            listSecretsAndCapabilities(currentPath, this._getVersionFromMount(mount));
                         } else {
                             if (canUpdate) {
                                 this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'update');
-                                getSecrets(mount, currentPath, this._getVersionFromMount(mount));
+                                getSecrets(name, this._getVersionFromMount(mount));
                             } else if (canOpen) {
                                 this._openListModal();
-                                getSecrets(mount, currentPath, this._getVersionFromMount(mount));
+                                getSecrets(name, this._getVersionFromMount(mount));
                             } else if (isApproved) {
                                 /* eslint-disable no-alert */
                                 if (window.confirm(`You have been granted access to ${name}. Be careful, you can only access this data once. If you need access again in the future you will need to get authorized again.`)) {
@@ -345,7 +350,7 @@ class SecretsList extends Component {
                                 }
                                 /* eslint-enable no-alert */
                             } else {
-                                this._openRequestSecretModal(currentPath);
+                                this._toggleRequestSecretModal(name, !data.request_info);
                             }
                         }
                     }}/>} key={`key-${i}`}>
@@ -354,17 +359,20 @@ class SecretsList extends Component {
                                 name.endsWith('/') ? <FolderIcon/> : <FileCopyIcon/>
                             }</Avatar>
                         </ListItemAvatar>
-                        <ListItemText primary={name} secondary={requiresRequest ? `Request type: ${isWrapped ? `Control Groups (approved: ${isApproved})` : 'Default'}` : ''}/>
+                        <ListItemText primary={name} secondary={secondaryText}/>
                         <ListItemSecondaryAction>
-                            {requiresRequest && !isApproved && <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
-                                <IconButton aria-label={requestAccessLabel} onClick={() => this._openRequestSecretModal(currentPath)}>
+                            {requiresRequest && !isApproved &&
+                            <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
+                                <IconButton
+                                    aria-label={requestAccessLabel}
+                                    onClick={() => this._toggleRequestSecretModal(name, !data.request_info)}>
                                     <LockIcon/>
                                 </IconButton>
                             </Tooltip>}
                             {canOpen && <Tooltip aria-label={openLabel} title={openLabel}>
                                 <IconButton aria-label={openLabel} onClick={() => {
                                     this._openListModal();
-                                    getSecrets(mount, currentPath, this._getVersionFromMount(mount));
+                                    getSecrets(name, this._getVersionFromMount(mount));
                                 }}>
                                     <LockOpenIcon/>
                                 </IconButton>
@@ -408,10 +416,10 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, deleteSecrets, match, requestSecret, secrets} = this.props;
+        const {deleteRequest, classes, deleteSecrets, match, requestSecret, secrets} = this.props;
         const {params} = match;
-        const {mount, path = ''} = params;
-        const {deleteSecretConfirmation, isListModalOpen, requestSecretConfirmationPath, secretModalMode, secretModalInitialPath} = this.state;
+        const {mount} = params;
+        const {deleteSecretConfirmation, isListModalOpen, requestSecretCancellation, requestSecretConfirmation, secretModalMode, secretModalInitialPath} = this.state;
         return <Card className={classes.card}>
             {this._renderBreadcrumbsArea()}
             {this._renderSecretsListArea()}
@@ -437,7 +445,7 @@ class SecretsList extends Component {
                 title={`Delete ${deleteSecretConfirmation}?`}
                 onClose={confirm => {
                     if (confirm) {
-                        deleteSecrets(mount, path, deleteSecretConfirmation, this._getVersionFromMount(mount));
+                        deleteSecrets(deleteSecretConfirmation, this._getVersionFromMount(mount));
                     }
                     this.setState({
                         deleteSecretConfirmation: ''
@@ -445,15 +453,28 @@ class SecretsList extends Component {
                 }}
             />
             <ConfirmationModal
-                content={`The path ${requestSecretConfirmationPath} has been locked through Control Groups. Request access?`}
-                open={!!requestSecretConfirmationPath}
+                content={`The path ${requestSecretConfirmation} has been locked through Control Groups. Request access?`}
+                open={!!requestSecretConfirmation}
                 title='Privilege Access Request'
                 onClose={confirm => {
                     if (confirm) {
-                        requestSecret(requestSecretConfirmationPath);
+                        requestSecret(requestSecretConfirmation, this._getVersionFromMount(mount));
                     }
                     this.setState({
-                        requestSecretConfirmationPath: null
+                        requestSecretConfirmation: null
+                    });
+                }}
+            />
+            <ConfirmationModal
+                content={`Would you like to cancel your request to access ${requestSecretCancellation}?`}
+                open={!!requestSecretCancellation}
+                title='Cancel Privilege Access Request'
+                onClose={confirm => {
+                    if (confirm) {
+                        deleteRequest(requestSecretCancellation, this._getVersionFromMount(mount));
+                    }
+                    this.setState({
+                        requestSecretCancellation: null
                     });
                 }}
             />
@@ -463,6 +484,7 @@ class SecretsList extends Component {
 
 SecretsList.propTypes = {
     classes: PropTypes.object.isRequired,
+    deleteRequest: PropTypes.func.isRequired,
     deleteSecrets: PropTypes.func.isRequired,
     errors: PropTypes.string,
     getSecrets: PropTypes.func.isRequired,
@@ -504,32 +526,70 @@ const _mapStateToProps = (state) => {
  *
  * @private
  * @param {function} dispatch Redux dispatch function.
+ * @param {Object} ownProps The own component props.
  * @returns {Object}
  */
-const _mapDispatchToProps = (dispatch) => {
+const _mapDispatchToProps = (dispatch, ownProps) => {
     return {
         listMounts: () => dispatch(kvAction.listMounts()),
-        listSecretsAndCapabilities: (mount, path = '', version) => {
+        listSecretsAndCapabilities: (path = '', version) => {
+            const {match} = ownProps;
+            const {params} = match;
+            const {mount} = params;
             return dispatch(kvAction.listSecretsAndCapabilities(`${mount}/${path.endsWith('/') ? path.slice(0, -1) : path}`, version));
         },
-        getSecrets: (mount, path = '', version) => {
-            return dispatch(kvAction.getSecrets(`${mount}/${version === 2 ? 'data/' : ''}${path.endsWith('/') ? path.slice(0, -1) : path}`));
+        getSecrets: (name, version) => {
+            const {match} = ownProps;
+            const {params} = match;
+            const {mount, path} = params;
+            const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
+            return dispatch(kvAction.getSecrets(fullPath));
         },
-        deleteSecrets: (mount, path = '', secret, version) => {
+        deleteRequest: (name, version) => {
+            const {match} = ownProps;
+            const {params} = match;
+            const {mount, path} = params;
+            const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
             return new Promise((resolve, reject) => {
-                const parsedPath = path.endsWith(0, -1) ? path.slice(0, -1) : path;
-                const deletePath = `${mount}${version === 2 ? '/metadata' : ''}${parsedPath ? `/${parsedPath}` : ''}/${secret}`;
-                dispatch(kvAction.deleteSecrets(deletePath))
+                dispatch(kvAction.deleteRequest(fullPath))
                     .then(() => {
-                        const listPath = `${mount}/${parsedPath}`;
-                        dispatch(kvAction.listSecretsAndCapabilities(listPath, version))
+                        dispatch(kvAction.listSecretsAndCapabilities(`${mount}${path ? `/${path}` : ''}`, version))
                             .then(resolve)
                             .catch(reject);
                     })
                     .catch(reject);
             });
         },
-        requestSecret: (path) => dispatch(kvAction.requestSecret(path))
+        deleteSecrets: (name, version) => {
+            const {match} = ownProps;
+            const {params} = match;
+            const {mount, path} = params;
+            return new Promise((resolve, reject) => {
+                const fullPath = `${mount}${version === 2 ? '/metadata' : ''}${path ? `/${path}` : ''}/${name}`;
+                dispatch(kvAction.deleteSecrets(fullPath))
+                    .then(() => {
+                        dispatch(kvAction.listSecretsAndCapabilities(`${mount}${path ? `/${path}` : ''}`, version))
+                            .then(resolve)
+                            .catch(reject);
+                    })
+                    .catch(reject);
+            });
+        },
+        requestSecret: (name, version) => {
+            const {match} = ownProps;
+            const {params} = match;
+            const {mount, path} = params;
+            const fullPath = `${mount}${version === 2 ? '/data' : ''}/${path}/${name}`;
+            return new Promise((resolve, reject) => {
+                dispatch(kvAction.requestSecret(fullPath))
+                    .then(() => {
+                        dispatch(kvAction.listSecretsAndCapabilities(`${mount}${path ? `/${path}` : ''}`, version))
+                            .then(resolve)
+                            .catch(reject);
+                    })
+                    .catch(reject);
+            });
+        }
     };
 };
 

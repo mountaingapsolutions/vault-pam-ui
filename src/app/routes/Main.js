@@ -227,7 +227,6 @@ class Main extends Component {
                             </Badge>
                         </IconButton>
                         <IconButton color='inherit' onClick={(event) => {
-                            console.warn('notificationAnchorElement: ', notificationAnchorElement);
                             listRequests();
                             this.setState({
                                 notificationAnchorElement: event.currentTarget

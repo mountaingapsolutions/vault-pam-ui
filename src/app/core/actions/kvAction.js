@@ -13,6 +13,7 @@ class KvAction extends _Actions {
     constructor() {
         super('KvAction', {
             DELETE_SECRETS: 'DELETE_SECRETS',
+            REQUEST_REQUEST: 'REQUEST_REQUEST',
             GET_SECRETS: 'GET_SECRETS',
             LIST_MOUNTS: 'LIST_MOUNTS',
             LIST_SECRETS: 'LIST_SECRETS',
@@ -24,7 +25,19 @@ class KvAction extends _Actions {
     }
 
     /**
-     * Returns secrets at the specified location
+     * Deletes the secrets request of the specified location.
+     *
+     * @param {string} path Specifies the path of the request to delete.
+     * @returns {function} Redux dispatch function.
+     */
+    deleteRequest(path) {
+        return this._dispatchDelete(this.ACTION_TYPES.REQUEST_REQUEST, '/rest/control-group/request', {
+            path
+        });
+    }
+
+    /**
+     * Deletes the secrets at the specified location
      *
      * @param {string} path Specifies the path of the secrets to delete.
      * @returns {function} Redux dispatch function.

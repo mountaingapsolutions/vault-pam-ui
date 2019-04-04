@@ -697,7 +697,7 @@ const _mapStateToProps = (state) => {
  *
  * @private
  * @param {function} dispatch Redux dispatch function.
- * @param {Object} ownProps The own comopnent props.
+ * @param {Object} ownProps The own component props.
  * @returns {Object}
  */
 const _mapDispatchToProps = (dispatch, ownProps) => {
