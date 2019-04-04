@@ -83,13 +83,11 @@ class KvAction extends _Actions {
      * Requests access to a secret.
      *
      * @param {string} path Specifies the path of the secrets to request.
-     * @param {Object} data The request data.
      * @returns {function} Redux dispatch function.
      */
-    requestSecret(path, data) {
+    requestSecret(path) {
         return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/control-group/request', {
-            path,
-            data
+            path
         });
     }
 

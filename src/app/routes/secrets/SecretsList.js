@@ -55,7 +55,7 @@ class SecretsList extends Component {
         this.state = {
             deleteSecretConfirmation: '',
             newSecretAnchorElement: null,
-            requestSecretConfirmation: null,
+            requestSecretConfirmationPath: null,
             secretModalInitialPath: '',
             secretModalMode: '',
             isListModalOpen: false
@@ -177,17 +177,13 @@ class SecretsList extends Component {
      *
      * @private
      * @param {string} currentPath The path after the mount point.
-     * @param {Object} requestData The request data.
      */
-    _openRequestSecretModal(currentPath, requestData) {
+    _openRequestSecretModal(currentPath) {
         const {match} = this.props;
         const {params} = match;
         const {mount} = params;
         this.setState({
-            requestSecretConfirmation: {
-                path: `${mount}/${this._getVersionFromMount(mount) === 2 ? 'data/' : ''}${currentPath}`,
-                requestData
-            }
+            requestSecretConfirmationPath: `${mount}/${this._getVersionFromMount(mount) === 2 ? 'data/' : ''}${currentPath}`
         });
     }
 
@@ -349,7 +345,7 @@ class SecretsList extends Component {
                                 }
                                 /* eslint-enable no-alert */
                             } else {
-                                this._openRequestSecretModal(currentPath, data.wrap_info);
+                                this._openRequestSecretModal(currentPath);
                             }
                         }
                     }}/>} key={`key-${i}`}>
@@ -361,7 +357,7 @@ class SecretsList extends Component {
                         <ListItemText primary={name} secondary={requiresRequest ? `Request type: ${isWrapped ? `Control Groups (approved: ${isApproved})` : 'Default'}` : ''}/>
                         <ListItemSecondaryAction>
                             {requiresRequest && !isApproved && <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
-                                <IconButton aria-label={requestAccessLabel} onClick={() => this._openRequestSecretModal(currentPath, data.wrap_info)}>
+                                <IconButton aria-label={requestAccessLabel} onClick={() => this._openRequestSecretModal(currentPath)}>
                                     <LockIcon/>
                                 </IconButton>
                             </Tooltip>}
@@ -415,7 +411,7 @@ class SecretsList extends Component {
         const {classes, deleteSecrets, match, requestSecret, secrets} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
-        const {deleteSecretConfirmation, isListModalOpen, requestSecretConfirmation, secretModalMode, secretModalInitialPath} = this.state;
+        const {deleteSecretConfirmation, isListModalOpen, requestSecretConfirmationPath, secretModalMode, secretModalInitialPath} = this.state;
         return <Card className={classes.card}>
             {this._renderBreadcrumbsArea()}
             {this._renderSecretsListArea()}
@@ -449,16 +445,15 @@ class SecretsList extends Component {
                 }}
             />
             <ConfirmationModal
-                content={`The path ${(requestSecretConfirmation || {}).path} has been locked through Control Groups. Request access?`}
-                open={!!requestSecretConfirmation}
+                content={`The path ${requestSecretConfirmationPath} has been locked through Control Groups. Request access?`}
+                open={!!requestSecretConfirmationPath}
                 title='Privilege Access Request'
                 onClose={confirm => {
                     if (confirm) {
-                        const {path: requestPath, requestData} = requestSecretConfirmation;
-                        requestSecret(requestPath, requestData);
+                        requestSecret(requestSecretConfirmationPath);
                     }
                     this.setState({
-                        requestSecretConfirmation: null
+                        requestSecretConfirmationPath: null
                     });
                 }}
             />
@@ -534,7 +529,7 @@ const _mapDispatchToProps = (dispatch) => {
                     .catch(reject);
             });
         },
-        requestSecret: (path, requestData) => dispatch(kvAction.requestSecret(path, requestData))
+        requestSecret: (path) => dispatch(kvAction.requestSecret(path))
     };
 };
 

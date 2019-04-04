@@ -4,7 +4,6 @@ const hcltojson = require('hcl-to-json');
 const request = require('request');
 const {initApiRequest, sendError} = require('services/utils');
 
-
 /**
  * Check Control Group request status.
  *
@@ -78,26 +77,90 @@ const getControlGroupPaths = async (req) => {
             }))).then(() => resolve(controlGroupPolicies));
         });
     });
+    return result;
+};
 
+/**
+ * Retrieves the groups that the session user is assigned to.
+ *
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
+const getGroupsByUser = async (req) => {
+    const {domain, entityId, token} = req.session.user;
+    const result = await new Promise((resolve, reject) => {
+        const groups = [];
+        request(initApiRequest(token, `${domain}/v1/identity/group/id?list=true`), (error, response, body) => {
+            if (error) {
+                reject(error);
+            } else if (response.statusCode !== 200) {
+                reject(body.errors || body);
+            } else {
+                Promise.all((((body || {}).data || {}).keys || []).map(key => {
+                    return new Promise((groupResolve) => {
+                        request(initApiRequest(token, `${domain}/v1/identity/group/id/${key}`), (groupError, groupResponse, groupBody) => {
+                            if (groupBody) {
+                                const {member_entity_ids: entityIds = []} = groupBody.data || {};
+                                if (entityIds.includes(entityId)) {
+                                    groups.push(groupBody);
+                                }
+                            }
+                            groupResolve();
+                        });
+                    });
+                })).then(() => resolve(groups));
+            }
+        });
+    });
+    return result;
+};
+
+/**
+ * Revokes the provided accessor.
+ *
+ * @param {Object} req The HTTP request object.
+ * @param {string} accessor The accessor to revoke.
+ * @returns {Promise}
+ */
+const revokeAccessor = async (req, accessor) => {
+    const {domain} = req.session.user;
+    const {REACT_APP_API_TOKEN: apiToken} = process.env;
+    const result = await new Promise((resolve, reject) => {
+        request({
+            ...initApiRequest(apiToken, `${domain}/v1/auth/token/revoke-accessor`),
+            method: 'post',
+            json: {
+                accessor
+            }
+        }, (error, response) => {
+            if (response.statusCode === 204) {
+                console.log(`Accessor successfully revoked: ${accessor}.`);
+                resolve();
+            } else {
+                console.log(`Error in attempting to revoke ${accessor}: `, error);
+                reject();
+            }
+        });
+    });
     return result;
 };
 
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
-    .post('/request', (req, res) => {
+    .post('/request', async (req, res) => {
         const {REACT_APP_API_TOKEN: apiToken} = process.env;
         if (!apiToken) {
             sendError(req.orignalUrl, res, 'No API token was set.', 402);
             return;
         }
-        const {controlGroupPaths, domain, entityId} = req.session.user;
+        const {controlGroupPaths, domain, entityId, token} = req.session.user;
         if (!controlGroupPaths) {
             sendError(req.orignalUrl, res, 'No approval group has been configured.', 500);
             return;
         }
-        const {data, path} = req.body;
-        if (!data || !path) {
+        const {path} = req.body;
+        if (!path) {
             sendError(req.orignalUrl, res, 'Required input data not provided.');
             return;
         }
@@ -108,6 +171,17 @@ const router = require('express').Router()
         const {group_names: groupNames = []} = (((matches[0] || {}).factor || {}).approvers || {}).identity || {};
         if (groupNames.length === 0) {
             sendError(req.orignalUrl, res, 'No approvers found.', 404);
+            return;
+        }
+
+        const secretRequest = await new Promise((resolve) => {
+            const getSecretApiUrl = `${domain}/v1/${path}`;
+            request(initApiRequest(token, getSecretApiUrl), (error, response, body) => resolve(body));
+        });
+
+        const {wrap_info: wrapInfo} = secretRequest || {};
+        if (!wrapInfo) {
+            sendError('/request', res, `Unable to request ${path}`);
             return;
         }
 
@@ -126,7 +200,7 @@ const router = require('express').Router()
                     } else {
                         const {metadata = {}} = (body || {}).data;
                         const metaKey = `entity=${entityId}==path=${path.replace(/\//g, '_')}`;
-                        const metaValue = JSON.stringify(data);
+                        const metaValue = JSON.stringify(wrapInfo);
                         console.log(`Persisting to ${apiGroupUrl} with the key/value pair: ${chalk.bold.yellow(metaKey)} / ${chalk.bold.yellow(metaValue)}`);
                         request({
                             ...initApiRequest(apiToken, apiGroupUrl),
@@ -155,10 +229,45 @@ const router = require('express').Router()
             });
         });
     })
-    .get('/requests', (req, res) => {
+    .get('/requests', async (req, res) => {
+        let groups = [];
+        try {
+            groups = await getGroupsByUser(req);
+        } catch (err) {
+            sendError('/requests', res, err);
+            return;
+        }
+        if (groups.length === 0) {
+            res.json([]);
+            return;
+        }
+        const requests = {};
+        groups.forEach(group => {
+            Object.keys(group.data.metadata).forEach(metadataKey => {
+                if (metadataKey.startsWith('entity=')) {
+                    requests[metadataKey] = group.data.metadata[metadataKey];
+                }
+            });
+        });
+        Promise.all(Object.keys(requests).map(key => checkControlGroupRequestStatus(req, JSON.parse(requests[key]).accessor)))
+            .then((results) => res.json(results))
+            .catch(() => sendError('/requests', res, 'Unable to retrieve requests.'));
+    })
+    .get('/REFACTORME', async (req, res) => {
         const {REACT_APP_API_TOKEN: apiToken} = process.env;
         const {domain} = req.session.user;
         const apiUrl = `${domain}/v1/auth/token/accessors/?list=true`;
+        let groups = [];
+        try {
+            groups = await getGroupsByUser(req);
+        } catch (err) {
+            sendError('/requests', res, err);
+        }
+        if (groups.length === 0) {
+            res.json([]);
+            return;
+        }
+
         request(initApiRequest(apiToken, `${domain}/v1/auth/token/accessors/?list=true`), (error, response, body) => {
             if (error) {
                 sendError(apiUrl, res, error);
@@ -225,5 +334,6 @@ const router = require('express').Router()
 module.exports = {
     checkControlGroupRequestStatus,
     getControlGroupPaths,
+    revokeAccessor,
     router
 };

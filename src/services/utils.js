@@ -40,13 +40,21 @@ const initApiRequest = (token, apiUrl) => {
  *
  * @param {Object} url The requested Vault server url.
  * @param {Object} res The HTTP response object.
- * @param {string|Object} error The error.
+ * @param {string|Object|Array} error The error.
  * @param {number} [statusCode] The HTTP status code.
  */
 const sendError = (url, res, error, statusCode = 400) => {
     console.warn(`Error in retrieving url "${url}": `, error);
+    let errors = [];
+    if (typeof error === 'string') {
+        errors.push(error);
+    } else if (Array.isArray(error)) {
+        errors = errors.concat(error);
+    } else {
+        errors.push(error.toString());
+    }
     res.status(statusCode).json({
-        errors: [typeof error === 'string' ? error : error.toString()]
+        errors
     });
 };
 

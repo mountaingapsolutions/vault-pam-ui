@@ -179,7 +179,6 @@ const authenticatedRoutes = require('express').Router()
     .use('/control-group', controlGroupServiceRouter)
     .use('/secrets', secretsServiceRouter)
     .use((req, res) => {
-        console.warn('found nothing: ', req.url);
         res.status(400).json({
             errors: ['These are\'t the droids you\'re looking for.']
         });

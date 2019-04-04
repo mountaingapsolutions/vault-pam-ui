@@ -1,8 +1,49 @@
 /* eslint-disable no-console */
 const chalk = require('chalk');
 const request = require('request');
-const {getControlGroupPaths} = require('services/routes/controlGroupService');
+const {checkControlGroupRequestStatus, getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
 const {initApiRequest, sendError, setSessionData} = require('services/utils');
+
+/**
+ * Retrieves the active Control Group requests from group metadata.
+ *
+ * @param {Object} req The HTTP request object.
+ * @param {string} entityId The entity id.
+ * @returns {Promise}
+ */
+const getActiveRequestsByEntityId = async (req, entityId) => {
+    const result = await new Promise((resolve, reject) => {
+        const {REACT_APP_API_TOKEN: apiToken} = process.env;
+        if (!apiToken) {
+            reject('No API token configured.');
+            return;
+        }
+        const {domain} = req.session.user;
+        let activeRequests = {};
+        request(initApiRequest(apiToken, `${domain}/v1/identity/group/id?list=true`), (error, response, body) => {
+            Promise.all((((body || {}).data || {}).keys || []).map(key => {
+                return new Promise((groupResolve) => {
+                    request(initApiRequest(apiToken, `${domain}/v1/identity/group/id/${key}`), (groupError, groupResponse, groupBody) => {
+                        const {metadata = {}} = (groupBody || {}).data || {};
+                        activeRequests = {
+                            ...activeRequests,
+                            ...metadata
+                        };
+                        groupResolve();
+                    });
+                });
+            })).then(() => {
+                const remappedActiveRequests = Object.keys(activeRequests).filter(key => key.startsWith(`entity=${entityId}`)).reduce((requestMap, key) => {
+                    const path = key.split('==path=')[1].replace(/_/g, '/');
+                    requestMap[path] = JSON.parse(activeRequests[key]);
+                    return requestMap;
+                }, {});
+                resolve(remappedActiveRequests);
+            });
+        });
+    });
+    return result;
+};
 
 /* eslint-disable new-cap */
 const router = require('express').Router()
@@ -15,7 +56,7 @@ const router = require('express').Router()
  */
     .get('/*', async (req, res) => {
         // Check for Control Group policies.
-        const {controlGroupPaths} = req.session.user;
+        const {controlGroupPaths, entityId} = req.session.user;
         if (!controlGroupPaths) {
             let paths = {};
             try {
@@ -37,6 +78,10 @@ const router = require('express').Router()
         }
         const {domain, token} = req.session.user;
         const apiUrl = `${domain}/v1/${listUrlParts.join('/')}?list=true`;
+
+        // Get active Control Group requests.
+        const activeRequests = await getActiveRequestsByEntityId(req, entityId);
+
         console.log(`Listing secrets from ${chalk.yellow.bold(apiUrl)}.`);
         request(initApiRequest(token, apiUrl), (error, response, body) => {
             if (error) {
@@ -94,60 +139,44 @@ const router = require('express').Router()
                             const canRead = (capabilities[key] || []).includes('read');
                             // TODO CHECK FOR PENDING REQUESTS!!!
                             if (canRead && !key.endsWith('/')) {
-                                const {wrapInfoMap = {}} = req.session.user;
                                 promises.push(new Promise((secretResolve) => {
                                     const getSecretApiUrl = `${domain}/v1/${key}`;
-                                    if (!wrapInfoMap[getSecretApiUrl]) {
+                                    const activeRequest = activeRequests[key];
+                                    if (activeRequest) {
+                                        console.log(`Active request found for ${key}: `, activeRequest);
+                                        secret.data = {
+                                            wrap_info: activeRequest
+                                        };
+                                        checkControlGroupRequestStatus(req, activeRequest.accessor)
+                                            .then((requestData) => {
+                                                secret.data = {
+                                                    ...secret.data,
+                                                    request_info: requestData.data
+                                                };
+                                                secretResolve();
+                                            }).catch(secretResolve);
                                         request(initApiRequest(token, getSecretApiUrl), (secretErr, secretRes, secretBody) => {
                                             if (secretBody) {
+                                                secret.data = secretBody;
                                                 const {wrap_info: wrapInfo} = secretBody;
-                                                // If the secret is wrapped (from Control Groups), cache it in the user's session.
                                                 if (wrapInfo) {
-                                                    request({
-                                                        ...initApiRequest(token, `${domain}/v1/sys/control-group/request`),
-                                                        method: 'POST',
-                                                        json: {
-                                                            accessor: wrapInfo.accessor
-                                                        }
-                                                    }, (reqReq, reqRes, reqBody) => {
-                                                        if (reqBody) {
-                                                            wrapInfoMap[getSecretApiUrl] = {
-                                                                ...secretBody,
-                                                                request_info: reqBody.data
-                                                            };
-                                                            secret.data = wrapInfoMap[getSecretApiUrl];
-                                                            setSessionData(req, {
-                                                                wrapInfoMap
-                                                            });
-                                                        }
-                                                        secretResolve();
-                                                    });
-                                                } else {
-                                                    secretResolve();
+                                                    // Just immediately revoke the accessor. A new one will be generated upon a user requesting access. The initial wrap_info accessor is only to inform the user that this secret is wrapped.
+                                                    revokeAccessor(req, wrapInfo.accessor);
                                                 }
+                                                secretResolve();
                                             }
                                         });
                                     } else {
-                                        const cachedWrapInfo = wrapInfoMap[getSecretApiUrl];
-                                        secret.data = cachedWrapInfo;
-                                        request({
-                                            ...initApiRequest(token, `${domain}/v1/sys/control-group/request`),
-                                            method: 'POST',
-                                            json: {
-                                                accessor: cachedWrapInfo.wrap_info.accessor
+                                        request(initApiRequest(token, getSecretApiUrl), (secretErr, secretRes, secretBody) => {
+                                            if (secretBody) {
+                                                secret.data = secretBody;
+                                                const {wrap_info: wrapInfo} = secretBody;
+                                                if (wrapInfo) {
+                                                    // Just immediately revoke the accessor. A new one will be generated upon a user requesting access. The initial wrap_info accessor is only to inform the user that this secret is wrapped.
+                                                    revokeAccessor(req, wrapInfo.accessor);
+                                                }
+                                                secretResolve();
                                             }
-                                        }, (reqReq, reqRes, reqBody) => {
-                                            if (reqBody) {
-                                                wrapInfoMap[getSecretApiUrl] = {
-                                                    ...cachedWrapInfo,
-                                                    request_info: reqBody.data
-                                                };
-                                                secret.data = wrapInfoMap[getSecretApiUrl];
-                                                setSessionData(req, {
-                                                    wrapInfoMap
-                                                });
-                                            }
-                                            secretResolve();
                                         });
                                     }
                                 }));
