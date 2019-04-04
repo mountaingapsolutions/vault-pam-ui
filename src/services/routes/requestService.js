@@ -1,5 +1,35 @@
 const RequestController = require('services/controllers/Request');
 
+/**
+ * @swagger
+ * definitions:
+ *   request:
+ *     type: object
+ *     properties:
+ *       requestId:
+ *         type: string
+ *       requesterEntityId:
+ *         type: string
+ *       requesteeEntityId:
+ *         type: string
+ *       requestData:
+ *         type: string
+ *       type:
+ *         type: string
+ *       status:
+ *         type: string
+ *       engineType:
+ *         type: string
+ *     required:
+ *       - requestId
+ *       - requesterEntityId
+ *       - requesteeEntityId
+ *       - requestData
+ *       - type
+ *       - status
+ *       - engineType
+ */
+
 /* eslint-disable new-cap */
 module.exports = require('express').Router()
 /* eslint-enable new-cap */
@@ -115,12 +145,56 @@ module.exports = require('express').Router()
             res.json(requests);
         });
     })
+    /**
+     * @swagger
+     * /rest/request/create:
+     *   post:
+     *     tags:
+     *       - Request
+     *     name: Create Request
+     *     summary: Create Request
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             $ref: '#/definitions/request'
+     *     responses:
+     *       200:
+     *         description: Request created
+     */
     .post('/create', (req, res) => {
         const {requestId, requesterEntityId, requesteeEntityId, requestData, type, status, engineType} = req.body;
         RequestController.create(requestId, requesterEntityId, requesteeEntityId, requestData, type, status, engineType).then(request => {
             res.json(request);
         });
     })
+    /**
+     * @swagger
+     * /rest/request/update:
+     *   put:
+     *     tags:
+     *       - Request
+     *     name: Update request
+     *     summary: Update request
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               requestId:
+     *                 type: string
+     *               status:
+     *                 type: string
+     *             required:
+     *               - requestId
+     *               - status
+     *     responses:
+     *       200:
+     *         description: User updated
+     */
     .put('/update', (req, res) => {
         const {requestId, status} = req.body;
         RequestController.updateStatus(requestId, status).then(user => {

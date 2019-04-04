@@ -2,7 +2,7 @@
 const chalk = require('chalk');
 const request = require('request');
 const swaggerUi = require('swagger-ui-express');
-const {swaggerSpec} = require('services/Swagger');
+const {options, swaggerDoc} = require('services/Swagger');
 const User = require('services/controllers/User');
 const {router: controlGroupServiceRouter} = require('services/routes/controlGroupService');
 const {router: secretsServiceRouter} = require('services/routes/secretsService');
@@ -132,7 +132,7 @@ const validate = (req, res) => {
 const authenticatedRoutes = require('express').Router()
 /* eslint-enable new-cap */
     .use('/api', swaggerUi.serve)
-    .get('/api', swaggerUi.setup(swaggerSpec))
+    .get('/api', swaggerUi.setup(swaggerDoc, options))
     .use((req, res, next) => {
         _disableCache(res);
         const {'x-vault-domain': domain, 'x-vault-token': token} = req.headers;

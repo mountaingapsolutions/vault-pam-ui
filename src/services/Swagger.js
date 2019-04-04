@@ -1,9 +1,37 @@
 const swaggerJSDoc = require('swagger-jsdoc');
 
+//swagger-ui-express custom options
+const hideOperationsUntilAuthorized = () => {
+    return {
+        wrapComponents: {
+            operation: (Ori, system) => (props) => {
+                const isOperationSecured = !!props.operation.get('security').size;
+                const isOperationAuthorized = props.operation.get('isAuthorized');
+
+                if (!isOperationSecured || isOperationAuthorized) {
+                    return system.React.createElement(Ori, props);
+                }
+                return null;
+            }
+        }
+    };
+};
+
 const options = {
+    customCss: '.swagger-ui .topbar { display: none }',
+    swaggerOptions: {
+        plugins: [
+            hideOperationsUntilAuthorized
+        ]
+    }
+};
+
+
+// swaggerJSDoc setup
+const swaggerJsDocOptions = {
     swaggerDefinition: {
-        openapi: '3.0.1',
-        info: {title: 'Vault PAM API', version: '1.0.0', description: 'Vault PAM API'},
+        openapi: '3.0.2',
+        info: {title: 'Vault PAM API', version: '1.0.0'},
         components: {
             securitySchemes: {
                 'x-vault-token': {
@@ -27,9 +55,10 @@ const options = {
     },
     apis: ['**/routes/*.js']
 };
+const swaggerDoc = swaggerJSDoc(swaggerJsDocOptions);
 
-const swaggerSpec = swaggerJSDoc(options);
 
 module.exports = {
-    swaggerSpec
+    options,
+    swaggerDoc
 };
