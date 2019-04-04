@@ -148,6 +148,36 @@ const revokeAccessor = async (req, accessor) => {
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
+
+/**
+ * @swagger
+ * /rest/control-group/requests:
+ *   post:
+ *     tags:
+ *       - Control-Group
+ *     name: Request secret access.
+ *     summary: Initiates a Control Group access request for a particular secret path.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               path:
+ *                 type: string
+ *               required:
+ *                 - path
+ *     responses:
+ *       200:
+ *         description: Success.
+ *       400:
+ *         description: Required path input was not provided.
+ *       402:
+ *         description: No API token was set.
+ *       500:
+ *         description: No approval group has been configured.
+ */
     .post('/request', async (req, res) => {
         const {REACT_APP_API_TOKEN: apiToken} = process.env;
         if (!apiToken) {
@@ -229,6 +259,20 @@ const router = require('express').Router()
             });
         });
     })
+    /**
+     * @swagger
+     * /rest/control-group/requests:
+     *   get:
+     *     tags:
+     *       - Control-Group
+     *     name: Retrieves active requests.
+     *     summary: Retrieves active Control Group requests from users.
+     *     responses:
+     *       200:
+     *         description: Success.
+     *       402:
+     *         description: Permission denied.
+     */
     .get('/requests', async (req, res) => {
         let groups = [];
         try {

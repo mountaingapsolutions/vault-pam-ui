@@ -4,6 +4,7 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 
 module.exports = (app) => {
+    app.disable('x-powered-by');
     app.use(cookieParser());
     app.use(session({
         key: 'entity_id',
