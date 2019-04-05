@@ -95,13 +95,20 @@ class KvAction extends _Actions {
     /**
      * Requests access to a secret.
      *
-     * @param {string} path Specifies the path of the secrets to request.
+     * @param {Object} requestData Specifies the path of the secrets to request(enterprise) or (standard).
+     * @param {boolean} isEnterprise The enterprise flag.
      * @returns {function} Redux dispatch function.
      */
-    requestSecret(path) {
-        return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/control-group/request', {
-            path
-        });
+    requestSecret(requestData, isEnterprise) {
+        if (isEnterprise) {
+            return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/control-group/request', {
+                path: requestData.path
+            });
+        } else {
+            return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/request/create', {
+                ...requestData
+            });
+        }
     }
 
     /**

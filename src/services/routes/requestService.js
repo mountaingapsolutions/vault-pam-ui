@@ -6,8 +6,6 @@ const RequestController = require('services/controllers/Request');
  *   request:
  *     type: object
  *     properties:
- *       requestId:
- *         type: string
  *       requesterEntityId:
  *         type: string
  *       requesteeEntityId:
@@ -21,7 +19,6 @@ const RequestController = require('services/controllers/Request');
  *       engineType:
  *         type: string
  *     required:
- *       - requestId
  *       - requesterEntityId
  *       - requesteeEntityId
  *       - requestData
@@ -61,33 +58,6 @@ module.exports = require('express').Router()
     .get('/id/:id', (req, res) => {
         const id = req.params.id;
         RequestController.findById(id).then(request => {
-            res.json(request);
-        });
-    })
-    /**
-     * @swagger
-     * /rest/request/requestId/{requestId}:
-     *   get:
-     *     tags:
-     *       - Request
-     *     name: Get request by requestId
-     *     summary: Get request by requestId
-     *     parameters:
-     *       - name: requestId
-     *         in: path
-     *         schema:
-     *           type: number
-     *         required:
-     *           - requestId
-     *     responses:
-     *       200:
-     *         description: Request found
-     *       404:
-     *         description: Request not found
-     */
-    .get('/requestId/:requestId', (req, res) => {
-        const requestId = req.params.requestId;
-        RequestController.findByRequestId(requestId).then(request => {
             res.json(request);
         });
     })
@@ -164,8 +134,8 @@ module.exports = require('express').Router()
      *         description: Request created
      */
     .post('/create', (req, res) => {
-        const {requestId, requesterEntityId, requesteeEntityId, requestData, type, status, engineType} = req.body;
-        RequestController.create(requestId, requesterEntityId, requesteeEntityId, requestData, type, status, engineType).then(request => {
+        const {requesterEntityId, requesteeEntityId, requestData, type, status, engineType} = req.body;
+        RequestController.create(requesterEntityId, requesteeEntityId, requestData, type, status, engineType).then(request => {
             res.json(request);
         });
     })
@@ -184,20 +154,20 @@ module.exports = require('express').Router()
      *           schema:
      *             type: object
      *             properties:
-     *               requestId:
+     *               id:
      *                 type: string
      *               status:
      *                 type: string
      *             required:
-     *               - requestId
+     *               - id
      *               - status
      *     responses:
      *       200:
      *         description: User updated
      */
     .put('/update', (req, res) => {
-        const {requestId, status} = req.body;
-        RequestController.updateStatus(requestId, status).then(user => {
+        const {id, status} = req.body;
+        RequestController.updateStatus(id, status).then(user => {
             res.json(user);
         });
     });

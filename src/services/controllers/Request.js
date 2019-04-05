@@ -1,9 +1,8 @@
-const Request = require('services/db/models/request');
-
+const connection = require('services/db/connection');
+const Request = connection.getModel('Request');
 /**
  * Create a Request.
  *
- * @param {string} requestId The request id.
  * @param {string} requesterEntityId The requester.
  * @param {string} requesteeEntityId The requestee.
  * @param {string} requestData The request data.
@@ -12,9 +11,8 @@ const Request = require('services/db/models/request');
  * @param {string} engineType The engine type.
  * @returns {Object}
  */
-const create = (requestId, requesterEntityId, requesteeEntityId, requestData, type, status, engineType) => {
+const create = (requesterEntityId, requesteeEntityId, requestData, type, status, engineType) => {
     return Request.create({
-        requestId,
         requesterEntityId,
         requesteeEntityId,
         requestData,
@@ -50,19 +48,6 @@ const findById = (id) => {
 };
 
 /**
- * Find requests by request id.
- *
- * @param {number} requestId The request db id.
- * @returns {Object}
- */
-const findByRequestId = (requestId) => {
-    return Request.findById(requestId).then(request => {
-        return request;
-    });
-};
-
-
-/**
  * Find all requests by requester.
  *
  * @param {string} entityId The requester entity id.
@@ -93,13 +78,13 @@ const findAllByRequestee = (entityId) => {
 /**
  * Update a Request Status by Request Id.
  *
- * @param {string} requestId The request id.
+ * @param {string} id The request id.
  * @param {string} status The request status.
  * @returns {Object}
  */
-const updateStatus = (requestId, status) => {
+const updateStatus = (id, status) => {
     return Request.update({status},
-        {where: {requestId}}
+        {where: {id}}
     ).then((request) => {
         return request;
     });
@@ -111,6 +96,5 @@ module.exports = {
     findAllByRequester,
     findAllByRequestee,
     findById,
-    findByRequestId,
     updateStatus
 };

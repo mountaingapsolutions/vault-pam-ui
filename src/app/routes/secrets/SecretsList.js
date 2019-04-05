@@ -35,6 +35,7 @@ import Button from 'app/core/components/common/Button';
 import ListModal from 'app/core/components/common/ListModal';
 import CreateUpdateSecretModal from 'app/core/components/CreateUpdateSecretModal';
 import ConfirmationModal from 'app/core/components/ConfirmationModal';
+import localStorageUtil from 'app/util/localStorageUtil';
 
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 
@@ -580,8 +581,18 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const {params} = match;
             const {mount, path} = params;
             const fullPath = `${mount}${version === 2 ? '/data' : ''}/${path}/${name}`;
+            // TODO: implement this
+            const isEnterprise = localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_ENTERPRISE) === 'true';
             return new Promise((resolve, reject) => {
-                dispatch(kvAction.requestSecret(fullPath))
+                let requestData = isEnterprise ? {'path': fullPath} : {
+                    requesterEntityId: '4e663372-dd6a-7d53-e26b-93dacc0e1416',
+                    requesteeEntityId: 'a62df1b7-3136-6573-a40d-a24692d11a94',
+                    requestData: fullPath,
+                    type: '',
+                    status: 'pending',
+                    engineType: ''
+                };
+                dispatch(kvAction.requestSecret(requestData, isEnterprise))
                     .then(() => {
                         dispatch(kvAction.listSecretsAndCapabilities(`${mount}${path ? `/${path}` : ''}`, version))
                             .then(resolve)

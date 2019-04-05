@@ -15,7 +15,8 @@ class LocalStorageUtil {
         this.KEY_NAMES = {
             VAULT_DOMAIN: 'vault-domain',
             VAULT_DOMAINS: 'vault-domains',
-            VAULT_TOKEN: 'vault-token'
+            VAULT_TOKEN: 'vault-token',
+            VAULT_ENTERPRISE: 'vault-enterprise'
         };
 
         this._keyValues = Object.values(this.KEY_NAMES);

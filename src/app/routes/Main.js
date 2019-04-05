@@ -147,7 +147,7 @@ class Main extends Component {
     componentDidMount() {
         const {checkSession, listRequests} = this.props;
         checkSession().then(() => {
-            const {listMounts, getSealStatus, vaultLookupSelf} = this.props;
+            const {listMounts, getSealStatus, getServerLicense, vaultLookupSelf} = this.props;
 
             if (vaultLookupSelf.data.data.policies.includes('root')) {
                 localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
@@ -156,6 +156,7 @@ class Main extends Component {
                 });
             }
             getSealStatus();
+            getServerLicense();
             listMounts();
         });
         listRequests();
@@ -169,12 +170,13 @@ class Main extends Component {
      * @param {Object} prevProps - previous set of props.
      */
     componentDidUpdate(prevProps) {
-        const {isLoggedIn, vaultLookupSelf} = this.props;
+        const {isEnterprise, isLoggedIn, vaultLookupSelf} = this.props;
         const isRootLoggedIn = vaultLookupSelf.data && vaultLookupSelf.data.data.policies.includes('root');
         if (prevProps.isLoggedIn !== isLoggedIn || !isRootLoggedIn && localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN) === null) {
             localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
             window.location.href = '/';
         }
+        localStorageUtil.setItem(localStorageUtil.KEY_NAMES.VAULT_ENTERPRISE, isEnterprise);
     }
 
     /**
@@ -309,6 +311,8 @@ Main.propTypes = {
     checkSession: PropTypes.func.isRequired,
     classes: PropTypes.object.isRequired,
     getSealStatus: PropTypes.func.isRequired,
+    getServerLicense: PropTypes.func.isRequired,
+    isEnterprise: PropTypes.bool,
     isLoggedIn: PropTypes.bool,
     listMounts: PropTypes.func.isRequired,
     listRequests: PropTypes.func.isRequired,
@@ -332,6 +336,7 @@ const _mapStateToProps = (state) => {
         ...state.localStorageReducer,
         ...state.sessionReducer,
         ...state.kvReducer,
+        ...state.systemReducer,
         ...state.userReducer
     };
 };
@@ -356,6 +361,7 @@ const _mapDispatchToProps = (dispatch) => {
         listMounts: () => dispatch(kvAction.listMounts()),
         listRequests: () => dispatch(kvAction.listRequests()),
         getSealStatus: () => dispatch(systemAction.getSealStatus()),
+        getServerLicense: () => dispatch(systemAction.getServerLicense()),
         logout: () => dispatch(userAction.logout())
     };
 };
