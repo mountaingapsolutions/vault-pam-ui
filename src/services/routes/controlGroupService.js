@@ -161,7 +161,6 @@ const revokeAccessor = async (req, accessor) => {
     const {domain} = req.session.user;
     const {REACT_APP_API_TOKEN: apiToken} = process.env;
     const result = await new Promise((resolve, reject) => {
-        console.warn('ATTEMPTING TO REVOKE ', accessor, '!!!!');
         request({
             ...initApiRequest(apiToken, `${domain}/v1/auth/token/revoke-accessor`),
             method: 'POST',
@@ -400,8 +399,16 @@ const router = require('express').Router()
                 }
             });
         });
-        Promise.all(Object.keys(requests).map(key => checkControlGroupRequestStatus(req, JSON.parse(requests[key]).accessor)))
-            .then((results) => res.json(results))
+        const wrapInfoList = Object.keys(requests).map(key => JSON.parse(requests[key]));
+        Promise.all(wrapInfoList.map(requestData => checkControlGroupRequestStatus(req, requestData.accessor)))
+            .then((results) => {
+                res.json(results.map((request_info, i) => {
+                    return {
+                        request_info,
+                        wrap_info: wrapInfoList[i]
+                    };
+                }));
+            })
             .catch(() => sendError(req.originalUrl, res, 'Unable to retrieve requests.'));
     })
     /**

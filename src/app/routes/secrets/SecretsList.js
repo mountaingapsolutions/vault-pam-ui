@@ -325,11 +325,11 @@ class SecretsList extends Component {
                     const canUpdate = capabilities.some(capability => capability === 'update' || capability === 'root');
                     const requiresRequest = capabilities.includes('deny') && !name.endsWith('/') || isWrapped;
                     const isApproved = isWrapped && (data.request_info || {}).approved;
-                    const requestDate = data.request_info && isWrapped ? new Date(data.wrap_info.creation_time) : null;
+                    const creationTime = data.request_info && isWrapped ? new Date(data.wrap_info.creation_time) : null;
                     const canDelete = capabilities.includes('delete');
                     let secondaryText = requiresRequest ? `Request type: ${isWrapped ? 'Control Groups' : 'Default'}` : '';
-                    if (requestDate) {
-                        secondaryText += ` (Requested at ${requestDate.toLocaleString()})`;
+                    if (creationTime) {
+                        secondaryText += ` (Requested at ${creationTime.toLocaleString()})`;
                     }
                     return <ListItem button component={(props) => <Link to={url} {...props} onClick={event => {
                         event.preventDefault();

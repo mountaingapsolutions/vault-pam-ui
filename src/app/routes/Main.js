@@ -38,6 +38,7 @@ import userAction from 'app/core/actions/userAction';
 import SecretRequestQueueModal from 'app/core/components/secretRequest/SecretRequestQueueModal';
 import UserProfileModal from 'app/core/components/UserProfileModal';
 import Footer from 'app/core/components/common/Footer';
+import NotificationsModal from 'app/core/components/NotificationsModal';
 import SecretsList from 'app/routes/secrets/SecretsList';
 import Constants from 'app/util/Constants';
 import localStorageUtil from 'app/util/localStorageUtil';
@@ -184,7 +185,7 @@ class Main extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, listRequests, logout, secretsMounts = {}, secretsRequests = [], sealStatus} = this.props;
+        const {classes, logout, secretsMounts = {}, secretsRequests = [], sealStatus} = this.props;
         const isVaultSealed = sealStatus && sealStatus.sealed;
         const {accountAnchorElement, isSecretRequestsModalOpen, isUserProfileModalOpen, notificationAnchorElement, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
@@ -211,7 +212,6 @@ class Main extends Component {
                             </Badge>
                         </IconButton>
                         <IconButton color='inherit' onClick={(event) => {
-                            listRequests();
                             this.setState({
                                 notificationAnchorElement: event.currentTarget
                             });
@@ -224,22 +224,6 @@ class Main extends Component {
                                     <NotificationsIcon/>
                             }
                         </IconButton>
-                        <Menu anchorEl={notificationAnchorElement} open={!!notificationAnchorElement} onClose={() => {
-                            this.setState({
-                                notificationAnchorElement: null
-                            });
-                        }}>
-                            {secretsRequests.map((request, i) => {
-                                const {request_entity, request_path} = request.data;
-                                return <MenuItem key={`request-${i}`} onClick={() => {
-                                }}>
-                                    {
-                                        `${request_path} - ${request_entity.name}`
-                                    }
-                                </MenuItem>;
-                            })
-                            }
-                        </Menu>
                         <IconButton
                             aria-haspopup='true'
                             aria-owns={accountAnchorElement ? 'material-appbar' : undefined}
@@ -247,9 +231,15 @@ class Main extends Component {
                             onClick={this._toggleAccountMenu}>
                             <AccountCircle/>
                         </IconButton>
-                        <Menu anchorEl={accountAnchorElement} open={!!accountAnchorElement} onClose={this._toggleAccountMenu}>
+                        <Menu
+                            anchorEl={accountAnchorElement}
+                            open={!!accountAnchorElement}
+                            onClose={this._toggleAccountMenu}>
                             <MenuItem onClick={() => this._openModal('isUserProfileModalOpen')}>
-                                <img className={classes.marginRight} src='/assets/settings-icon.svg' width='20'/> Profile
+                                <img
+                                    className={classes.marginRight}
+                                    src='/assets/settings-icon.svg'
+                                    width='20'/> Profile
                             </MenuItem>
                             <MenuItem onClick={logout}>
                                 <img className={classes.marginRight} src='/assets/logout-icon.svg' width='20'/> Log Out
@@ -307,6 +297,9 @@ class Main extends Component {
             <UserProfileModal
                 open={isUserProfileModalOpen}
                 onClose={() => this._closeModal('isUserProfileModalOpen')}/>
+            <NotificationsModal open={!!notificationAnchorElement} onClose={() => this.setState({
+                notificationAnchorElement: null
+            })}/>
             <Footer/>
         </div>;
     }
