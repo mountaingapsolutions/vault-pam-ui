@@ -416,7 +416,7 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {cancelRequest, classes, deleteSecrets, match, requestSecret, secrets} = this.props;
+        const {deleteRequest, classes, deleteSecrets, match, requestSecret, secrets} = this.props;
         const {params} = match;
         const {mount} = params;
         const {deleteSecretConfirmation, isListModalOpen, requestSecretCancellation, requestSecretConfirmation, secretModalMode, secretModalInitialPath} = this.state;
@@ -471,7 +471,7 @@ class SecretsList extends Component {
                 title='Cancel Privilege Access Request'
                 onClose={confirm => {
                     if (confirm) {
-                        cancelRequest(requestSecretCancellation, this._getVersionFromMount(mount));
+                        deleteRequest(requestSecretCancellation, this._getVersionFromMount(mount));
                     }
                     this.setState({
                         requestSecretCancellation: null
@@ -483,8 +483,8 @@ class SecretsList extends Component {
 }
 
 SecretsList.propTypes = {
-    cancelRequest: PropTypes.func.isRequired,
     classes: PropTypes.object.isRequired,
+    deleteRequest: PropTypes.func.isRequired,
     deleteSecrets: PropTypes.func.isRequired,
     errors: PropTypes.string,
     getSecrets: PropTypes.func.isRequired,
@@ -531,13 +531,13 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch, ownProps) => {
     return {
-        cancelRequest: (name, version) => {
+        deleteRequest: (name, version) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
             const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
             return new Promise((resolve, reject) => {
-                dispatch(kvAction.cancelRequest(fullPath))
+                dispatch(kvAction.deleteRequest(fullPath))
                     .then(() => {
                         dispatch(kvAction.listSecretsAndCapabilities(`${mount}${path ? `/${path}` : ''}`, version))
                             .then(resolve)
