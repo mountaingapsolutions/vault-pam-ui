@@ -59,6 +59,7 @@ class NotificationsModal extends Component {
                                 const {data = {}, request_id: requestId} = requestData.request_info;
                                 const {creation_time: creationTime} = requestData.wrap_info;
                                 const {request_entity: requestEntity, request_path: requestPath} = data;
+                                const requestType = requestData.wrap_info ? 'Control Groups' : 'Standard Request';
                                 return <React.Fragment key={requestId}>
                                     <ListItem alignItems='flex-start'>
                                         <ListItemAvatar>
@@ -80,7 +81,7 @@ class NotificationsModal extends Component {
                                                         className={classes.block}
                                                         color='textSecondary'
                                                         component='span'>
-                                                        {`Requested at ${new Date(creationTime).toLocaleString()}`}
+                                                        {`Requested at ${new Date(creationTime).toLocaleString()} via ${requestType}`}
                                                     </Typography>
                                                 </React.Fragment>
                                             }
