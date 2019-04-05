@@ -61,7 +61,6 @@ class SecretsList extends Component {
             secretModalInitialPath: '',
             secretModalMode: '',
             isListModalOpen: false
-
         };
 
         this._onBack = this._onBack.bind(this);
@@ -583,13 +582,14 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const fullPath = `${mount}${version === 2 ? '/data' : ''}/${path}/${name}`;
             // TODO: implement this
             const isEnterprise = localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_ENTERPRISE) === 'true';
+            const entity_id = window.app.store.getState().sessionReducer.vaultLookupSelf.data.data.entity_id;
             return new Promise((resolve, reject) => {
                 let requestData = isEnterprise ? {'path': fullPath} : {
-                    requesterEntityId: '4e663372-dd6a-7d53-e26b-93dacc0e1416',
+                    requesterEntityId: entity_id,
                     requesteeEntityId: 'a62df1b7-3136-6573-a40d-a24692d11a94',
                     requestData: fullPath,
                     type: '',
-                    status: 'pending',
+                    status: kvAction.KEY_NAMES.STATUS_PENDING,
                     engineType: ''
                 };
                 dispatch(kvAction.requestSecret(requestData, isEnterprise))
