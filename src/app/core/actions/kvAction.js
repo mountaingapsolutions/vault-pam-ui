@@ -12,27 +12,43 @@ class KvAction extends _Actions {
      */
     constructor() {
         super('KvAction', {
+            AUTHORIZE_REQUEST: 'AUTHORIZE_REQUEST',
+            DELETE_REQUEST: 'DELETE_REQUEST',
             DELETE_SECRETS: 'DELETE_SECRETS',
-            CANCEL_REQUEST: 'CANCEL_REQUEST',
             GET_SECRETS: 'GET_SECRETS',
             LIST_MOUNTS: 'LIST_MOUNTS',
             LIST_SECRETS: 'LIST_SECRETS',
             LIST_SECRETS_AND_CAPABILITIES: 'LIST_SECRETS_AND_CAPABILITIES',
             LIST_REQUESTS: 'LIST_REQUESTS',
+            REJECT_REQUEST: 'REJECT_REQUEST',
             REQUEST_SECRET: 'REQUEST_SECRET',
             SAVE_SECRET: 'SAVE_SECRET'
         });
     }
 
     /**
-     * Cancels a secrets request of the specified location.
+     * Authorizes a secrets request.
      *
      * @param {string} path Specifies the path of the request to delete.
+     * @param {string} entityId The user entity id.
      * @returns {function} Redux dispatch function.
      */
-    cancelRequest(path) {
-        return this._dispatchDelete(this.ACTION_TYPES.CANCEL_REQUEST, '/rest/control-group/request', {
-            path
+    authorizeRequest(path, entityId = '') {
+        console.log(`Not yet implemented! But need to authorize ${path} for ${entityId}.`);
+        return this._createResourceData(this.ACTION_TYPES.AUTHORIZE_REQUEST, undefined, undefined, false);
+    }
+
+    /**
+     * Deletes the secrets request of the specified location.
+     *
+     * @param {string} path Specifies the path of the request to delete.
+     * @param {string} [entityId] The user entity id. If not provided, the request will default to the current session user.
+     * @returns {function} Redux dispatch function.
+     */
+    deleteRequest(path, entityId = '') {
+        return this._dispatchDelete(this.ACTION_TYPES.DELETE_REQUEST, '/rest/control-group/request', {
+            path,
+            entityId
         });
     }
 

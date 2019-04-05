@@ -1,10 +1,12 @@
 import {
     Avatar,
+    CircularProgress,
     Dialog,
     DialogActions,
     DialogContent,
     DialogTitle,
     Divider,
+    Grid,
     IconButton,
     List,
     ListItem,
@@ -23,7 +25,9 @@ import {withStyles} from '@material-ui/core/styles';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 
+import kvAction from 'app/core/actions/kvAction';
 import Button from 'app/core/components/common/Button';
+import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 import {connect} from 'react-redux';
 
 /**
@@ -39,7 +43,7 @@ class NotificationsModal extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, onClose, open, secretsRequests = []} = this.props;
+        const {classes, inProgress, onClose, open, rejectRequest, secretsRequests = []} = this.props;
         return <Dialog
             fullWidth
             aria-describedby='notifications-dialog-description'
@@ -59,6 +63,7 @@ class NotificationsModal extends Component {
                                 const {data = {}, request_id: requestId} = requestData.request_info;
                                 const {creation_time: creationTime} = requestData.wrap_info;
                                 const {request_entity: requestEntity, request_path: requestPath} = data;
+                                const {id: entityId, name: entityName} = requestEntity;
                                 const requestType = requestData.wrap_info ? 'Control Groups' : 'Standard Request';
                                 return <React.Fragment key={requestId}>
                                     <ListItem alignItems='flex-start'>
@@ -68,7 +73,7 @@ class NotificationsModal extends Component {
                                             </Avatar>
                                         </ListItemAvatar>
                                         <ListItemText
-                                            primary={requestEntity.name}
+                                            primary={entityName}
                                             secondary={
                                                 <React.Fragment>
                                                     <Typography
@@ -93,7 +98,13 @@ class NotificationsModal extends Component {
                                                 </IconButton>
                                             </Tooltip>
                                             <Tooltip aria-label='Reject' title='Reject'>
-                                                <IconButton>
+                                                <IconButton onClick={() => {
+                                                    /* eslint-disable no-alert */
+                                                    if (window.confirm(`Are you sure you want to reject ${entityName}'s request to ${requestPath}?`)) {
+                                                        rejectRequest(requestPath, entityId);
+                                                    }
+                                                    /* eslint-enable no-alert */
+                                                }}>
                                                     <ClearIcon/>
                                                 </IconButton>
                                             </Tooltip>
@@ -104,9 +115,18 @@ class NotificationsModal extends Component {
                             })
                             :
                             <Paper className={classes.paper} elevation={2}>
-                                <Typography className={classes.paperMessage} color='textSecondary' variant='h5'>
-                                    There are no notifications at this time.
-                                </Typography>
+                                {
+                                    inProgress ?
+                                        <Grid container justify='center'>
+                                            <Grid item>
+                                                <CircularProgress className={classes.loader}/>
+                                            </Grid>
+                                        </Grid>
+                                        :
+                                        <Typography className={classes.paperMessage} color='textSecondary' variant='h5'>
+                                            There are no notifications at this time.
+                                        </Typography>
+                                }
                             </Paper>
                     }
                 </List>
@@ -127,6 +147,8 @@ NotificationsModal.defaultProps = {
 NotificationsModal.propTypes = {
     authorizeRequest: PropTypes.func.isRequired,
     classes: PropTypes.object.isRequired,
+    errors: PropTypes.string,
+    inProgress: PropTypes.bool,
     onClose: PropTypes.func.isRequired,
     open: PropTypes.bool,
     rejectRequest: PropTypes.func.isRequired,
@@ -141,7 +163,13 @@ NotificationsModal.propTypes = {
  * @returns {Object}
  */
 const _mapStateToProps = (state) => {
+    const actionsUsed = [
+        kvAction.ACTION_TYPES.DELETE_REQUEST,
+        kvAction.ACTION_TYPES.LIST_REQUESTS
+    ];
     return {
+        errors: createErrorsSelector(actionsUsed)(state.actionStatusReducer),
+        inProgress: createInProgressSelector(actionsUsed)(state.actionStatusReducer),
         ...state.kvReducer
     };
 };
@@ -151,15 +179,21 @@ const _mapStateToProps = (state) => {
  *
  * @private
  * @param {function} dispatch Redux dispatch function.
- * @param {Object} ownProps The own component props.
  * @returns {Object}
  */
-const _mapDispatchToProps = (dispatch, ownProps) => {
+const _mapDispatchToProps = (dispatch) => {
     return {
-        authorizeRequest: () => {
-            console.warn('dispatch ', dispatch, ownProps);
-        },
-        rejectRequest: () => {
+        authorizeRequest: (path, entityId) => dispatch(kvAction.authorizeRequest(path, entityId)),
+        rejectRequest: (path, entityId) => {
+            return new Promise((resolve, reject) => {
+                dispatch(kvAction.deleteRequest(path, entityId))
+                    .then(() => {
+                        dispatch(kvAction.listRequests())
+                            .then(resolve)
+                            .catch(reject);
+                    })
+                    .catch(reject);
+            });
         }
     };
 };
@@ -174,6 +208,9 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
 const _styles = (theme) => ({
     block: {
         display: 'block',
+    },
+    loader: {
+        margin: 50
     },
     listContainer: {
         backgroundColor: theme.palette.background.paper

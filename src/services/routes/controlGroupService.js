@@ -318,19 +318,30 @@ const router = require('express').Router()
      */
     .delete('/request', async (req, res) => {
         const {REACT_APP_API_TOKEN: apiToken} = process.env;
-        const {path} = req.query;
+        const {entityId, path} = req.query;
         if (!path) {
             sendError(req.originalUrl, res, 'Required input path not provided.');
             return;
         }
         const decodedPath = decodeURIComponent(path);
-        const {domain, entityId} = req.session.user;
-        const key = `entity=${entityId}==path=${decodedPath.replace(/\//g, '_')}`;
+        const {domain, entityId: entityIdSelf} = req.session.user;
         try {
+            const key = `entity=${entityId || entityIdSelf}==path=${decodedPath.replace(/\//g, '_')}`;
             const groups = await getGroupsByMetadata(req, key);
             if (groups.length === 0) {
                 sendError(req.originalUrl, res, `No active requests found for ${decodedPath}.`, 404);
                 return;
+            }
+            // If an entity id is provided, also have to check permissions by checking if the current user is in any of the groups.
+            if (entityId) {
+                const isAuthorized = groups.some(group => {
+                    const {member_entity_ids: memberEntityIds = []} = group.data;
+                    return memberEntityIds.some(memberEntityId => memberEntityId === entityIdSelf);
+                });
+                if (!isAuthorized) {
+                    sendError(req.originalUrl, res, 'Unauthorized', 403);
+                    return;
+                }
             }
             await new Promise(resolve => {
                 Promise.all(groups.map(group => new Promise((groupResolve) => {
@@ -354,15 +365,13 @@ const router = require('express').Router()
                 sendError(req.originalUrl, res, `No accessor found for ${decodedPath}.`, 404);
                 return;
             }
-            console.warn('1=========', accessor);
             await revokeAccessor(req, accessor);
-            console.warn('2=========', accessor);
             res.json({
                 status: 'ok'
             });
         } catch (err) {
             console.error(err);
-            sendError(req.originalUrl, res, `Unable to delete the request ${key}.`);
+            sendError(req.originalUrl, res, `Unable to delete the request to ${path} for entity ${entityId || entityIdSelf}.`);
         }
     })
     /**
@@ -437,7 +446,6 @@ const router = require('express').Router()
                         reject(response);
                     } else {
                         const {keys: accessors} = body.data || {};
-                        console.warn('accessors: ', accessors);
                         if (accessors) {
                             // Revoke all Control Group accessors.
                             Promise.all(accessors.map(accessor => new Promise((accessorResolve) => request({
