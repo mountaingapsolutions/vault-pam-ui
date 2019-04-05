@@ -16,9 +16,10 @@ import Constants from 'app/util/Constants';
  */
 export default (previousState = {
     user: {
-        Name: Constants.DEFAULT_EMPTY_FIELD_VALUE,
-        Email: Constants.DEFAULT_EMPTY_FIELD_VALUE,
-        Engine: Constants.DEFAULT_EMPTY_FIELD_VALUE
+        firstName: Constants.DEFAULT_EMPTY_FIELD_VALUE,
+        lastName: Constants.DEFAULT_EMPTY_FIELD_VALUE,
+        email: Constants.DEFAULT_EMPTY_FIELD_VALUE,
+        engine: Constants.DEFAULT_EMPTY_FIELD_VALUE
     },
     isLoggedIn: true
 }, action) => {
@@ -44,12 +45,10 @@ export default (previousState = {
  */
 const _remapUserData = userData => {
     const {email, engineType, firstName, lastName} = userData;
-    const fName = firstName || firstName === null && '';
-    const lName = lastName || lastName === null && '';
-    const fullName = `${fName}${lName}`.length > 0 ? `${fName} ${lName}` : Constants.DEFAULT_EMPTY_FIELD_VALUE;
     return {
-        Name: fullName,
-        Email: email || Constants.DEFAULT_EMPTY_FIELD_VALUE,
-        Engine: engineType || Constants.DEFAULT_EMPTY_FIELD_VALUE
+        firstName: firstName || Constants.DEFAULT_EMPTY_FIELD_VALUE,
+        lastName: lastName || Constants.DEFAULT_EMPTY_FIELD_VALUE,
+        email: email || Constants.DEFAULT_EMPTY_FIELD_VALUE,
+        engine: engineType || Constants.DEFAULT_EMPTY_FIELD_VALUE
     };
 };

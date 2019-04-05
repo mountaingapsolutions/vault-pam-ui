@@ -8,20 +8,18 @@ import {
     DialogContent,
     DialogTitle,
     Grid,
-    Grow,
-    IconButton,
     Paper,
     TextField,
     Typography
 } from '@material-ui/core';
 import {
-    Visibility,
-    VisibilityOff
+    AccountCircle,
+    Email,
+    VpnKey
 } from '@material-ui/icons';
 import {withStyles} from '@material-ui/core/styles/index';
 import {COLORS} from 'app/core/assets/Styles';
 import Button from 'app/core/components/common/Button';
-import GridTextField from 'app/core/components/common/GridTextField';
 
 /**
  * Settings with Change Password Modal component.
@@ -37,18 +35,11 @@ class UserProfileModal extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            confirmPassword: '',
-            email: '',
-            firstName: '',
-            isChangePasswordOnDisplay: false,
-            isEditProfileOnDisplay: false,
-            lastName: '',
-            newPassword: '',
-            showPassword: false
+            email: null,
+            firstName: null,
+            isUpdatePending: false,
+            lastName: null
         };
-        this._onCloseOpenChangePassword = this._onCloseOpenChangePassword.bind(this);
-        this._onCloseOpenEditProfile = this._onCloseOpenEditProfile.bind(this);
-        this._onHideShowPassword = this._onHideShowPassword.bind(this);
         this._updateProfile = this._updateProfile.bind(this);
     }
 
@@ -61,27 +52,10 @@ class UserProfileModal extends Component {
      */
     componentDidUpdate(prevProps) {
         const {entityId, getUser, user} = this.props;
-        const isUserProfileUpdated = user && (user.Email !== prevProps.user.Email || user.Name !== prevProps.user.Name);
+        const isUserProfileUpdated = user && (user.email !== prevProps.user.email || user.firstName !== prevProps.user.firstName || user.lastName !== prevProps.user.lastName);
         entityId !== prevProps.entityId && getUser(entityId);
-        isUserProfileUpdated && this.setState({isEditProfileOnDisplay: false});
-    }
-
-    /**
-     * Handle for when change password and cancel is pressed.
-     *
-     * @private
-     */
-    _onCloseOpenChangePassword() {
-        this.setState({isChangePasswordOnDisplay: !this.state.isChangePasswordOnDisplay});
-    }
-
-    /**
-     * Handle for when edit and cancel edit is pressed.
-     *
-     * @private
-     */
-    _onCloseOpenEditProfile() {
-        this.setState({isEditProfileOnDisplay: !this.state.isEditProfileOnDisplay});
+        isUserProfileUpdated && this.setState({isUpdatePending: false});
+        user && prevProps.user.email !== user.email && this._mapPropsToState();
     }
 
     /**
@@ -92,16 +66,23 @@ class UserProfileModal extends Component {
      * @returns {Object}
      */
     _handleChange = prop => event => {
+        const {isUpdatePending} = this.state;
+        !isUpdatePending && this.setState({isUpdatePending: true});
         this.setState({[prop]: event.target.value});
     };
 
     /**
-     * Handle for when hide/show password is pressed.
+     * Helper method to map app state to component state.
      *
      * @private
      */
-    _onHideShowPassword() {
-        this.setState({showPassword: !this.state.showPassword});
+    _mapPropsToState() {
+        const {email, firstName, lastName} = this.props.user;
+        this.setState({
+            email,
+            firstName,
+            lastName
+        });
     }
 
     /**
@@ -112,154 +93,13 @@ class UserProfileModal extends Component {
     _updateProfile() {
         const {email, firstName, lastName} = this.state;
         const {entityId, updateUser} = this.props;
-        if (email !== '' && firstName !== '' && lastName !== '') {
-            const data = {
-                entityId,
-                email,
-                firstName,
-                lastName
-            };
-            updateUser(data);
-        } else {
-            //TODO add custom alert dialog box?
-            alert('Please complete the information.');// eslint-disable-line no-alert
-        }
-    }
-
-    /**
-     * Helper method to render change password card.
-     *
-     * @private
-     * @returns {React.ReactElement}
-     */
-    _renderChangePassword() {
-        const {classes} = this.props;
-        const {confirmPassword, newPassword, showPassword} = this.state;
-        return (
-            <Grow in={true}>
-                <Paper className={classes.paperChangePassword}>
-                    <Typography className={classes.cardTitle} color='primary'>
-                        CHANGE PASSWORD:
-                    </Typography>
-                    <Grid container justify='center' spacing={8}>
-                        <Grid item>
-                            <TextField
-                                className={classes.textField}
-                                InputProps={{classes: {input: classes.textField}}}
-                                label='New Password'
-                                margin='none'
-                                type={showPassword ? 'text' : 'password'}
-                                value={newPassword}
-                                variant='outlined'
-                                onChange={this._handleChange('newPassword')}/>
-                        </Grid>
-                        <Grid item>
-                            <TextField
-                                className={classes.textField}
-                                InputProps={{classes: {input: classes.textField}}}
-                                label='Confirm Password'
-                                margin='none'
-                                type={showPassword ? 'text' : 'password'}
-                                value={confirmPassword}
-                                variant='outlined'
-                                onChange={this._handleChange('confirmPassword')}/>
-                        </Grid>
-                        <Grid item>
-                            <IconButton
-                                onClick={this._onHideShowPassword}>
-                                {showPassword ? <VisibilityOff/> : <Visibility/>}
-                            </IconButton>
-                        </Grid>
-                    </Grid>
-                    <div className={classes.buttonsContainer}>
-                        <Button variant='text'>
-                            APPLY
-                        </Button>
-                        <Button
-                            className={classes.buttonCancel}
-                            onClick={this._onCloseOpenChangePassword}>
-                            CANCEL
-                        </Button>
-                    </div>
-                </Paper>
-            </Grow>
-        );
-    }
-
-    /**
-     * Helper method to render change password button.
-     *
-     * @private
-     * @returns {React.ReactElement}
-     */
-    _renderChangePasswordButton() {
-        const {classes} = this.props;
-        return <div className={classes.alignRight}>
-            <Button variant='text' onClick={this._onCloseOpenEditProfile}>
-                EDIT
-            </Button>
-            <Button variant='text' onClick={this._onCloseOpenChangePassword}>
-                CHANGE PASSWORD
-            </Button>
-        </div>;
-    }
-
-    /**
-     * Helper method to render edit profile card.
-     *
-     * @private
-     * @returns {React.ReactElement}
-     */
-    _renderEditProfile() {
-        const {classes} = this.props;
-        const {email, firstName, lastName} = this.state;
-        return (
-            <Grow in={true}>
-                <Paper className={classes.paperChangePassword}>
-                    <Typography className={classes.cardTitle} color='primary'>
-                        EDIT PROFILE:
-                    </Typography>
-                    <Grid container justify='center' spacing={8}>
-                        <Grid item>
-                            <TextField
-                                label='First Name'
-                                margin='none'
-                                value={firstName}
-                                variant='outlined'
-                                onChange={this._handleChange('firstName')}/>
-                        </Grid>
-                        <Grid item>
-                            <TextField
-                                label='Last Name'
-                                margin='none'
-                                value={lastName}
-                                variant='outlined'
-                                onChange={this._handleChange('lastName')}/>
-                        </Grid>
-                        <Grid item>
-                            <TextField
-                                label='Email'
-                                margin='none'
-                                value={email}
-                                variant='outlined'
-                                onChange={this._handleChange('email')}/>
-                        </Grid>
-                    </Grid>
-                    <div className={classes.buttonsContainer}>
-                        <Button
-                            variant='text'
-                            onClick={this._updateProfile}>
-                            SAVE
-                        </Button>
-                        <Button
-                            className={classes.buttonCancel}
-                            onClick={this._onCloseOpenEditProfile}>
-                            CANCEL
-                        </Button>
-                    </div>
-                </Paper>
-            </Grow>
-        );
+        const data = {
+            entityId,
+            email,
+            firstName,
+            lastName
+        };
+        updateUser(data);
     }
 
     /**
@@ -270,12 +110,63 @@ class UserProfileModal extends Component {
      */
     _renderProfileDetails() {
         const {classes, user} = this.props;
+        const {email, firstName, lastName} = this.state;
         return (
             <Paper className={classes.paperChangePassword}>
-                <Typography className={classes.alignLeft} color='primary'>
-                    USER DETAILS:
-                </Typography>
-                <GridTextField items={user} margin='none'/>
+                <Grid container>
+                    <Grid container>
+                        <Grid item className={classes.gridIconItem} xs={1}>
+                            <AccountCircle
+                                color='primary'
+                                fontSize='large'/>
+                        </Grid>
+                        <Grid item className={classes.gridTextFieldItem} xs={11}>
+                            <TextField
+                                label='First Name'
+                                margin='normal'
+                                style={{marginRight: 10}}
+                                value={firstName}
+                                variant='outlined'
+                                onChange={this._handleChange('firstName')}/>
+                            <TextField
+                                label='Last Name'
+                                margin='normal'
+                                value={lastName}
+                                variant='outlined'
+                                onChange={this._handleChange('lastName')}/>
+                        </Grid>
+                    </Grid>
+                    <Grid container>
+                        <Grid item className={classes.gridIconItem} xs={1}>
+                            <Email
+                                color='primary'
+                                fontSize='large'/>
+                        </Grid>
+                        <Grid item className={classes.gridTextFieldItem} xs={11}>
+                            <TextField
+                                fullWidth
+                                label='Email'
+                                value={email}
+                                variant='outlined'
+                                onChange={this._handleChange('email')}/>
+                        </Grid>
+                    </Grid>
+                    <Grid container>
+                        <Grid item className={classes.gridIconItem} xs={1}>
+                            <VpnKey
+                                color='primary'
+                                fontSize='large'/>
+                        </Grid>
+                        <Grid item className={classes.gridTextFieldItem} xs={11}>
+                            <TextField
+                                disabled
+                                fullWidth
+                                label='Engine'
+                                value={user && user.engine}
+                                variant='outlined'/>
+                        </Grid>
+                    </Grid>
+                </Grid>
             </Paper>
         );
     }
@@ -288,13 +179,15 @@ class UserProfileModal extends Component {
      * @returns {React.ReactElement}
      */
     render() {
+        const {isUpdatePending} = this.state;
         const {classes, onClose, open} = this.props;
-        const {isChangePasswordOnDisplay, isEditProfileOnDisplay} = this.state;
         return (
             <Dialog
                 disableBackdropClick
                 disableEscapeKeyDown
-                maxWidth={'md'}
+                fullWidth
+                classes={{paper: classes.dialogPaper}}
+                maxWidth={'sm'}
                 open={open}>
                 <DialogTitle disableTypography className={classes.title}>
                     <Typography color='textSecondary'>
@@ -302,14 +195,18 @@ class UserProfileModal extends Component {
                     </Typography>
                 </DialogTitle>
                 <DialogContent>
-                    {isEditProfileOnDisplay ? this._renderEditProfile() : this._renderProfileDetails()}
-                    {isChangePasswordOnDisplay ?
-                        this._renderChangePassword() :
-                        !isEditProfileOnDisplay && this._renderChangePasswordButton()}
+                    {this._renderProfileDetails()}
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={onClose}>
+                    <Button
+                        variant='text'
+                        onClick={onClose}>
                         CLOSE
+                    </Button>
+                    <Button
+                        disabled={!isUpdatePending}
+                        onClick={this._updateProfile}>
+                        SAVE
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -338,30 +235,20 @@ UserProfileModal.propTypes = {
  * @returns {Object}
  */
 const _styles = () => ({
-    alignRight: {
-        textAlign: 'right'
+    dialogPaper: {
+        minWidth: 400,
+        maxWidth: 610
     },
-    alignLeft: {
-        paddingBottom: 20,
-        textAlign: 'left'
+    gridIconItem: {
+        alignSelf: 'center',
+        textAlign: 'center'
     },
-    buttonsContainer: {
-        textAlign: 'right',
-        marginTop: 10
-    },
-    cardTitle: {
-        textAlign: 'left',
-        paddingBottom: 20
+    gridTextFieldItem: {
+        padding: 10
     },
     paperChangePassword: {
         marginTop: 10,
-        padding: 20,
-        textAlign: 'center'
-    },
-    textField: {
-        fontSize: 14,
-        padding: 10,
-        width: 250
+        padding: 20
     },
     title: {
         backgroundColor: COLORS.LIGHT_GREY
