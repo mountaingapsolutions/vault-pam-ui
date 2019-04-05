@@ -281,6 +281,10 @@ class Main extends Component {
                         </Card>
                     </Route>
                     <Route component={SecretsList} path='/secrets/:mount/:path*'/>
+                    <Route component={() => {
+                        window.location.pathname = '/rest/api';
+                        return null;
+                    }} path='/rest/api'/>
                     <Redirect to='/'/>
                 </Switch>
             </Grid>

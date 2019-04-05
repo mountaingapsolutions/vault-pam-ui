@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
+import {Link} from 'react-router-dom';
 
 import localStorageAction from 'app/core/actions/localStorageAction';
 
@@ -37,13 +38,21 @@ class Footer extends Component {
             <div className={classes.footerRootContainer}>
                 <AppBar className={classes.footer} position='fixed'>
                     <div className={classes.footerTextContainer}>
+                        <Link to={'/rest/api'}>
+                            <Typography inline className={classes.text} variant='caption'>
+                                API
+                            </Typography>
+                        </Link>
+                        <Typography inline className={classes.textSeparator} variant='caption'>
+                            |
+                        </Typography>
                         <Typography inline className={classes.textActiveDomain} variant='caption'>
                             {`${activeVaultDomain}`}
                         </Typography>
                         <Typography inline className={classes.textSeparator} variant='caption'>
                             |
                         </Typography>
-                        <Typography inline className={classes.textVersion} variant='caption'>
+                        <Typography inline className={classes.text} variant='caption'>
                             {`Vault ${vaultVersion}`}
                         </Typography>
                     </div>
@@ -123,7 +132,7 @@ const _styles = () => ({
         paddingRight: 20,
         paddingLeft: 20
     },
-    textVersion: {
+    text: {
         color: COLORS.DARK_GREY,
         fontSize: 12
     }
