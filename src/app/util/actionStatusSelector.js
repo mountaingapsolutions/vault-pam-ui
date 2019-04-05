@@ -5,7 +5,7 @@
  * @param {Array} [actions] - array of actions to check
  * @returns {function}
  */
-export const createErrorsSelector = actions => (state) => {
+export const createErrorsSelector = actions => (state = {}) => {
     const errors = actions.map(action => (state.errors || {})[action]).filter(error => !!error);
     // Return first error that is encountered
     if (errors && errors[0]) {
@@ -21,5 +21,5 @@ export const createErrorsSelector = actions => (state) => {
  * @param {Array} [actions] - array of actions to check
  * @returns {function}
  */
-export const createInProgressSelector = actions => state =>
+export const createInProgressSelector = actions => (state = {}) =>
     actions.some(action => (state.inProgress || {})[action]);
