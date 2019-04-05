@@ -11,7 +11,7 @@ const {initApiRequest, sendError, setSessionData} = require('services/utils');
  * @param {string} entityId The entity id.
  * @returns {Promise}
  */
-const getActiveRequestsByEntityId = async (req, entityId) => {
+const _getActiveRequestsByEntityId = async (req, entityId) => {
     const result = await new Promise((resolve, reject) => {
         const {REACT_APP_API_TOKEN: apiToken} = process.env;
         if (!apiToken) {
@@ -105,7 +105,7 @@ const router = require('express').Router()
         const apiUrl = `${domain}/v1/${listUrlParts.join('/')}?list=true`;
 
         // Get active Control Group requests.
-        const activeRequests = await getActiveRequestsByEntityId(req, entityId);
+        const activeRequests = await _getActiveRequestsByEntityId(req, entityId);
 
         console.log(`Listing secrets from ${chalk.yellow.bold(apiUrl)}.`);
         request(initApiRequest(token, apiUrl), (error, response, body) => {

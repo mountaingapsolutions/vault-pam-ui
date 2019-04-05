@@ -141,6 +141,30 @@ module.exports = require('express').Router()
     })
     /**
      * @swagger
+     * /rest/request/findOrCreate:
+     *   post:
+     *     tags:
+     *       - Request
+     *     name: Create Request
+     *     summary: Create Request
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             $ref: '#/definitions/request'
+     *     responses:
+     *       200:
+     *         description: Request created
+     */
+    .post('/findOrCreate', (req, res) => {
+        const {requesterEntityId, requesteeEntityId, requestData, type, status, engineType} = req.body;
+        RequestController.findOrCreate(requesterEntityId, requesteeEntityId, requestData, type, status, engineType).then(request => {
+            res.json(request);
+        });
+    })
+    /**
+     * @swagger
      * /rest/request/update:
      *   put:
      *     tags:

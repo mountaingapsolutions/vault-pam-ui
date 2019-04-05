@@ -105,7 +105,7 @@ class KvAction extends _Actions {
                 path: requestData.path
             });
         } else {
-            return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/request/create', {
+            return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/request/findOrCreate', {
                 ...requestData
             });
         }

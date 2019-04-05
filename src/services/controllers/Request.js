@@ -90,11 +90,35 @@ const updateStatus = (id, status) => {
     });
 };
 
+/**
+ * Find or Create a Request.
+ *
+ * @param {string} requesterEntityId The requester.
+ * @param {string} requesteeEntityId The requestee.
+ * @param {string} requestData The request data.
+ * @param {string} type The type.
+ * @param {string} status The status.
+ * @param {string} engineType The engine type.
+ * @returns {Object}
+ */
+const findOrCreate = (requesterEntityId, requesteeEntityId, requestData, type, status, engineType) => {
+    return Request.findOne({
+        where: {requesterEntityId, requesteeEntityId, requestData, type, status, engineType}
+    }).then(request => {
+        if (request) {
+            return request;
+        } else {
+            return create(requesterEntityId, requesteeEntityId, requestData, type, status, engineType);
+        }
+    });
+};
+
 module.exports = {
     create,
     findAll,
     findAllByRequester,
     findAllByRequestee,
     findById,
+    findOrCreate,
     updateStatus
 };
