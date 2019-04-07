@@ -36,6 +36,7 @@ class UserProfileModal extends Component {
         super(props);
         this.state = {
             email: null,
+            engine: null,
             firstName: null,
             isUpdatePending: false,
             lastName: null
@@ -55,7 +56,7 @@ class UserProfileModal extends Component {
         const isUserProfileUpdated = user && (user.email !== prevProps.user.email || user.firstName !== prevProps.user.firstName || user.lastName !== prevProps.user.lastName);
         entityId !== prevProps.entityId && getUser(entityId);
         isUserProfileUpdated && this.setState({isUpdatePending: false});
-        user && prevProps.user.email !== user.email && this._mapPropsToState();
+        user && this.state.engine !== user.engine && this._mapPropsToState();
     }
 
     /**
@@ -77,9 +78,10 @@ class UserProfileModal extends Component {
      * @private
      */
     _mapPropsToState() {
-        const {email, firstName, lastName} = this.props.user;
+        const {email, engine, firstName, lastName} = this.props.user;
         this.setState({
             email,
+            engine,
             firstName,
             lastName
         });
@@ -109,8 +111,8 @@ class UserProfileModal extends Component {
      * @returns {React.ReactElement}
      */
     _renderProfileDetails() {
-        const {classes, user} = this.props;
-        const {email, firstName, lastName} = this.state;
+        const {classes} = this.props;
+        const {email, engine, firstName, lastName} = this.state;
         return (
             <Paper className={classes.paperChangePassword}>
                 <Grid container>
@@ -162,7 +164,7 @@ class UserProfileModal extends Component {
                                 disabled
                                 fullWidth
                                 label='Engine'
-                                value={user && user.engine}
+                                value={engine}
                                 variant='outlined'/>
                         </Grid>
                     </Grid>

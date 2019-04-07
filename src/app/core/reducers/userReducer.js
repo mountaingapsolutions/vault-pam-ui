@@ -46,9 +46,23 @@ export default (previousState = {
 const _remapUserData = userData => {
     const {email, engineType, firstName, lastName} = userData;
     return {
-        firstName: firstName || Constants.DEFAULT_EMPTY_FIELD_VALUE,
-        lastName: lastName || Constants.DEFAULT_EMPTY_FIELD_VALUE,
-        email: email || Constants.DEFAULT_EMPTY_FIELD_VALUE,
-        engine: engineType || Constants.DEFAULT_EMPTY_FIELD_VALUE
+        firstName: replaceNullValue(firstName),
+        lastName: replaceNullValue(lastName),
+        email: replaceNullValue(email),
+        engine: replaceNullValue(engineType)
     };
+};
+
+/**
+ * Helper method to replace null value.
+ *
+ * @public
+ * @param {string} field - The previous user data.
+ * @returns {string} Remapped user data.
+ */
+const replaceNullValue = field => {
+    if (field === undefined || field === null) {
+        return Constants.DEFAULT_EMPTY_FIELD_VALUE;
+    }
+    return field;
 };
