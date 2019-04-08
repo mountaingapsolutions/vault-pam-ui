@@ -51,10 +51,7 @@ class NotificationsModal extends Component {
         if (alreadyAuthorizedBySelf) {
             namesList.unshift('you');
         }
-        return <Typography
-            className={classes.block}
-            color='textSecondary'
-            component='span'>
+        return <Typography className={classes.block} color='textSecondary' component='span'>
             Already approved by {namesList.join(', ')}.
         </Typography>;
     }
