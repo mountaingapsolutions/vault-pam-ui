@@ -22,7 +22,8 @@ class KvAction extends _Actions {
             LIST_REQUESTS: 'LIST_REQUESTS',
             REJECT_REQUEST: 'REJECT_REQUEST',
             REQUEST_SECRET: 'REQUEST_SECRET',
-            SAVE_SECRET: 'SAVE_SECRET'
+            SAVE_SECRET: 'SAVE_SECRET',
+            UNWRAP_SECRET: 'UNWRAP_SECRET'
         });
 
         this.KEY_NAMES = {
@@ -150,6 +151,35 @@ class KvAction extends _Actions {
      */
     listRequests() {
         return this._dispatchGet(this.ACTION_TYPES.LIST_REQUESTS, '/rest/control-group/requests');
+    }
+
+    /**
+     * Unwraps a wrapped secret.
+     *
+     * @param {string} name The secret name.
+     * @param {string} token The token to unwrap.
+     * @returns {function} Redux dispatch function.
+     */
+    unwrapSecret(name, token) {
+        // return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/api/v1/sys/wrapping/unwrap', {
+        //     token
+        // }, null, (responseData) => {
+        //     // Inject the name into the response data.
+        //     const {data, inProgress} = responseData;
+        //     if (data && !inProgress) {
+        //         return {
+        //             ...responseData,
+        //             data: {
+        //                 name,
+        //                 data
+        //             }
+        //         };
+        //     }
+        //     return responseData;
+        // });
+        return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/api/v1/sys/wrapping/unwrap', {
+            token
+        });
     }
 
     /**
