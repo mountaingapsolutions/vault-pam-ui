@@ -35,6 +35,7 @@ import Button from 'app/core/components/common/Button';
 import ListModal from 'app/core/components/common/ListModal';
 import CreateUpdateSecretModal from 'app/core/components/CreateUpdateSecretModal';
 import ConfirmationModal from 'app/core/components/ConfirmationModal';
+import Constants from 'app/util/Constants';
 
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 
@@ -613,7 +614,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                     requesterEntityId: entity_id,
                     requestData: fullPath,
                     type: '',
-                    status: kvAction.KEY_NAMES.STATUS_PENDING,
+                    status: Constants.REQUEST_STATUS.APPROVED,
                     engineType: ''
                 };
                 dispatch(kvAction.requestSecret(requestData, isEnterprise))

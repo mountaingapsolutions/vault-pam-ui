@@ -24,11 +24,6 @@ class KvAction extends _Actions {
             REQUEST_SECRET: 'REQUEST_SECRET',
             SAVE_SECRET: 'SAVE_SECRET'
         });
-
-        this.KEY_NAMES = {
-            STATUS_PENDING: 'pending',
-            STATUS_APPROVED: 'approved'
-        };
     }
 
     /**
