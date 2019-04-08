@@ -13,11 +13,21 @@ module.exports = (sequelize) => {
         },
         approverEntityId: Sequelize.UUID,
         requestData: {
+            allowNull: true,
             type: Sequelize.STRING,
             unique: 'compositeIndex'
         },
-        type: Sequelize.STRING,
-        status: Sequelize.STRING,
-        engineType: Sequelize.STRING
+        type: {
+            type: Sequelize.STRING,
+            allowNull: true
+        },
+        status: {
+            type: Sequelize.STRING,
+            allowNull: false
+        },
+        engineType: {
+            type: Sequelize.STRING,
+            allowNull: true
+        }
     });
 };

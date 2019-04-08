@@ -441,7 +441,8 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {deleteRequest, classes, deleteSecrets, match, requestSecret, secrets} = this.props;
+        const {deleteRequest, classes, deleteSecrets, isEnterprise, match, requestSecret, secrets, vaultLookupSelf} = this.props;
+        const requesterEntityId = vaultLookupSelf.data && vaultLookupSelf.data.data.entity_id;
         const {params} = match;
         const {mount} = params;
         const {deleteSecretConfirmation, isListModalOpen, requestSecretCancellation, requestSecretConfirmation, secretModalMode, secretModalInitialPath} = this.state;
@@ -483,7 +484,7 @@ class SecretsList extends Component {
                 title='Privilege Access Request'
                 onClose={confirm => {
                     if (confirm) {
-                        requestSecret(requestSecretConfirmation, this._getVersionFromMount(mount));
+                        requestSecret(requestSecretConfirmation, isEnterprise, requesterEntityId, this._getVersionFromMount(mount));
                     }
                     this.setState({
                         requestSecretConfirmation: null
@@ -515,13 +516,15 @@ SecretsList.propTypes = {
     getSecrets: PropTypes.func.isRequired,
     history: PropTypes.object.isRequired,
     inProgress: PropTypes.bool,
+    isEnterprise: PropTypes.bool,
     listMounts: PropTypes.func.isRequired,
     listSecretsAndCapabilities: PropTypes.func.isRequired,
     match: PropTypes.object.isRequired,
     requestSecret: PropTypes.func.isRequired,
     secrets: PropTypes.object,
     secretsMounts: PropTypes.object,
-    secretsPaths: PropTypes.object
+    secretsPaths: PropTypes.object,
+    vaultLookupSelf: PropTypes.object
 };
 
 /**
@@ -542,6 +545,7 @@ const _mapStateToProps = (state) => {
         ...state.localStorageReducer,
         ...state.kvReducer,
         ...state.sessionReducer,
+        ...state.systemReducer,
         ...state.userReducer
     };
 };
@@ -600,22 +604,18 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                     .catch(reject);
             });
         },
-        requestSecret: (name, version) => {
+        requestSecret: (name, isEnterprise, requesterEntityId, version) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
             const fullPath = `${mount}${version === 2 ? '/data' : ''}/${path}/${name}`;
-            // TODO: implement this
-            const storeState = window.app.store.getState();
-            const isEnterprise = storeState.systemReducer.isEnterprise === 'true';
-            const entity_id = storeState.sessionReducer.vaultLookupSelf.data.data.entity_id;
             return new Promise((resolve, reject) => {
                 let requestData = isEnterprise ? {'path': fullPath} : {
-                    requesterEntityId: entity_id,
+                    requesterEntityId: requesterEntityId,
                     requestData: fullPath,
-                    type: '',
-                    status: Constants.REQUEST_STATUS.APPROVED,
-                    engineType: ''
+                    status: Constants.REQUEST_STATUS.PENDING,
+                    type: null, // nothing here yet.
+                    engineType: null // nothing here yet.
                 };
                 dispatch(kvAction.requestSecret(requestData, isEnterprise))
                     .then(() => {
