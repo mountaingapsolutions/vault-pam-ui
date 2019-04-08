@@ -6,8 +6,8 @@ import React from 'react';
 import {render} from 'react-dom';
 import {Provider} from 'react-redux';
 import {Router} from 'react-router-dom';
-import * as serviceWorker from './serviceWorker';
-import localStorageUtil from './app/util/localStorageUtil';
+import * as serviceWorker from 'serviceWorker';
+import localStorageUtil from 'app/util/localStorageUtil';
 
 const theme = createMuiTheme({
     palette: {

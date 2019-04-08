@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
+import {Link} from 'react-router-dom';
 
 import localStorageAction from 'app/core/actions/localStorageAction';
 
@@ -34,19 +35,29 @@ class Footer extends Component {
     render() {
         const {classes, activeVaultDomain, vaultVersion} = this.props;
         return (
-            <AppBar className={classes.footer} position='fixed'>
-                <div className={classes.footerTextContainer}>
-                    <Typography inline className={classes.textActiveDomain} variant='caption'>
-                        {`${activeVaultDomain}`}
-                    </Typography>
-                    <Typography inline className={classes.textSeparator} variant='caption'>
-                        |
-                    </Typography>
-                    <Typography inline className={classes.textVersion} variant='caption'>
-                        {`Vault ${vaultVersion}`}
-                    </Typography>
-                </div>
-            </AppBar>
+            <div className={classes.footerRootContainer}>
+                <AppBar className={classes.footer} position='fixed'>
+                    <div className={classes.footerTextContainer}>
+                        <Link to={'/rest/api'}>
+                            <Typography inline className={classes.text} variant='caption'>
+                                API
+                            </Typography>
+                        </Link>
+                        <Typography inline className={classes.textSeparator} variant='caption'>
+                            |
+                        </Typography>
+                        <Typography inline className={classes.textActiveDomain} variant='caption'>
+                            {`${activeVaultDomain}`}
+                        </Typography>
+                        <Typography inline className={classes.textSeparator} variant='caption'>
+                            |
+                        </Typography>
+                        <Typography inline className={classes.text} variant='caption'>
+                            {`Vault ${vaultVersion}`}
+                        </Typography>
+                    </div>
+                </AppBar>
+            </div>
         );
     }
 }
@@ -106,6 +117,9 @@ const _styles = () => ({
         textAlign: 'center',
         top: 'auto'
     },
+    footerRootContainer: {
+        margin: 70
+    },
     footerTextContainer: {
         flexDirection: 'row'
     },
@@ -118,7 +132,7 @@ const _styles = () => ({
         paddingRight: 20,
         paddingLeft: 20
     },
-    textVersion: {
+    text: {
         color: COLORS.DARK_GREY,
         fontSize: 12
     }

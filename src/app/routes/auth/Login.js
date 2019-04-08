@@ -305,6 +305,7 @@ const _mapDispatchToProps = (dispatch) => {
                     if (clientToken) {
                         localStorageUtil.setItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN, clientToken);
                         dispatch(sessionAction.setToken(clientToken));
+
                         resolve();
                     } else {
                         reject();

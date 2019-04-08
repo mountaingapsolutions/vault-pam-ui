@@ -15,13 +15,20 @@ import systemAction from 'app/core/actions/systemAction';
  */
 export default (previousState = {
     selfCapabilities: {},
-    sealStatus: {}
+    sealStatus: {},
+    isEnterprise: false,
+    groupData: {}
 }, action) => {
     switch (action.type) {
+        case systemAction.ACTION_TYPES.GET_GROUP_DATA:
+            return {...previousState, groupData: action.data || {}, action};
         case systemAction.ACTION_TYPES.GET_SELF_CAPABILITIES:
-            return {...previousState, selfCapabilities: systemAction.injectMetaData(action.data || {}, action)};
+            return {...previousState, selfCapabilities: action.data || {}, action};
         case systemAction.ACTION_TYPES.GET_SEAL_STATUS:
-            return {...previousState, sealStatus: systemAction.injectMetaData(action.data || {}, action)};
+            return {...previousState, sealStatus: action.data || {}, action};
+        case systemAction.ACTION_TYPES.GET_SERVER_LICENSE:
+            const license = action.data;
+            return {...previousState, isEnterprise: license && license.data && license.data.features.includes('Control Groups') || false, action};
         default:
             return {...previousState};
     }

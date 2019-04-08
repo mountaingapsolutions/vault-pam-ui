@@ -1,8 +1,6 @@
 /* eslint-disable no-console */
 /* global process, require */
 
-require('dotenv').config();
-
 // Do this as the first thing so that any code reading it knows the right env.
 process.env.BABEL_ENV = 'development';
 process.env.NODE_ENV = 'development';
@@ -14,8 +12,13 @@ process.on('unhandledRejection', err => {
     throw err;
 });
 
+// Add the root project directory to the app module search path:
+const path = require('path');
+require('app-module-path').addPath(path.join(__dirname, '..'));
+require('app-module-path').addPath(path.join(__dirname, '..', 'src'));
+
 // Ensure environment variables are read.
-require('../config/env');
+require('config/env');
 
 
 const fs = require('fs');
@@ -31,19 +34,12 @@ const {
     prepareUrls,
 } = require('react-dev-utils/WebpackDevServerUtils');
 const openBrowser = require('react-dev-utils/openBrowser');
-const paths = require('../config/paths');
-const configFactory = require('../config/webpack.config');
-const createDevServerConfig = require('../config/webpackDevServer.config');
+const paths = require('config/paths');
+const configFactory = require('config/webpack.config');
+const createDevServerConfig = require('config/webpackDevServer.config');
 
 const useYarn = fs.existsSync(paths.yarnLockFile);
 const isInteractive = process.stdout.isTTY;
-const {connection} = require('../src/db/models');
-
-connection.sync().then(() => {
-    console.info('DB connection successful.');
-}, (err) => {
-    console.error(err);
-});
 
 // Warn and crash if required files are missing
 if (!checkRequiredFiles([paths.appHtml, paths.appIndexJs])) {
@@ -115,6 +111,17 @@ checkBrowsers(paths.appPath, isInteractive)
             }
             console.log(chalk.cyan('Starting the development server...\n'));
             openBrowser(urls.localUrlForBrowser);
+
+            const connection = require('services/db/connection');
+            connection.start()
+                .then(() => {
+                    console.info('DB connection successful. ᕕ( ᐛ )ᕗ\r\n');
+                })
+                .catch((error) => {
+                    console.error(error);
+                    process.exit(1);
+                });
+
             return null;
         });
 

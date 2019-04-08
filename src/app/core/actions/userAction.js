@@ -14,33 +14,32 @@ class UserAction extends _Actions {
         super('UserAction', {
             DELETE_USER: 'DELETE_USER',
             GET_USER: 'GET_USER',
-            LIST_USERS: 'LIST_USERS',
+            LOGOUT: 'LOGOUT',
+            UPDATE_USER_DETAILS: 'UPDATE_USER_DETAILS',
             UPDATE_USER_PASSWORD: 'UPDATE_USER_PASSWORD',
             UPDATE_USER_POLICIES: 'UPDATE_USER_POLICIES'
         });
     }
 
     /**
-     * List available userpass users.
+     * Gets the properties of an existing username.
      *
+     * @param {string} entityId The entityId for the user.
      * @returns {function} Redux dispatch function.
      */
-    listUsers() {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_USERS, '/api/v1/auth/userpass/users', {
-            list: true
-        });
+    getUser(entityId) {
+        return this._dispatchGet(this.ACTION_TYPES.GET_USER, `/rest/user/entityId/${entityId}`);
     }
 
     /**
-     * Gets the properties of an existing username.
+     * Update the properties of an existing username.
      *
-     * @param {string} username The username for the user.
+     * @param {Object} data The new user data.
      * @returns {function} Redux dispatch function.
      */
-    getUser(username) {
-        return this._dispatchGet(this.ACTION_TYPES.GET_USER, `/api/v1/auth/userpass/users/${username}`);
+    updateUser(data) {
+        return this._dispatchPut(this.ACTION_TYPES.UPDATE_USER_DETAILS, '/rest/user/update', data);
     }
-
     /**
      * Deletes the specified user.
      *
@@ -75,6 +74,15 @@ class UserAction extends _Actions {
         return this._dispatchPost(this.ACTION_TYPES.UPDATE_USER_POLICIES, `/api/v1/auth/userpass/users/${username}/policies`, {
             policies
         });
+    }
+
+    /**
+     * Logout current user.
+     *
+     * @returns {function} Redux dispatch function.
+     */
+    logout() {
+        return this._dispatchPost(this.ACTION_TYPES.LOGOUT, '/logout');
     }
 }
 

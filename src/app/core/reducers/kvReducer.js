@@ -16,36 +16,64 @@ import kvAction from 'app/core/actions/kvAction';
 export default (previousState = {
     secrets: {},
     secretsMounts: {},
-    secretsPaths: {}
+    secretsPaths: {},
+    secretsRequests: []
 }, action) => {
     switch (action.type) {
         case kvAction.ACTION_TYPES.GET_SECRETS:
+        case kvAction.ACTION_TYPES.UNWRAP_SECRET:
             return {
                 ...previousState,
-                secrets: kvAction.injectMetaData((action.data || {}).data || {}, action)
+                secrets: (action.data || {}).data || {}
             };
         case kvAction.ACTION_TYPES.LIST_MOUNTS:
             const mounts = (action.data || {}).data || {};
             return {
                 ...previousState,
-                secretsMounts: kvAction.injectMetaData({data: Object.keys(mounts).map(key => {
+                secretsMounts: {data: Object.keys(mounts).map(key => {
                     return {
                         ...mounts[key],
                         name: key
                     };
-                }).filter(mount => mount.type !== 'identity' && mount.type !== 'system')}, action) // Filter out the identity and system mounts.
+                }).filter(mount => mount.type !== 'identity' && mount.type !== 'system')}// Filter out the identity and system mounts.
+            };
+        case kvAction.ACTION_TYPES.LIST_REQUESTS:
+            return {
+                ...previousState,
+                secretsRequests: action.data || []
             };
         // Deprecated?
         case kvAction.ACTION_TYPES.LIST_SECRETS:
             return {
                 ...previousState,
-                secretsPaths: kvAction.injectMetaData((action.data || {}).data || {}, action)
+                secretsPaths: (action.data || {}).data || {}
             };
         case kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES:
             return {
                 ...previousState,
-                secretsPaths: kvAction.injectMetaData((action.data || {}).data || {}, action)
+                secretsPaths: (action.data || {}).data || {}
             };
+        // case kvAction.ACTION_TYPES.UNWRAP_SECRET:
+        //     if (action.data) {
+        //         const {name, data} = action.data;
+        //         const updatedSecrets = {
+        //             ...previousState.secretsPaths
+        //         };
+        //         updatedSecrets.secrets.some((secret) => {
+        //             if (secret.name === name) {
+        //                 secret.data = data;
+        //                 return true;
+        //             }
+        //             return false;
+        //         });
+        //         return {
+        //             ...previousState,
+        //             secretsPaths: updatedSecrets
+        //         };
+        //     }
+        //     return {
+        //         ...previousState
+        //     };
         default:
             return {...previousState};
     }

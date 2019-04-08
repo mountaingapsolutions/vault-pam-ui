@@ -5,24 +5,25 @@ const port = process.env.PORT || 80;
 const bodyParser = require('body-parser');
 const chalk = require('chalk');
 const compression = require('compression');
+const cookieParser = require('cookie-parser');
 const express = require('express');
+const session = require('express-session');
 const path = require('path');
 const hsts = require('hsts');
-const {api, validate, login, authenticatedRoutes} = require('./restServiceMethods');
+
+// Import any environment variables.
+require('dotenv').config();
+
+// Add the root project directory to the app module search path:
+require('app-module-path').addPath(path.join(__dirname));
+
+const {api, validate, login, logout, authenticatedRoutes} = require('services/routes');
 
 // Overcome the DEPTH_ZERO_SELF_SIGNED_CERT error.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const useHsts = process.env.USE_HSTS !== null && process.env.USE_HSTS !== undefined ? !!process.env.USE_HSTS && process.env.USE_HSTS !== 'false' : true;
 console.log(`Starting server on port ${chalk.yellow(port)}...`);
-
-// Database Init
-const {connection} = require('./db/models');
-connection.sync().then(() => {
-    console.info('DB connection successful.');
-}, (err) => {
-    console.error(err);
-});
 
 const noCacheUrls = ['/'];
 express().use(compression())
@@ -48,6 +49,16 @@ express().use(compression())
         force: true,
         preload: true
     }))
+    .use(cookieParser())
+    .use(session({
+        key: 'entity_id',
+        secret: process.env.SESSION_SECRET || 'correct horse battery staple',
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+            maxAge: 600000
+        }
+    }))
     .use('/', (req, res, next) => {
         if (noCacheUrls.includes(req.originalUrl)) {
             res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -61,10 +72,26 @@ express().use(compression())
     .use(bodyParser.json())
     .get('/validate', validate)
     .post('/login', login)
+    .post('/logout', logout)
     .use('/rest', authenticatedRoutes)
     .get('/*', (req, res) => {
         res.sendFile(path.join(__dirname, 'build', 'index.html'));
     })
     .listen(port, () => {
         console.log(`Server is now listening on port ${chalk.yellow(port)}...`);
+
+        if (!process.env.SESSION_SECRET) {
+            console.warn(`The environment variable ${chalk.yellow.bold('SESSION_SECRET')} was not set. Defaulting to the classic xkcd password...`);
+        }
+
+        // Database startup.
+        const connection = require('./services/db/connection');
+        connection.start()
+            .then(() => {
+                console.info('DB connection successful. ᕕ( ᐛ )ᕗ\r\n');
+            })
+            .catch((error) => {
+                console.error(error);
+                process.exit(1);
+            });
     });

@@ -212,11 +212,11 @@ Server.propTypes = {
     history: PropTypes.object.isRequired,
     location: PropTypes.object.isRequired,
     removeVaultDomain: PropTypes.func.isRequired,
+    sealStatus: PropTypes.object.isRequired,
     setVaultDomain: PropTypes.func.isRequired,
     vaultDomain: PropTypes.object.isRequired,
     vaultDomains: PropTypes.array.isRequired,
-    vaultLookupSelf: PropTypes.object.isRequired,
-    sealStatus: PropTypes.object.isRequired
+    vaultLookupSelf: PropTypes.object.isRequired
 };
 
 /**

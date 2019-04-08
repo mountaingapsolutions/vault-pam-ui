@@ -1,7 +1,24 @@
 /* global window */
 
 import {withStyles} from '@material-ui/core/styles';
-import {AppBar, Badge, Card, CardContent, Grid, IconButton, List, ListItem, ListItemIcon, ListItemSecondaryAction, ListItemText, Menu, MenuItem, Snackbar, Toolbar, Typography} from '@material-ui/core';
+import {
+    AppBar,
+    Badge,
+    Card,
+    CardContent,
+    Grid,
+    IconButton,
+    List,
+    ListItem,
+    ListItemIcon,
+    ListItemSecondaryAction,
+    ListItemText,
+    Menu,
+    MenuItem,
+    Snackbar,
+    Toolbar,
+    Typography
+} from '@material-ui/core';
 import AccountCircle from '@material-ui/icons/AccountCircle';
 import Button from 'app/core/components/common/Button';
 import CloseIcon from '@material-ui/icons/Close';
@@ -19,7 +36,9 @@ import sessionAction from 'app/core/actions/sessionAction';
 import systemAction from 'app/core/actions/systemAction';
 import userAction from 'app/core/actions/userAction';
 import SecretRequestQueueModal from 'app/core/components/secretRequest/SecretRequestQueueModal';
+import UserProfileModal from 'app/core/components/UserProfileModal';
 import Footer from 'app/core/components/common/Footer';
+import NotificationsModal from 'app/core/components/NotificationsModal';
 import SecretsList from 'app/routes/secrets/SecretsList';
 import Constants from 'app/util/Constants';
 import localStorageUtil from 'app/util/localStorageUtil';
@@ -41,11 +60,12 @@ class Main extends Component {
         this.state = {
             accountAnchorElement: null,
             isSecretRequestsModalOpen: false,
+            isUserProfileModalOpen: false,
+            notificationAnchorElement: null,
             showRootWarning: false
         };
         this._closeModal = this._closeModal.bind(this);
         this._onClose = this._onClose.bind(this);
-        this._onLogOut = this._onLogOut.bind(this);
         this._openModal = this._openModal.bind(this);
         this._toggleAccountMenu = this._toggleAccountMenu.bind(this);
     }
@@ -82,19 +102,7 @@ class Main extends Component {
      * @param {string} modalState The close reason.
      */
     _openModal(modalState) {
-        this.setState({[modalState]: true});
-    }
-
-    /**
-     * Handle for when value change is triggered.
-     *
-     * @private
-     * @param {SyntheticMouseEvent} event The event.
-     */
-    _onLogOut(event) {
-        event.preventDefault();
-        localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
-        window.location.href = '/';
+        this.setState({[modalState]: true, accountAnchorElement: null});
     }
 
     /**
@@ -137,9 +145,9 @@ class Main extends Component {
      * @override
      */
     componentDidMount() {
-        const {checkSession} = this.props;
+        const {checkSession, listRequests} = this.props;
         checkSession().then(() => {
-            const {listMounts, getSealStatus, vaultLookupSelf} = this.props;
+            const {listMounts, getGroupData, getSealStatus, getServerLicense, vaultLookupSelf} = this.props;
 
             if (vaultLookupSelf.data.data.policies.includes('root')) {
                 localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
@@ -147,14 +155,28 @@ class Main extends Component {
                     showRootWarning: true
                 });
             }
+            getGroupData();
             getSealStatus();
+            getServerLicense();
             listMounts();
-            // TODO Display the result of listUsers
-            // listUsers().then(() => {
-            //     const {users} = this.props;
-            //     console.log('Users returned: ', users);
-            // });
         });
+        listRequests();
+    }
+
+    /**
+     * Required React Component lifecycle method. Invoked when a component did update. This method is not called for the initial render.
+     *
+     * @protected
+     * @override
+     * @param {Object} prevProps - previous set of props.
+     */
+    componentDidUpdate(prevProps) {
+        const {isLoggedIn, vaultLookupSelf} = this.props;
+        const isRootLoggedIn = vaultLookupSelf.data && vaultLookupSelf.data.data.policies.includes('root');
+        if (prevProps.isLoggedIn !== isLoggedIn || !isRootLoggedIn && localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN) === null) {
+            localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
+            window.location.href = '/';
+        }
     }
 
     /**
@@ -165,9 +187,9 @@ class Main extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, secretsMounts = {}, sealStatus} = this.props;
+        const {classes, logout, secretsMounts = {}, secretsRequests = [], sealStatus} = this.props;
         const isVaultSealed = sealStatus && sealStatus.sealed;
-        const {accountAnchorElement, isSecretRequestsModalOpen, showRootWarning} = this.state;
+        const {accountAnchorElement, isSecretRequestsModalOpen, isUserProfileModalOpen, notificationAnchorElement, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
         return <div>
             <AppBar position='static'>
@@ -187,15 +209,41 @@ class Main extends Component {
                     </div>
                     <div className={classes.sectionDesktop}>
                         <IconButton color='inherit' onClick={() => this._openModal('isSecretRequestsModalOpen')}>
-                            <Badge badgeContent={17} color='secondary'>
+                            <Badge badgeContent='Mock data!' color='secondary'>
                                 <NotificationsIcon/>
                             </Badge>
                         </IconButton>
-                        <IconButton aria-haspopup='true' aria-owns={accountAnchorElement ? 'material-appbar' : undefined} color='inherit' onClick={this._toggleAccountMenu}>
+                        <IconButton color='inherit' onClick={(event) => {
+                            this.setState({
+                                notificationAnchorElement: event.currentTarget
+                            });
+                        }}>
+                            {
+                                secretsRequests && secretsRequests.length > 0 ?
+                                    <Badge badgeContent={secretsRequests.length} color='secondary'>
+                                        <NotificationsIcon/>
+                                    </Badge> :
+                                    <NotificationsIcon/>
+                            }
+                        </IconButton>
+                        <IconButton
+                            aria-haspopup='true'
+                            aria-owns={accountAnchorElement ? 'material-appbar' : undefined}
+                            color='inherit'
+                            onClick={this._toggleAccountMenu}>
                             <AccountCircle/>
                         </IconButton>
-                        <Menu anchorEl={accountAnchorElement} open={!!accountAnchorElement} onClose={this._toggleAccountMenu}>
-                            <MenuItem onClick={this._onLogOut}>
+                        <Menu
+                            anchorEl={accountAnchorElement}
+                            open={!!accountAnchorElement}
+                            onClose={this._toggleAccountMenu}>
+                            <MenuItem onClick={() => this._openModal('isUserProfileModalOpen')}>
+                                <img
+                                    className={classes.marginRight}
+                                    src='/assets/settings-icon.svg'
+                                    width='20'/> Profile
+                            </MenuItem>
+                            <MenuItem onClick={logout}>
                                 <img className={classes.marginRight} src='/assets/logout-icon.svg' width='20'/> Log Out
                             </MenuItem>
                         </Menu>
@@ -214,7 +262,10 @@ class Main extends Component {
                             <List>{
                                 (secretsMounts.data || []).map(mount => {
                                     const {description, name, type} = mount;
-                                    return <ListItem button component={(props) => <Link to={`secrets/${name}`} {...props}/>} key={name}>
+                                    return <ListItem
+                                        button
+                                        component={(props) => <Link to={`secrets/${name}`} {...props}/>}
+                                        key={name}>
                                         <ListItemIcon>{
                                             this._renderIconFromType(type)
                                         }</ListItemIcon>
@@ -230,6 +281,10 @@ class Main extends Component {
                         </Card>
                     </Route>
                     <Route component={SecretsList} path='/secrets/:mount/:path*'/>
+                    <Route component={() => {
+                        window.location.pathname = '/rest/api';
+                        return null;
+                    }} path='/rest/api'/>
                     <Redirect to='/'/>
                 </Switch>
             </Grid>
@@ -245,6 +300,12 @@ class Main extends Component {
             <SecretRequestQueueModal
                 open={isSecretRequestsModalOpen}
                 onClose={() => this._closeModal('isSecretRequestsModalOpen')}/>
+            <UserProfileModal
+                open={isUserProfileModalOpen}
+                onClose={() => this._closeModal('isUserProfileModalOpen')}/>
+            <NotificationsModal open={!!notificationAnchorElement} onClose={() => this.setState({
+                notificationAnchorElement: null
+            })}/>
             <Footer/>
         </div>;
     }
@@ -253,14 +314,20 @@ class Main extends Component {
 Main.propTypes = {
     checkSession: PropTypes.func.isRequired,
     classes: PropTypes.object.isRequired,
-    listMounts: PropTypes.func.isRequired,
-    listUsers: PropTypes.func.isRequired,
-    secretsMounts: PropTypes.object,
-    vaultDomain: PropTypes.object.isRequired,
-    vaultLookupSelf: PropTypes.object.isRequired,
-    users: PropTypes.array,
+    getGroupData: PropTypes.func.isRequired,
     getSealStatus: PropTypes.func.isRequired,
-    sealStatus: PropTypes.object.isRequired
+    getServerLicense: PropTypes.func.isRequired,
+    group: PropTypes.object,
+    isEnterprise: PropTypes.bool,
+    isLoggedIn: PropTypes.bool,
+    listMounts: PropTypes.func.isRequired,
+    listRequests: PropTypes.func.isRequired,
+    logout: PropTypes.func.isRequired,
+    sealStatus: PropTypes.object.isRequired,
+    secretsMounts: PropTypes.object,
+    secretsRequests: PropTypes.array,
+    vaultDomain: PropTypes.object.isRequired,
+    vaultLookupSelf: PropTypes.object.isRequired
 };
 
 /**
@@ -275,6 +342,7 @@ const _mapStateToProps = (state) => {
         ...state.localStorageReducer,
         ...state.sessionReducer,
         ...state.kvReducer,
+        ...state.systemReducer,
         ...state.userReducer
     };
 };
@@ -297,8 +365,11 @@ const _mapDispatchToProps = (dispatch) => {
             });
         },
         listMounts: () => dispatch(kvAction.listMounts()),
-        listUsers: () => dispatch(userAction.listUsers()),
-        getSealStatus: () => dispatch(systemAction.getSealStatus())
+        listRequests: () => dispatch(kvAction.listRequests()),
+        getGroupData: () => dispatch(systemAction.getGroupData()),
+        getSealStatus: () => dispatch(systemAction.getSealStatus()),
+        getServerLicense: () => dispatch(systemAction.getServerLicense()),
+        logout: () => dispatch(userAction.logout())
     };
 };
 

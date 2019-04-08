@@ -6,7 +6,6 @@ import {
 } from '@material-ui/core';
 import {withStyles} from '@material-ui/core/styles/index';
 import {COLORS} from 'app/core/assets/Styles';
-import Constants from 'app/util/Constants';
 
 /**
  * Generic grid layout with items displayed using cards.
@@ -23,10 +22,9 @@ class GridTextField extends Component {
     render() {
         const {classes, items, margin} = this.props;
         const itemKeyList = Object.keys(items);
-        const gridValue = Constants.GRID_WIDTH / itemKeyList.length;
-        return <Grid container spacing={24}>
+        return <Grid container justify='center' spacing={24}>
             {itemKeyList.map((item, index) => {
-                return <Grid item key={`${item}-${index}`} xs={gridValue}>
+                return <Grid item key={`${item}-${index}`}>
                     <TextField
                         disabled
                         InputProps={{classes: {input: classes.textField}}}
