@@ -17,7 +17,7 @@ class KvAction extends _Actions {
             DELETE_SECRETS: 'DELETE_SECRETS',
             GET_SECRETS: 'GET_SECRETS',
             LIST_MOUNTS: 'LIST_MOUNTS',
-            LIST_SECRETS: 'LIST_SECRETS',
+            LIST_SECRETS: 'LIST_SECRETS', // TODO - Remove?
             LIST_SECRETS_AND_CAPABILITIES: 'LIST_SECRETS_AND_CAPABILITIES',
             LIST_REQUESTS: 'LIST_REQUESTS',
             REJECT_REQUEST: 'REJECT_REQUEST',
@@ -29,13 +29,13 @@ class KvAction extends _Actions {
     /**
      * Authorizes a secrets request.
      *
-     * @param {string} path Specifies the path of the request to delete.
-     * @param {string} entityId The user entity id.
+     * @param {string} accessor The request accessor value.
      * @returns {function} Redux dispatch function.
      */
-    authorizeRequest(path, entityId = '') {
-        console.log(`Not yet implemented! But need to authorize ${path} for ${entityId}.`);
-        return this._createResourceData(this.ACTION_TYPES.AUTHORIZE_REQUEST, undefined, undefined, false);
+    authorizeRequest(accessor) {
+        return this._dispatchPost(this.ACTION_TYPES.AUTHORIZE_REQUEST, '/rest/control-group/request/authorize', {
+            accessor
+        });
     }
 
     /**
