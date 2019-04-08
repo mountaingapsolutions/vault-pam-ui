@@ -19,26 +19,70 @@ const _getActiveRequestsByEntityId = async (req, entityId) => {
             return;
         }
         const {domain} = req.session.user;
+        let metadataMap = {};
         let activeRequests = {};
+        let invalidRequests = {};
+        const groups = [];
         request(initApiRequest(apiToken, `${domain}/v1/identity/group/id?list=true`), (error, response, body) => {
             Promise.all((((body || {}).data || {}).keys || []).map(key => {
                 return new Promise((groupResolve) => {
                     request(initApiRequest(apiToken, `${domain}/v1/identity/group/id/${key}`), (groupError, groupResponse, groupBody) => {
-                        const {metadata = {}} = (groupBody || {}).data || {};
-                        activeRequests = {
-                            ...activeRequests,
-                            ...metadata
-                        };
+                        if (groupBody && groupBody.data) {
+                            const {metadata = {}} = groupBody.data;
+                            metadataMap = {
+                                ...metadataMap,
+                                ...metadata
+                            };
+                            groups.push(groupBody.data);
+                        }
                         groupResolve();
                     });
                 });
             })).then(() => {
-                const remappedActiveRequests = Object.keys(activeRequests).filter(key => key.startsWith(`entity=${entityId}`)).reduce((requestMap, key) => {
-                    const path = key.split('==path=')[1].replace(/_/g, '/');
-                    requestMap[path] = JSON.parse(activeRequests[key]);
-                    return requestMap;
-                }, {});
-                resolve(remappedActiveRequests);
+                const promises = Object.keys(metadataMap).filter(key => key.startsWith(`entity=${entityId}`)).map((key) => {
+                    return new Promise((requestCheck) => {
+                        const path = key.split('==path=')[1].replace(/_/g, '/');
+                        // Validate that the request accessor is still active. If the accessor is no longer available, it typically means that the request has expired.
+                        const wrapInfo = JSON.parse(metadataMap[key]);
+                        checkControlGroupRequestStatus(req, wrapInfo.accessor)
+                            .then((requestData) => {
+                                if (requestData.errors) {
+                                    invalidRequests[key] = requestData;
+                                } else {
+                                    activeRequests[path] = {
+                                        request_info: requestData.data,
+                                        wrap_info: wrapInfo
+                                    };
+                                }
+                                requestCheck();
+                            })
+                            .catch((err) => {
+                                invalidRequests[key] = err;
+                                requestCheck();
+                            });
+                    });
+                });
+                Promise.all(promises).then(() => {
+                    // Execute non-blocking call to clean up any expired requests.
+                    const invalidRequestKeys = Object.keys(invalidRequests);
+                    if (invalidRequestKeys.length > 0) {
+                        groups.forEach(group => {
+                            const {id, metadata = {}} = group;
+                            const updatedMetadata = Object.keys(metadata).filter(key => !invalidRequestKeys.includes(key)).reduce((dataMap, k) => {
+                                dataMap[k] = metadata[k];
+                                return dataMap;
+                            }, {});
+                            request({
+                                ...initApiRequest(apiToken, `${domain}/v1/identity/group/id/${id}`),
+                                method: 'POST',
+                                json: {
+                                    metadata: updatedMetadata
+                                }
+                            });
+                        });
+                    }
+                    resolve(activeRequests);
+                });
             });
         });
     });
@@ -168,17 +212,8 @@ const router = require('express').Router()
                                     const activeRequest = activeRequests[key];
                                     if (activeRequest) {
                                         console.log(`Active request found for ${key}: `, activeRequest);
-                                        secret.data = {
-                                            wrap_info: activeRequest
-                                        };
-                                        checkControlGroupRequestStatus(req, activeRequest.accessor)
-                                            .then((requestData) => {
-                                                secret.data = {
-                                                    ...secret.data,
-                                                    request_info: requestData.data
-                                                };
-                                                secretResolve();
-                                            }).catch(secretResolve);
+                                        secret.data = activeRequest;
+                                        secretResolve();
                                     } else {
                                         request(initApiRequest(token, getSecretApiUrl), (secretErr, secretRes, secretBody) => {
                                             if (secretBody) {

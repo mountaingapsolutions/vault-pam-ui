@@ -36,6 +36,30 @@ import {connect} from 'react-redux';
 class NotificationsModal extends Component {
 
     /**
+     * Renders the authorizations list.
+     *
+     * @private
+     * @param {Array} authorizations The list of authorizations.
+     * @returns {React.ReactElement}
+     */
+    _renderAuthorizations(authorizations) {
+        const {classes, vaultLookupSelf} = this.props;
+        const {entity_id: entityIdSelf} = (vaultLookupSelf.data || {}).data || {};
+        // Exclude self from names list. If the user did approve the request, then that user will be listed first.
+        const namesList = authorizations.filter((authorization) => authorization.entity_id !== entityIdSelf).map((authorization) => authorization.entity_name);
+        const alreadyAuthorizedBySelf = authorizations && authorizations.some((authorization) => authorization.entity_id === entityIdSelf);
+        if (alreadyAuthorizedBySelf) {
+            namesList.unshift('you');
+        }
+        return <Typography
+            className={classes.block}
+            color='textSecondary'
+            component='span'>
+            Already approved by {namesList.join(', ')}.
+        </Typography>;
+    }
+
+    /**
      * Required React Component lifecycle method. Returns a tree of React components that will render to HTML.
      *
      * @override
@@ -43,7 +67,8 @@ class NotificationsModal extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, inProgress, onClose, open, rejectRequest, secretsRequests = []} = this.props;
+        const {authorizeRequest, classes, inProgress, onClose, open, rejectRequest, secretsRequests = [], vaultLookupSelf} = this.props;
+        const {entity_id: entityIdSelf} = (vaultLookupSelf.data || {}).data || {};
         return <Dialog
             fullWidth
             aria-describedby='notifications-dialog-description'
@@ -61,10 +86,11 @@ class NotificationsModal extends Component {
                         secretsRequests.length > 0 ?
                             secretsRequests.map(requestData => {
                                 const {data = {}, request_id: requestId} = requestData.request_info;
-                                const {creation_time: creationTime} = requestData.wrap_info;
-                                const {request_entity: requestEntity, request_path: requestPath} = data;
+                                const {accessor, creation_time: creationTime} = requestData.wrap_info;
+                                const {authorizations, request_entity: requestEntity, request_path: requestPath} = data;
                                 const {id: entityId, name: entityName} = requestEntity;
                                 const requestType = requestData.wrap_info ? 'Control Groups' : 'Standard Request';
+                                const alreadyAuthorizedBySelf = authorizations && authorizations.some((authorization) => authorization.entity_id === entityIdSelf);
                                 return <React.Fragment key={requestId}>
                                     <ListItem alignItems='flex-start'>
                                         <ListItemAvatar>
@@ -88,27 +114,43 @@ class NotificationsModal extends Component {
                                                         component='span'>
                                                         {`Requested at ${new Date(creationTime).toLocaleString()} via ${requestType}`}
                                                     </Typography>
+                                                    {authorizations && this._renderAuthorizations(authorizations)}
                                                 </React.Fragment>
                                             }
                                         />
-                                        <ListItemSecondaryAction>
-                                            <Tooltip aria-label='Approve' title='Approve'>
-                                                <IconButton color='primary'>
-                                                    <CheckIcon/>
-                                                </IconButton>
-                                            </Tooltip>
-                                            <Tooltip aria-label='Reject' title='Reject'>
-                                                <IconButton onClick={() => {
-                                                    /* eslint-disable no-alert */
-                                                    if (window.confirm(`Are you sure you want to reject ${entityName}'s request to ${requestPath}?`)) {
-                                                        rejectRequest(requestPath, entityId);
-                                                    }
-                                                    /* eslint-enable no-alert */
-                                                }}>
-                                                    <ClearIcon/>
-                                                </IconButton>
-                                            </Tooltip>
-                                        </ListItemSecondaryAction>
+                                        {
+                                            alreadyAuthorizedBySelf ?
+                                                <ListItemSecondaryAction>
+                                                    <IconButton disabled color='primary'>
+                                                        <CheckIcon/>
+                                                    </IconButton>
+                                                    <IconButton disabled>
+                                                        <ClearIcon/>
+                                                    </IconButton>
+                                                </ListItemSecondaryAction>
+                                                :
+                                                <ListItemSecondaryAction>
+                                                    <Tooltip aria-label='Approve' title='Approve'>
+                                                        <IconButton
+                                                            color='primary'
+                                                            disabled={alreadyAuthorizedBySelf}
+                                                            onClick={() => authorizeRequest(accessor)}>
+                                                            <CheckIcon/>
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip aria-label='Reject' title='Reject'>
+                                                        <IconButton disabled={alreadyAuthorizedBySelf} onClick={() => {
+                                                            /* eslint-disable no-alert */
+                                                            if (window.confirm(`Are you sure you want to reject ${entityName}'s request to ${requestPath}?`)) {
+                                                                rejectRequest(requestPath, entityId);
+                                                            }
+                                                            /* eslint-enable no-alert */
+                                                        }}>
+                                                            <ClearIcon/>
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </ListItemSecondaryAction>
+                                        }
                                     </ListItem>
                                     <Divider/>
                                 </React.Fragment>;
@@ -152,7 +194,8 @@ NotificationsModal.propTypes = {
     onClose: PropTypes.func.isRequired,
     open: PropTypes.bool,
     rejectRequest: PropTypes.func.isRequired,
-    secretsRequests: PropTypes.array
+    secretsRequests: PropTypes.array,
+    vaultLookupSelf: PropTypes.object.isRequired
 };
 
 /**
@@ -170,7 +213,8 @@ const _mapStateToProps = (state) => {
     return {
         errors: createErrorsSelector(actionsUsed)(state.actionStatusReducer),
         inProgress: createInProgressSelector(actionsUsed)(state.actionStatusReducer),
-        ...state.kvReducer
+        ...state.kvReducer,
+        ...state.sessionReducer
     };
 };
 
@@ -183,7 +227,17 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        authorizeRequest: (path, entityId) => dispatch(kvAction.authorizeRequest(path, entityId)),
+        authorizeRequest: (path, entityId) => {
+            return new Promise((resolve, reject) => {
+                dispatch(kvAction.authorizeRequest(path, entityId))
+                    .then(() => {
+                        dispatch(kvAction.listRequests())
+                            .then(resolve)
+                            .catch(reject);
+                    })
+                    .catch(reject);
+            });
+        },
         rejectRequest: (path, entityId) => {
             return new Promise((resolve, reject) => {
                 dispatch(kvAction.deleteRequest(path, entityId))

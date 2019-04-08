@@ -187,7 +187,7 @@ const router = require('express').Router()
 
 /**
  * @swagger
- * /rest/control-group/requests:
+ * /rest/control-group/request:
  *   post:
  *     tags:
  *       - Control-Group
@@ -310,9 +310,16 @@ const router = require('express').Router()
      *         description: The path of the request to delete.
      *         schema:
      *           type: string
+     *       - name: entityId
+     *         in: query
+     *         description: Optional entity id of the request to delete. If not provided, will default to the session user's entity id.
+     *         schema:
+     *           type: string
      *     responses:
      *       200:
      *         description: Success.
+     *       403:
+     *         description: Unauthorized.
      *       404:
      *         description: Request not found.
      */
@@ -376,6 +383,74 @@ const router = require('express').Router()
     })
     /**
      * @swagger
+     * /rest/control-group/request/authorize:
+     *   post:
+     *     tags:
+     *       - Control-Group
+     *     name: Authorizes a Control Group request.
+     *     summary: Authorizes a Control Group request.
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               accessor:
+     *                 type: string
+     *               required:
+     *                 - accessor
+     *     responses:
+     *       200:
+     *         description: Success.
+     *       400:
+     *         description: Invalid accessor.
+     *       403:
+     *         description: Unauthorized.
+     *       500:
+     *         description: No approval group has been configured.
+     */
+    .post('/request/authorize', async (req, res) => {
+        const {domain, token} = req.session.user;
+        const {accessor} = req.body;
+
+        // Authorize the accessor.
+        await new Promise((resolve) => {
+            request({
+                ...initApiRequest(token, `${domain}/v1/sys/control-group/authorize`),
+                method: 'POST',
+                json: {
+                    accessor
+                }
+            }, (error, response, body) => {
+                if (error) {
+                    sendError(req.originalUrl, res, error);
+                    return;
+                } else if (body.errors) {
+                    sendError(req.originalUrl, res, body.errors, response.statusCode);
+                    return;
+                }
+                resolve(body);
+            });
+        });
+
+        // Return the request status.
+        let status;
+        try {
+            status = await checkControlGroupRequestStatus(req, accessor);
+        } catch (err) {
+            sendError(req.originalUrl, res, err);
+            return;
+        }
+
+        if (status.errors) {
+            sendError(req.originalUrl, res, status.errors);
+            return;
+        }
+        res.json(status);
+    })
+    /**
+     * @swagger
      * /rest/control-group/requests:
      *   get:
      *     tags:
@@ -386,7 +461,7 @@ const router = require('express').Router()
      *       200:
      *         description: Success.
      *       403:
-     *         description: Permission denied.
+     *         description: Unauthorized.
      */
     .get('/requests', async (req, res) => {
         let groups = [];
@@ -432,7 +507,7 @@ const router = require('express').Router()
      *       200:
      *         description: Success.
      *       403:
-     *         description: Permission denied.
+     *         description: Unauthorized.
      */
     .delete('/requests', async (req, res) => {
         const {domain, token} = req.session.user;
