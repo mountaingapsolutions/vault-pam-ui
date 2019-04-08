@@ -52,7 +52,26 @@ export default (previousState = {
                 ...previousState,
                 secretsPaths: (action.data || {}).data || {}
             };
+        case kvAction.ACTION_TYPES.GET_SECRETS_REQUEST_FROM_DATABASE:
+            const filteredDatabaseSecretRequest = _filterSecretRequestsFromDatabase(action.data || []);
+            return {
+                ...previousState,
+                requestDataFromDatabase: filteredDatabaseSecretRequest
+            };
         default:
             return {...previousState};
     }
+};
+
+/**
+ * Helper method to filter secret request data.
+ *
+ * @public
+ * @param {Object} data - The previous user data.
+ * @returns {Object} Filtered request data.
+ */
+const _filterSecretRequestsFromDatabase = (data) => {
+    return data.map(item => {
+        return item.requestData;
+    });
 };
