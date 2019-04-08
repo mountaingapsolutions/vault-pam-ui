@@ -145,7 +145,7 @@ class SecretsList extends Component {
      *
      * @private
      * @param {string} secretModalInitialPath The initial path for the secrets modal.
-     * @param {string} [secretModalMode] The secret modal mode. Either 'create' or 'update'. No value will hide the modal.
+     * @param {string} [secretModalMode] The secret modal mode. Valid values are 'create', 'read', or 'update'. No value will hide the modal.
      */
     _toggleCreateUpdateSecretModal(secretModalInitialPath = '', secretModalMode = '') {
         this.setState({
@@ -311,7 +311,7 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     _renderSecretsListArea() {
-        const {classes, errors, getSecrets, history, inProgress, listSecretsAndCapabilities, match, secretsPaths} = this.props;
+        const {classes, errors, getSecrets, history, inProgress, listSecretsAndCapabilities, match, secretsPaths, unwrapSecret} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
         const requestAccessLabel = 'Request Access';
@@ -334,16 +334,17 @@ class SecretsList extends Component {
             return <List>{
                 (secretsPaths.secrets || []).map((secret, i) => {
                     const {capabilities, data = {}, name} = secret;
+                    const {wrap_info: wrapInfo} = data;
                     const currentPath = path ? `${path}/${name}` : name;
                     const url = `/secrets/${mount}/${currentPath}`;
-                    const isWrapped = !!data.wrap_info;
+                    const isWrapped = !!wrapInfo;
                     const canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped;
                     const canUpdate = capabilities.some(capability => capability === 'update' || capability === 'root');
                     const requiresRequest = capabilities.includes('deny') && !name.endsWith('/') || isWrapped;
                     const {request_info: requestInfo = {}} = data;
                     const isApproved = isWrapped && requestInfo.approved;
                     const authorizations = isWrapped && requestInfo.authorizations;
-                    const creationTime = data.request_info && isWrapped ? new Date(data.wrap_info.creation_time) : null;
+                    const creationTime = data.request_info && isWrapped ? new Date(wrapInfo.creation_time) : null;
                     const canDelete = capabilities.includes('delete');
                     let secondaryText = requiresRequest ? `Request type: ${isWrapped ? 'Control Groups' : 'Default'}` : '';
                     if (creationTime) {
@@ -364,7 +365,8 @@ class SecretsList extends Component {
                             } else if (isApproved) {
                                 /* eslint-disable no-alert */
                                 if (window.confirm(`You have been granted access to ${name}. Be careful, you can only access this data once. If you need access again in the future you will need to get authorized again.`)) {
-                                    window.alert('TODO: Unwrap secret and open modal.');
+                                    this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'read');
+                                    unwrapSecret(name, wrapInfo.token);
                                 }
                                 /* eslint-enable no-alert */
                             } else {
@@ -524,6 +526,7 @@ SecretsList.propTypes = {
     secrets: PropTypes.object,
     secretsMounts: PropTypes.object,
     secretsPaths: PropTypes.object,
+    unwrapSecret: PropTypes.func.isRequired,
     vaultLookupSelf: PropTypes.object
 };
 
@@ -625,7 +628,8 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                     })
                     .catch(reject);
             });
-        }
+        },
+        unwrapSecret: (name, token) => dispatch(kvAction.unwrapSecret(name, token))
     };
 };
 
