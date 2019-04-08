@@ -134,8 +134,8 @@ module.exports = require('express').Router()
      *         description: Request created
      */
     .post('/create', (req, res) => {
-        const {requesterEntityId, approverEntityId, requestData, type, status, engineType} = req.body;
-        RequestController.create(requesterEntityId, approverEntityId, requestData, type, status, engineType).then(request => {
+        const {requesterEntityId, requestData, type, status, engineType} = req.body;
+        RequestController.create(requesterEntityId, requestData, type, status, engineType).then(request => {
             res.json(request);
         });
     })
@@ -158,8 +158,42 @@ module.exports = require('express').Router()
      *         description: Request created
      */
     .post('/findOrCreate', (req, res) => {
-        const {requesterEntityId, approverEntityId, requestData, type, status, engineType} = req.body;
-        RequestController.findOrCreate(requesterEntityId, approverEntityId, requestData, type, status, engineType).then(request => {
+        const {requesterEntityId, requestData, type, status, engineType} = req.body;
+        RequestController.findOrCreate(requesterEntityId, requestData, type, status, engineType).then(request => {
+            res.json(request);
+        });
+    })
+    /**
+     * @swagger
+     * /rest/request/update:
+     *   put:
+     *     tags:
+     *       - Request
+     *     name: Update request by approver
+     *     summary: Update request by approver
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               id:
+     *                 type: string
+     *               approverEntityId:
+     *                 type: string
+     *               status:
+     *                 type: string
+     *             required:
+     *               - id
+     *               - status
+     *     responses:
+     *       200:
+     *         description: User updated
+     */
+    .put('/updateByApprover', (req, res) => {
+        const {id, approverEntityId, status} = req.body;
+        RequestController.updateStatusByApprover(id, approverEntityId, status).then(request => {
             res.json(request);
         });
     })
@@ -191,7 +225,7 @@ module.exports = require('express').Router()
      */
     .put('/update', (req, res) => {
         const {id, status} = req.body;
-        RequestController.updateStatus(id, status).then(user => {
-            res.json(user);
+        RequestController.updateStatus(id, status).then(request => {
+            res.json(request);
         });
     });

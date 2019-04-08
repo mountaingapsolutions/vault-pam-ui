@@ -35,7 +35,6 @@ import Button from 'app/core/components/common/Button';
 import ListModal from 'app/core/components/common/ListModal';
 import CreateUpdateSecretModal from 'app/core/components/CreateUpdateSecretModal';
 import ConfirmationModal from 'app/core/components/ConfirmationModal';
-import localStorageUtil from 'app/util/localStorageUtil';
 
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 
@@ -606,12 +605,12 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const {mount, path} = params;
             const fullPath = `${mount}${version === 2 ? '/data' : ''}/${path}/${name}`;
             // TODO: implement this
-            const isEnterprise = localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_ENTERPRISE) === 'true';
-            const entity_id = window.app.store.getState().sessionReducer.vaultLookupSelf.data.data.entity_id;
+            const storeState = window.app.store.getState();
+            const isEnterprise = storeState.systemReducer.isEnterprise === 'true';
+            const entity_id = storeState.sessionReducer.vaultLookupSelf.data.data.entity_id;
             return new Promise((resolve, reject) => {
                 let requestData = isEnterprise ? {'path': fullPath} : {
                     requesterEntityId: entity_id,
-                    approverEntityId: 'a62df1b7-3136-6573-a40d-a24692d11a94',
                     requestData: fullPath,
                     type: '',
                     status: kvAction.KEY_NAMES.STATUS_PENDING,

@@ -16,9 +16,12 @@ import systemAction from 'app/core/actions/systemAction';
 export default (previousState = {
     selfCapabilities: {},
     sealStatus: {},
-    isEnterprise: false
+    isEnterprise: false,
+    groupData: {}
 }, action) => {
     switch (action.type) {
+        case systemAction.ACTION_TYPES.GET_GROUP_DATA:
+            return {...previousState, groupData: action.data || {}, action};
         case systemAction.ACTION_TYPES.GET_SELF_CAPABILITIES:
             return {...previousState, selfCapabilities: action.data || {}, action};
         case systemAction.ACTION_TYPES.GET_SEAL_STATUS:
