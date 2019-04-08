@@ -226,6 +226,22 @@ class SecretsList extends Component {
     }
 
     /**
+     * Renders the authorizations list.
+     *
+     * @private
+     * @param {Array} authorizations The list of authorizations.
+     * @returns {React.ReactElement}
+     */
+    _renderAuthorizations(authorizations) {
+        const {classes} = this.props;
+        // Exclude self from names list. If the user did approve the request, then that user will be listed first.
+        const namesList = authorizations.map((authorization) => authorization.entity_name);
+        return <Typography className={classes.block} color='textSecondary' component='span'>
+            Approved by {namesList.join(', ')}.
+        </Typography>;
+    }
+
+    /**
      * Renders the header containing breadcrumbs.
      *
      * @private
@@ -324,7 +340,9 @@ class SecretsList extends Component {
                     const canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped;
                     const canUpdate = capabilities.some(capability => capability === 'update' || capability === 'root');
                     const requiresRequest = capabilities.includes('deny') && !name.endsWith('/') || isWrapped;
-                    const isApproved = isWrapped && (data.request_info || {}).approved;
+                    const {request_info: requestInfo = {}} = data;
+                    const isApproved = isWrapped && requestInfo.approved;
+                    const authorizations = isWrapped && requestInfo.authorizations;
                     const creationTime = data.request_info && isWrapped ? new Date(data.wrap_info.creation_time) : null;
                     const canDelete = capabilities.includes('delete');
                     let secondaryText = requiresRequest ? `Request type: ${isWrapped ? 'Control Groups' : 'Default'}` : '';
@@ -359,7 +377,14 @@ class SecretsList extends Component {
                                 name.endsWith('/') ? <FolderIcon/> : <FileCopyIcon/>
                             }</Avatar>
                         </ListItemAvatar>
-                        <ListItemText primary={name} secondary={secondaryText}/>
+                        <ListItemText primary={name} secondary={
+                            secondaryText && <React.Fragment>
+                                <Typography className={classes.block} color='textSecondary' component='span'>
+                                    {secondaryText}
+                                </Typography>
+                                {authorizations && this._renderAuthorizations(authorizations)}
+                            </React.Fragment>
+                        }/>
                         <ListItemSecondaryAction>
                             {requiresRequest && !isApproved &&
                             <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
@@ -612,6 +637,9 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
  * @returns {Object}
  */
 const _styles = (theme) => ({
+    block: {
+        display: 'block',
+    },
     card: {
         width: 800
     },
