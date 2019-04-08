@@ -8,7 +8,7 @@ const RequestController = require('services/controllers/Request');
  *     properties:
  *       requesterEntityId:
  *         type: string
- *       requesteeEntityId:
+ *       approverEntityId:
  *         type: string
  *       requestData:
  *         type: string
@@ -20,7 +20,7 @@ const RequestController = require('services/controllers/Request');
  *         type: string
  *     required:
  *       - requesterEntityId
- *       - requesteeEntityId
+ *       - approverEntityId
  *       - requestData
  *       - type
  *       - status
@@ -90,12 +90,12 @@ module.exports = require('express').Router()
     })
     /**
      * @swagger
-     * /rest/request/requestee/{entityId}:
+     * /rest/request/approver/{entityId}:
      *   get:
      *     tags:
      *       - Request
-     *     name: Get all requests by requestee entityId
-     *     summary: Get all requests by requestee entityId
+     *     name: Get all requests by approver entityId
+     *     summary: Get all requests by approver entityId
      *     parameters:
      *       - name: entityId
      *         in: path
@@ -109,9 +109,9 @@ module.exports = require('express').Router()
      *       404:
      *         description: Requests not found
      */
-    .get('/requestee/:entityId', (req, res) => {
+    .get('/approver/:entityId', (req, res) => {
         const entityId = req.params.entityId;
-        RequestController.findAllByRequestee(entityId).then(requests => {
+        RequestController.findAllByApprover(entityId).then(requests => {
             res.json(requests);
         });
     })
@@ -134,8 +134,8 @@ module.exports = require('express').Router()
      *         description: Request created
      */
     .post('/create', (req, res) => {
-        const {requesterEntityId, requesteeEntityId, requestData, type, status, engineType} = req.body;
-        RequestController.create(requesterEntityId, requesteeEntityId, requestData, type, status, engineType).then(request => {
+        const {requesterEntityId, approverEntityId, requestData, type, status, engineType} = req.body;
+        RequestController.create(requesterEntityId, approverEntityId, requestData, type, status, engineType).then(request => {
             res.json(request);
         });
     })
@@ -158,8 +158,8 @@ module.exports = require('express').Router()
      *         description: Request created
      */
     .post('/findOrCreate', (req, res) => {
-        const {requesterEntityId, requesteeEntityId, requestData, type, status, engineType} = req.body;
-        RequestController.findOrCreate(requesterEntityId, requesteeEntityId, requestData, type, status, engineType).then(request => {
+        const {requesterEntityId, approverEntityId, requestData, type, status, engineType} = req.body;
+        RequestController.findOrCreate(requesterEntityId, approverEntityId, requestData, type, status, engineType).then(request => {
             res.json(request);
         });
     })

@@ -4,17 +4,17 @@ const Request = connection.getModel('Request');
  * Create a Request.
  *
  * @param {string} requesterEntityId The requester.
- * @param {string} requesteeEntityId The requestee.
+ * @param {string} approverEntityId The approver.
  * @param {string} requestData The request data.
  * @param {string} type The type.
  * @param {string} status The status.
  * @param {string} engineType The engine type.
  * @returns {Object}
  */
-const create = (requesterEntityId, requesteeEntityId, requestData, type, status, engineType) => {
+const create = (requesterEntityId, approverEntityId, requestData, type, status, engineType) => {
     return Request.create({
         requesterEntityId,
-        requesteeEntityId,
+        approverEntityId,
         requestData,
         type,
         status,
@@ -62,14 +62,14 @@ const findAllByRequester = (entityId) => {
 };
 
 /**
- * Find all requests by requestee.
+ * Find all requests by approver.
  *
- * @param {string} entityId The requestee entity id.
+ * @param {string} entityId The approver entity id.
  * @returns {Object}
  */
-const findAllByRequestee = (entityId) => {
+const findAllByApprover = (entityId) => {
     return Request.findAll({
-        where: {requesteeEntityId: entityId}
+        where: {approverEntityId: entityId}
     }).then(requests => {
         return requests;
     });
@@ -94,21 +94,21 @@ const updateStatus = (id, status) => {
  * Find or Create a Request.
  *
  * @param {string} requesterEntityId The requester.
- * @param {string} requesteeEntityId The requestee.
+ * @param {string} approverEntityId The approver.
  * @param {string} requestData The request data.
  * @param {string} type The type.
  * @param {string} status The status.
  * @param {string} engineType The engine type.
  * @returns {Object}
  */
-const findOrCreate = (requesterEntityId, requesteeEntityId, requestData, type, status, engineType) => {
+const findOrCreate = (requesterEntityId, approverEntityId, requestData, type, status, engineType) => {
     return Request.findOne({
-        where: {requesterEntityId, requesteeEntityId, requestData, type, status, engineType}
+        where: {requesterEntityId, approverEntityId, requestData, type, status, engineType}
     }).then(request => {
         if (request) {
             return request;
         } else {
-            return create(requesterEntityId, requesteeEntityId, requestData, type, status, engineType);
+            return create(requesterEntityId, approverEntityId, requestData, type, status, engineType);
         }
     });
 };
@@ -117,7 +117,7 @@ module.exports = {
     create,
     findAll,
     findAllByRequester,
-    findAllByRequestee,
+    findAllByApprover,
     findById,
     findOrCreate,
     updateStatus

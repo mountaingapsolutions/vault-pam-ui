@@ -611,7 +611,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             return new Promise((resolve, reject) => {
                 let requestData = isEnterprise ? {'path': fullPath} : {
                     requesterEntityId: entity_id,
-                    requesteeEntityId: 'a62df1b7-3136-6573-a40d-a24692d11a94',
+                    approverEntityId: 'a62df1b7-3136-6573-a40d-a24692d11a94',
                     requestData: fullPath,
                     type: '',
                     status: kvAction.KEY_NAMES.STATUS_PENDING,

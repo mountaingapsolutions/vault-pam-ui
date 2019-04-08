@@ -10,7 +10,7 @@ module.exports = (sequelize) => {
             type: Sequelize.UUID,
             allowNull: false
         },
-        requesteeEntityId: {
+        approverEntityId: {
             type: Sequelize.UUID,
             allowNull: false
         },
