@@ -104,7 +104,7 @@ const sendEmail = (recipients, subject, message) => {
         to: recipients,
         subject: subject,
         html: message
-    }
+    };
     smtpTransport.sendMail(mailOptions).then((info) => {
         console.log('Email sent.', info);
     }).catch((err) => {
