@@ -4,6 +4,35 @@ const hcltojson = require('hcl-to-json');
 const request = require('request');
 const {initApiRequest, sendError} = require('services/utils');
 
+const KEY_REPLACEMENT_MAP = {
+    COMMA: '===',
+    FORWARD_SLASH: '=_=',
+    SPACE: '=+='
+};
+
+/**
+ * Encodes a meta key based on entity id and path.
+ *
+ * @private
+ * @param {string} entityId The entity id.
+ * @param {string} path The secrets path.
+ * @returns {string}
+ */
+const _encodeMetaKey = (entityId, path) => {
+    return `entity=${entityId}${KEY_REPLACEMENT_MAP.COMMA}path=${path.replace(/\//g, KEY_REPLACEMENT_MAP.FORWARD_SLASH).replace(/ /g, KEY_REPLACEMENT_MAP.SPACE)}`;
+};
+
+/**
+ * Returns the decoded path from the encoded metadata key.
+ *
+ * @param {string} encodedMetaKey The encoded metadata key.
+ * @returns {string}
+ */
+const getPathFromEncodedMetaKey = (encodedMetaKey) => {
+    // Using split and join approach over replace so that the SPACE =+= key does not need to be regex escapped (i.e. =\\+=).
+    return encodedMetaKey.split(`${KEY_REPLACEMENT_MAP.COMMA}path=`)[1].split(KEY_REPLACEMENT_MAP.FORWARD_SLASH).join('/').split(KEY_REPLACEMENT_MAP.SPACE).join(' ');
+};
+
 /**
  * Check Control Group request status.
  *
@@ -225,6 +254,7 @@ const router = require('express').Router()
             sendError(req.orignalUrl, res, 'No approval group has been configured.', 500);
             return;
         }
+        console.warn('controlGroupPaths: ', controlGroupPaths);
         const {path} = req.body;
         if (!path) {
             sendError(req.orignalUrl, res, 'Required input data not provided.');
@@ -232,11 +262,12 @@ const router = require('express').Router()
         }
         const matches = Object.keys(controlGroupPaths).filter(controlGroupPath => {
             const regex = new RegExp(controlGroupPath.endsWith('/*') ? controlGroupPath.replace('/*', '/.+') : controlGroupPath);
+            console.warn('regex: ', regex, ' --- ', controlGroupPath);
             return path.match(regex);
         }).map(controlGroupPath => controlGroupPaths[controlGroupPath]);
         const {group_names: groupNames = []} = (((matches[0] || {}).factor || {}).approvers || {}).identity || {};
         if (groupNames.length === 0) {
-            sendError(req.orignalUrl, res, 'No approvers found.', 404);
+            sendError(req.orignalUrl, res, 'Unable to process request - no approvers found.', 404);
             return;
         }
 
@@ -247,7 +278,7 @@ const router = require('express').Router()
 
         const {wrap_info: wrapInfo} = secretRequest || {};
         if (!wrapInfo) {
-            sendError(req.orignalUrl, res, `Unable to request ${path}`);
+            sendError(req.orignalUrl, res, `Unable to process request ${path}`);
             return;
         }
 
@@ -265,7 +296,7 @@ const router = require('express').Router()
                         resolve();
                     } else {
                         const {metadata = {}} = (body || {}).data;
-                        const metaKey = `entity=${entityId}==path=${path.replace(/\//g, '_')}`;
+                        const metaKey = _encodeMetaKey(entityId, path);
                         const metaValue = JSON.stringify(wrapInfo);
                         console.log(`Persisting to ${apiGroupUrl} with the key/value pair: ${chalk.bold.yellow(metaKey)} / ${chalk.bold.yellow(metaValue)}`);
                         request({
@@ -281,7 +312,7 @@ const router = require('express').Router()
                             if (groupUpdateError) {
                                 console.log(`Error updating ${apiGroupUrl}: `, groupUpdateError);
                             } else {
-                                console.log(`Update response: ${groupUpdateResponse.statusCode} - ${groupUpdateBody}.`);
+                                console.log(`Update response: ${groupUpdateResponse.statusCode} - `, groupUpdateBody);
                             }
                             resolve();
                         });
@@ -333,7 +364,7 @@ const router = require('express').Router()
         const decodedPath = decodeURIComponent(path);
         const {domain, entityId: entityIdSelf} = req.session.user;
         try {
-            const key = `entity=${entityId || entityIdSelf}==path=${decodedPath.replace(/\//g, '_')}`;
+            const key = _encodeMetaKey(entityId, decodedPath);
             const groups = await getGroupsByMetadata(req, key);
             if (groups.length === 0) {
                 sendError(req.originalUrl, res, `No active requests found for ${decodedPath}.`, 404);
@@ -589,6 +620,7 @@ const router = require('express').Router()
 module.exports = {
     checkControlGroupRequestStatus,
     getControlGroupPaths,
+    getPathFromEncodedMetaKey,
     revokeAccessor,
     router
 };
