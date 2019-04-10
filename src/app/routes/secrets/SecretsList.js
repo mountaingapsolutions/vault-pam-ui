@@ -400,7 +400,7 @@ class SecretsList extends Component {
                         }
                     });
                     const creationTime = isPendingInDatabase ? databaseRequestTime : data.request_info && isWrapped ? new Date(wrapInfo.creation_time) : null;
-                    let standardRequest = isPendingInDatabase ? !isOwnRequest ? Constants.REQUEST_STATUS.LOCKED : `${requestStatus} Request type: Standard Request` : null;
+                    let standardRequest = isPendingInDatabase ? `${!isOwnRequest ? Constants.REQUEST_STATUS.LOCKED : requestStatus} Request type: Standard Request` : null;
                     let secondaryText = !standardRequest ? requiresRequest ? `Request type: ${isWrapped ? 'Control Groups' : 'Default'}` : '' : standardRequest;
                     if (creationTime) {
                         secondaryText += ` (Requested at ${creationTime.toLocaleString()})`;
@@ -443,7 +443,7 @@ class SecretsList extends Component {
                             </React.Fragment>
                         }/>
                         <ListItemSecondaryAction>
-                            {requiresRequest && !isApproved &&
+                            {!isPendingInDatabase && requiresRequest && !isApproved &&
                             <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
                                 <IconButton
                                     aria-label={requestAccessLabel}
