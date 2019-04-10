@@ -104,12 +104,12 @@ class KvAction extends _Actions {
      * @param {string} [requesterEntityId] Entity ID of requester.
      * @returns {function} Redux dispatch function.
      */
-    listSecretsAndCapabilities(path = '', version = 2, requesterEntityId = '') {
+    listSecretsAndCapabilities(path = '', version = 2) {
         return dispatch => {
             dispatch(this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES, `/rest/secrets/${path}`, {
                 version
             }));
-            dispatch(this._dispatchGet(this.ACTION_TYPES.GET_SECRETS_REQUEST_FROM_DATABASE, `/rest/request/requester/${requesterEntityId}`));
+            dispatch(this._dispatchGet(this.ACTION_TYPES.GET_SECRETS_REQUEST_FROM_DATABASE, '/rest/request'));
         };
     }
 

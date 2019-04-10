@@ -36,6 +36,25 @@ module.exports = require('express').Router()
     })
     /**
      * @swagger
+     * /rest/request:
+     *   get:
+     *     tags:
+     *       - Request
+     *     name: Get requests
+     *     summary: Get requests
+     *     responses:
+     *       200:
+     *         description: Request found
+     *       404:
+     *         description: Request not found
+     */
+    .get('/', (req, res) => {
+        RequestController.findAll().then(request => {
+            res.json(request);
+        });
+    })
+    /**
+     * @swagger
      * /rest/request/id/{id}:
      *   get:
      *     tags:

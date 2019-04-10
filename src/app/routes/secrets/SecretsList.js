@@ -38,6 +38,7 @@ import ConfirmationModal from 'app/core/components/ConfirmationModal';
 import Constants from 'app/util/Constants';
 
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
+import calendarUtil from 'app/util/CalendarUtil';
 
 /**
  * The secrets list container.
@@ -193,16 +194,15 @@ class SecretsList extends Component {
      * @override
      */
     componentDidMount() {
-        const {history, listMounts, listSecretsAndCapabilities, match, secretsMounts, vaultLookupSelf} = this.props;
+        const {history, listMounts, listSecretsAndCapabilities, match, secretsMounts} = this.props;
         const {params} = match;
         const {mount, path} = params;
-        const requesterEntityId = vaultLookupSelf.data && vaultLookupSelf.data.data.entity_id;
         if ((secretsMounts.data || []).length === 0) {
             listMounts().then(() => {
-                listSecretsAndCapabilities(path, this._getVersionFromMount(mount), requesterEntityId);
+                listSecretsAndCapabilities(path, this._getVersionFromMount(mount));
             });
         } else {
-            listSecretsAndCapabilities(path, this._getVersionFromMount(mount), requesterEntityId);
+            listSecretsAndCapabilities(path, this._getVersionFromMount(mount));
         }
 
         this.unlisten = history.listen((location, action) => {
@@ -210,7 +210,7 @@ class SecretsList extends Component {
                 const {match: newMatch} = this.props;
                 const {params: newParams} = newMatch;
                 const {path: newPath} = newParams;
-                listSecretsAndCapabilities(newPath, this._getVersionFromMount(mount), requesterEntityId);
+                listSecretsAndCapabilities(newPath, this._getVersionFromMount(mount));
             }
         });
     }
@@ -248,11 +248,10 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     _renderBreadcrumbsArea() {
-        const {classes, history, listSecretsAndCapabilities, match, secretsPaths, vaultLookupSelf} = this.props;
+        const {classes, history, listSecretsAndCapabilities, match, secretsPaths} = this.props;
         const {params} = match;
         const {mount, path} = params;
         const paths = path ? [mount].concat(path.split('/')) : [mount];
-        const requesterEntityId = vaultLookupSelf.data && vaultLookupSelf.data.data.entity_id;
         return <CardContent>{
             mount && <List disablePadding>
                 <ListItem disableGutters className={classes.disablePadding}>
@@ -273,7 +272,7 @@ class SecretsList extends Component {
                                 <Link key={folder} to={url} onClick={event => {
                                     event.preventDefault();
                                     history.push(url);
-                                    listSecretsAndCapabilities(currentPath, this._getVersionFromMount(mount), requesterEntityId);
+                                    listSecretsAndCapabilities(currentPath, this._getVersionFromMount(mount));
                                 }}>
                                     <Typography color='textSecondary' variant='h6'>{folder}</Typography>
                                 </Link>
@@ -312,13 +311,15 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     _renderSecretsListArea() {
-        const {classes, errors, getSecrets, history, inProgress, listSecretsAndCapabilities, match, requestDataFromDatabase, secretsPaths, vaultLookupSelf} = this.props;
+        const {classes, errors, getSecrets, groupData, history, inProgress, listSecretsAndCapabilities, match, requestListFromDatabase, secretsPaths, vaultLookupSelf} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
         const requestAccessLabel = 'Request Access';
         const deleteLabel = 'Delete';
         const openLabel = 'Open';
-        const requesterEntityId = vaultLookupSelf.data && vaultLookupSelf.data.data.entity_id;
+        const currentUserEntityId = vaultLookupSelf.data && vaultLookupSelf.data.data.entity_id;
+        const approverEntityIds = groupData.data && groupData.data.member_entity_ids || [];
+        const isApprover = approverEntityIds.includes(currentUserEntityId);
         if (inProgress) {
             return <Grid container justify='center'>
                 <Grid item>
@@ -337,7 +338,8 @@ class SecretsList extends Component {
                 (secretsPaths.secrets || []).map((secret, i) => {
                     const {capabilities, data = {}, name} = secret;
                     const currentPath = path ? `${path}/${name}` : name;
-                    const url = `/secrets/${mount}/${currentPath}`;
+                    const mountPath = `${mount}/${currentPath}`;
+                    const url = `/secrets/${mountPath}`;
                     const isWrapped = !!data.wrap_info;
                     const canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped;
                     const canUpdate = capabilities.some(capability => capability === 'update' || capability === 'root');
@@ -345,89 +347,101 @@ class SecretsList extends Component {
                     const {request_info: requestInfo = {}} = data;
                     const isApproved = isWrapped && requestInfo.approved;
                     const authorizations = isWrapped && requestInfo.authorizations;
-                    const creationTime = data.request_info && isWrapped ? new Date(data.wrap_info.creation_time) : null;
                     const canDelete = capabilities.includes('delete');
-                    let secondaryText = requiresRequest ? `Request type: ${isWrapped ? 'Control Groups' : 'Default'}` : '';
+                    let isOwnRequest = false;
+                    let isPendingInDatabase = false;
+                    let requestStatus = null;
+                    let databaseRequestTime = null;
+                    requestListFromDatabase.map(request => {
+                        const {createdAt, requestData, requesterEntityId, status} = request;
+                        if (!isOwnRequest && requesterEntityId === currentUserEntityId && requestData === mountPath) {
+                            requestStatus = status;
+                            isOwnRequest = true;
+                            databaseRequestTime = calendarUtil.dateFormat(createdAt);
+                        }
+                        if (!isApprover && !isPendingInDatabase && requestData === mountPath) {
+                            isPendingInDatabase = true;
+                        }
+                    });
+                    const creationTime = isPendingInDatabase ? databaseRequestTime : data.request_info && isWrapped ? new Date(data.wrap_info.creation_time) : null;
+                    let standardRequest = isPendingInDatabase ? !isOwnRequest ? Constants.REQUEST_STATUS.LOCKED : `${requestStatus} Request type: Standard Request` : null;
+                    let secondaryText = !standardRequest ? requiresRequest ? `Request type: ${isWrapped ? 'Control Groups' : 'Default'}` : '' : standardRequest;
                     if (creationTime) {
                         secondaryText += ` (Requested at ${creationTime.toLocaleString()})`;
                     }
-                    if (!requestDataFromDatabase.includes(url)) {
-                        return <ListItem button component={(props) => <Link to={url} {...props} onClick={event => {
-                            event.preventDefault();
-                            if (name.includes('/')) {
-                                history.push(url);
-                                listSecretsAndCapabilities(currentPath, this._getVersionFromMount(mount), requesterEntityId);
+                    return <ListItem button component={(props) => <Link to={url} {...props} onClick={event => {
+                        event.preventDefault();
+                        if (name.includes('/')) {
+                            history.push(url);
+                            listSecretsAndCapabilities(currentPath, this._getVersionFromMount(mount));
+                        } else {
+                            if (canUpdate) {
+                                this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'update');
+                                getSecrets(name, this._getVersionFromMount(mount));
+                            } else if (canOpen) {
+                                this._openListModal();
+                                getSecrets(name, this._getVersionFromMount(mount));
+                            } else if (isApproved) {
+                                /* eslint-disable no-alert */
+                                if (window.confirm(`You have been granted access to ${name}. Be careful, you can only access this data once. If you need access again in the future you will need to get authorized again.`)) {
+                                    window.alert('TODO: Unwrap secret and open modal.');
+                                }
+                                /* eslint-enable no-alert */
                             } else {
-                                if (canUpdate) {
-                                    this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'update');
-                                    getSecrets(name, this._getVersionFromMount(mount));
-                                } else if (canOpen) {
+                                this._toggleRequestSecretModal(name, !data.request_info);
+                            }
+                        }
+                    }}/>} disabled={isPendingInDatabase && requestStatus !== Constants.REQUEST_STATUS.APPROVED} key={`key-${i}`}>
+                        <ListItemAvatar>
+                            <Avatar>{
+                                name.endsWith('/') ? <FolderIcon/> : <FileCopyIcon/>
+                            }</Avatar>
+                        </ListItemAvatar>
+                        <ListItemText primary={name} secondary={
+                            secondaryText && <React.Fragment>
+                                <Typography className={classes.block} color='textSecondary' component='span'>
+                                    {secondaryText}
+                                </Typography>
+                                {authorizations && this._renderAuthorizations(authorizations)}
+                            </React.Fragment>
+                        }/>
+                        <ListItemSecondaryAction>
+                            {requiresRequest && !isApproved &&
+                            <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
+                                <IconButton
+                                    aria-label={requestAccessLabel}
+                                    onClick={() => this._toggleRequestSecretModal(name, !data.request_info)}>
+                                    <LockIcon/>
+                                </IconButton>
+                            </Tooltip>}
+                            {!isPendingInDatabase && canOpen && <Tooltip aria-label={openLabel} title={openLabel}>
+                                <IconButton aria-label={openLabel} onClick={() => {
                                     this._openListModal();
                                     getSecrets(name, this._getVersionFromMount(mount));
-                                } else if (isApproved) {
+                                }}>
+                                    <LockOpenIcon/>
+                                </IconButton>
+                            </Tooltip>}
+                            {isApproved && <Tooltip aria-label={openLabel} title={openLabel}>
+                                <IconButton aria-label={openLabel} onClick={() => {
                                     /* eslint-disable no-alert */
                                     if (window.confirm(`You have been granted access to ${name}. Be careful, you can only access this data once. If you need access again in the future you will need to get authorized again.`)) {
                                         window.alert('TODO: Unwrap secret and open modal.');
                                     }
                                     /* eslint-enable no-alert */
-                                } else {
-                                    this._toggleRequestSecretModal(name, !data.request_info);
-                                }
-                            }
-                        }}/>} key={`key-${i}`}>
-                            <ListItemAvatar>
-                                <Avatar>{
-                                    name.endsWith('/') ? <FolderIcon/> : <FileCopyIcon/>
-                                }</Avatar>
-                            </ListItemAvatar>
-                            <ListItemText primary={name} secondary={
-                                secondaryText && <React.Fragment>
-                                    <Typography className={classes.block} color='textSecondary' component='span'>
-                                        {secondaryText}
-                                    </Typography>
-                                    {authorizations && this._renderAuthorizations(authorizations)}
-                                </React.Fragment>
-                            }/>
-                            <ListItemSecondaryAction>
-                                {requiresRequest && !isApproved &&
-                                <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
-                                    <IconButton
-                                        aria-label={requestAccessLabel}
-                                        onClick={() => this._toggleRequestSecretModal(name, !data.request_info)}>
-                                        <LockIcon/>
-                                    </IconButton>
-                                </Tooltip>}
-                                {canOpen && <Tooltip aria-label={openLabel} title={openLabel}>
-                                    <IconButton aria-label={openLabel} onClick={() => {
-                                        this._openListModal();
-                                        getSecrets(name, this._getVersionFromMount(mount));
-                                    }}>
-                                        <LockOpenIcon/>
-                                    </IconButton>
-                                </Tooltip>}
-                                {isApproved && <Tooltip aria-label={openLabel} title={openLabel}>
-                                    <IconButton aria-label={openLabel} onClick={() => {
-                                        /* eslint-disable no-alert */
-                                        if (window.confirm(`You have been granted access to ${name}. Be careful, you can only access this data once. If you need access again in the future you will need to get authorized again.`)) {
-                                            window.alert('TODO: Unwrap secret and open modal.');
-                                        }
-                                        /* eslint-enable no-alert */
-                                    }}>
-                                        <LockOpenIcon/>
-                                    </IconButton>
-                                </Tooltip>}
-                                {canDelete && <Tooltip aria-label={deleteLabel} title={deleteLabel}>
-                                    <IconButton aria-label={deleteLabel} onClick={() => this.setState({
-                                        deleteSecretConfirmation: name
-                                    })}>
-                                        <DeleteIcon/>
-                                    </IconButton>
-                                </Tooltip>}
-                            </ListItemSecondaryAction>
-                        </ListItem>;
-                    } else {
-                        return <Typography color='error' key={i}>PENDING IN DB</Typography>;
-                    }
+                                }}>
+                                    <LockOpenIcon/>
+                                </IconButton>
+                            </Tooltip>}
+                            {!isPendingInDatabase && canDelete && <Tooltip aria-label={deleteLabel} title={deleteLabel}>
+                                <IconButton aria-label={deleteLabel} onClick={() => this.setState({
+                                    deleteSecretConfirmation: name
+                                })}>
+                                    <DeleteIcon/>
+                                </IconButton>
+                            </Tooltip>}
+                        </ListItemSecondaryAction>
+                    </ListItem>;
                 })
             }</List>;
         } else {
@@ -447,10 +461,9 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {deleteRequest, classes, deleteSecrets, match, requestSecret, secrets, vaultLookupSelf} = this.props;
+        const {deleteRequest, classes, deleteSecrets, match, requestSecret, secrets} = this.props;
         const {params} = match;
         const {mount} = params;
-        const requesterEntityId = vaultLookupSelf.data && vaultLookupSelf.data.data.entity_id;
         const {deleteSecretConfirmation, isListModalOpen, requestSecretCancellation, requestSecretConfirmation, secretModalMode, secretModalInitialPath} = this.state;
         return <Card className={classes.card}>
             {this._renderBreadcrumbsArea()}
@@ -477,7 +490,7 @@ class SecretsList extends Component {
                 title={`Delete ${deleteSecretConfirmation}?`}
                 onClose={confirm => {
                     if (confirm) {
-                        deleteSecrets(deleteSecretConfirmation, this._getVersionFromMount(mount), requesterEntityId);
+                        deleteSecrets(deleteSecretConfirmation, this._getVersionFromMount(mount));
                     }
                     this.setState({
                         deleteSecretConfirmation: ''
@@ -503,7 +516,7 @@ class SecretsList extends Component {
                 title='Cancel Privilege Access Request'
                 onClose={confirm => {
                     if (confirm) {
-                        deleteRequest(requestSecretCancellation, this._getVersionFromMount(mount), requesterEntityId);
+                        deleteRequest(requestSecretCancellation, this._getVersionFromMount(mount));
                     }
                     this.setState({
                         requestSecretCancellation: null
@@ -520,13 +533,14 @@ SecretsList.propTypes = {
     deleteSecrets: PropTypes.func.isRequired,
     errors: PropTypes.string,
     getSecrets: PropTypes.func.isRequired,
+    groupData: PropTypes.object,
     history: PropTypes.object.isRequired,
     inProgress: PropTypes.bool,
     isEnterprise: PropTypes.bool,
     listMounts: PropTypes.func.isRequired,
     listSecretsAndCapabilities: PropTypes.func.isRequired,
     match: PropTypes.object.isRequired,
-    requestDataFromDatabase: PropTypes.array,
+    requestListFromDatabase: PropTypes.array,
     requestSecret: PropTypes.func.isRequired,
     secrets: PropTypes.object,
     secretsMounts: PropTypes.object,
@@ -567,7 +581,7 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch, ownProps) => {
     return {
-        deleteRequest: (name, version, requesterEntityId) => {
+        deleteRequest: (name, version) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
@@ -575,7 +589,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             return new Promise((resolve, reject) => {
                 dispatch(kvAction.deleteRequest(fullPath))
                     .then(() => {
-                        dispatch(kvAction.listSecretsAndCapabilities(`${mount}${path ? `/${path}` : ''}`, version, requesterEntityId))
+                        dispatch(kvAction.listSecretsAndCapabilities(`${mount}${path ? `/${path}` : ''}`, version))
                             .then(resolve)
                             .catch(reject);
                     })
@@ -583,11 +597,11 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             });
         },
         listMounts: () => dispatch(kvAction.listMounts()),
-        listSecretsAndCapabilities: (path = '', version, requesterEntityId) => {
+        listSecretsAndCapabilities: (path = '', version) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount} = params;
-            return dispatch(kvAction.listSecretsAndCapabilities(`${mount}/${path.endsWith('/') ? path.slice(0, -1) : path}`, version, requesterEntityId));
+            return dispatch(kvAction.listSecretsAndCapabilities(`${mount}/${path.endsWith('/') ? path.slice(0, -1) : path}`, version));
         },
         getSecrets: (name, version) => {
             const {match} = ownProps;
@@ -596,7 +610,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
             return dispatch(kvAction.getSecrets(fullPath));
         },
-        deleteSecrets: (name, version, requesterEntityId) => {
+        deleteSecrets: (name, version) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
@@ -604,7 +618,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                 const fullPath = `${mount}${version === 2 ? '/metadata' : ''}${path ? `/${path}` : ''}/${name}`;
                 dispatch(kvAction.deleteSecrets(fullPath))
                     .then(() => {
-                        dispatch(kvAction.listSecretsAndCapabilities(`${mount}${path ? `/${path}` : ''}`, version, requesterEntityId))
+                        dispatch(kvAction.listSecretsAndCapabilities(`${mount}${path ? `/${path}` : ''}`, version))
                             .then(resolve)
                             .catch(reject);
                     })
@@ -615,22 +629,22 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
-            const fullPath = `${mount}${version === 2 ? '/data' : ''}/${path}/${name}`;
             // TODO: implement this
             const storeState = window.app.store.getState();
             const isEnterprise = storeState.systemReducer.isEnterprise === 'true';
+            const fullPath = `${mount}${version === 2 ? isEnterprise ? '/data' : '' : ''}${path ? `/${path}` : ''}/${name}`;
             const entity_id = storeState.sessionReducer.vaultLookupSelf.data.data.entity_id;
             return new Promise((resolve, reject) => {
                 let requestData = isEnterprise ? {'path': fullPath} : {
                     requesterEntityId: entity_id,
                     requestData: fullPath,
                     type: '',
-                    status: Constants.REQUEST_STATUS.APPROVED,
+                    status: Constants.REQUEST_STATUS.PENDING,
                     engineType: ''
                 };
                 dispatch(kvAction.requestSecret(requestData, isEnterprise))
                     .then(() => {
-                        dispatch(kvAction.listSecretsAndCapabilities(`${mount}${path ? `/${path}` : ''}`, version, entity_id))
+                        dispatch(kvAction.listSecretsAndCapabilities(`${mount}${path ? `/${path}` : ''}`, version))
                             .then(resolve)
                             .catch(reject);
                     })
