@@ -1,5 +1,4 @@
 const request = require('request');
-const UserController = require('services/controllers/User');
 const {initApiRequest, sendError} = require('services/utils');
 
 /**
@@ -21,18 +20,21 @@ const {initApiRequest, sendError} = require('services/utils');
 /* eslint-disable new-cap */
 module.exports = require('express').Router()
 /* eslint-enable new-cap */
-/**
- * @swagger
- * /rest/user:
- *   get:
- *     tags:
- *       - User
- *     name: Get current session user.
- *     summary: Get current session user.
- *     responses:
- *       200:
- *         description: User found.
- */
+    .use((req, res, next) => {
+        next();
+    })
+    /**
+     * @swagger
+     * /rest/user:
+     *   get:
+     *     tags:
+     *       - User
+     *     name: Get current session user.
+     *     summary: Get current session user.
+     *     responses:
+     *       200:
+     *         description: User found.
+     */
     .get('/', (req, res) => {
         const {REACT_APP_API_TOKEN: apiToken} = process.env;
         const {domain, entityId} = req.session.user;
@@ -81,12 +83,12 @@ module.exports = require('express').Router()
     })
     /**
      * @swagger
-     * /rest/user/create:
+     * /rest/user:
      *   post:
      *     tags:
      *       - User
-     *     name: Create user
-     *     summary: Create user
+     *     name: Create user.
+     *     summary: Create user.
      *     requestBody:
      *       required: true
      *       content:
@@ -94,24 +96,31 @@ module.exports = require('express').Router()
      *           schema:
      *             $ref: '#/definitions/user'
      *           type: object
-     *           properties:
-     *             engineType:
-     *               type: string
-     *         required:
-     *           - engineType
      *     responses:
      *       200:
-     *         description: User created
+     *         description: User created.
      */
-    .post('/create', (req, res) => {
-        const {entityId, firstName, lastName, email, engineType} = req.body;
-        UserController.create(entityId, firstName, lastName, email, engineType).then(user => {
-            res.json(user);
+    .post('/', (req, res) => {
+        const {domain, token} = req.session.user;
+        const apiUrl = `${domain}/v1/identity/entity`;
+
+        request({
+            ...initApiRequest(token, apiUrl),
+            method: 'POST',
+            json: {
+                ...req.body
+            }
+        }, (error, response, body) => {
+            if (error) {
+                sendError(apiUrl, res, error);
+                return;
+            }
+            res.status(response.statusCode).json(body);
         });
     })
     /**
      * @swagger
-     * /rest/user/update:
+     * /rest/user:
      *   put:
      *     tags:
      *       - User
@@ -136,6 +145,9 @@ module.exports = require('express').Router()
             if (error) {
                 sendError(apiUrl, res, error);
                 return;
+            } else if (body.errors) {
+                sendError(apiUrl, res, body.errors, response.statusCode);
+                return;
             }
             const {metadata = {}} = body.data || {};
             request({
@@ -151,6 +163,9 @@ module.exports = require('express').Router()
                 if (error) {
                     sendError(apiUrl, res, updateError);
                     return;
+                } else if (updateBody.errors) {
+                    sendError(apiUrl, res, updateBody.errors, updateResponse.statusCode);
+                    return;
                 }
                 res.status(updateResponse.statusCode).json(updateBody);
             });
@@ -158,12 +173,67 @@ module.exports = require('express').Router()
     })
     /**
      * @swagger
-     * /rest/user/delete/{entityId}:
+     * /rest/user:
+     *   put:
+     *     tags:
+     *       - User
+     *     name: Update user by entity id.
+     *     summary: Update user by entity id.
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             $ref: '#/definitions/user'
+     *     responses:
+     *       200:
+     *         description: User updated.
+     *       403:
+     *         description: Unauthorized.
+     */
+    .put('/:entityId', (req, res) => {
+        const entityId = req.params.entityId;
+        const {domain, token} = req.session.user;
+        const apiUrl = `${domain}/v1/identity/entity/id/${entityId}`;
+
+        request(initApiRequest(token, apiUrl), (error, response, body) => {
+            if (error) {
+                sendError(apiUrl, res, error);
+                return;
+            } else if (body.errors) {
+                sendError(apiUrl, res, body.errors, response.statusCode);
+                return;
+            }
+            const {metadata = {}} = body.data || {};
+            request({
+                ...initApiRequest(token, apiUrl),
+                method: 'POST',
+                json: {
+                    metadata: {
+                        ...metadata,
+                        ...req.body
+                    }
+                }
+            }, (updateError, updateResponse, updateBody) => {
+                if (error) {
+                    sendError(apiUrl, res, updateError);
+                    return;
+                } else if (updateBody.errors) {
+                    sendError(apiUrl, res, updateBody.errors, updateResponse.statusCode);
+                    return;
+                }
+                res.status(updateResponse.statusCode).json(updateBody);
+            });
+        });
+    })
+    /**
+     * @swagger
+     * /rest/user/{entityId}:
      *   delete:
      *     tags:
      *       - User
-     *     name: Delete user by entityId
-     *     summary: Delete user by entityId
+     *     name: Delete user by entity id.
+     *     summary: Delete user by entity id.
      *     parameters:
      *       - name: entityId
      *         in: path
@@ -173,11 +243,24 @@ module.exports = require('express').Router()
      *           - entityId
      *     responses:
      *       200:
-     *         description: User deleted
+     *         description: User deleted.
      */
-    .delete('/delete/:entityId', (req, res) => {
+    .delete('/:entityId', (req, res) => {
         const entityId = req.params.entityId;
-        UserController.deleteByEntityId(entityId).then(status => {
-            res.json(status);
+        const {domain, token} = req.session.user;
+        const apiUrl = `${domain}/v1/identity/entity/id/${entityId}`;
+
+        request({
+            ...initApiRequest(token, apiUrl),
+            method: 'DELETE'
+        }, (error, response, body) => {
+            if (error) {
+                sendError(apiUrl, res, error);
+                return;
+            } else if (body.errors) {
+                sendError(apiUrl, res, body.errors, response.statusCode);
+                return;
+            }
+            res.status(response.statusCode).json(body);
         });
     });
