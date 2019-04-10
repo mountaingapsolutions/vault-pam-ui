@@ -245,13 +245,7 @@ const _sendTokenValidationResponse = (domain, token, req, res) => {
             return;
         }
         try {
-            const {display_name, entity_id: entityId, path} = body.data || {};
-            if (entityId) {
-                const engineType = path.split('/')[1];
-                User.findOrCreate(entityId, display_name, engineType).then(user => {
-                    console.log(`Entity ID logged in: ${user.entityId}`);
-                });
-            }
+            const {entity_id: entityId} = body.data || {};
             setSessionData(req, {
                 domain,
                 token,

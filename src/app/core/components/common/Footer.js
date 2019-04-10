@@ -1,7 +1,6 @@
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
-import {Link} from 'react-router-dom';
 
 import localStorageAction from 'app/core/actions/localStorageAction';
 
@@ -38,11 +37,9 @@ class Footer extends Component {
             <div className={classes.footerRootContainer}>
                 <AppBar className={classes.footer} position='fixed'>
                     <div className={classes.footerTextContainer}>
-                        <Link to={'/rest/api'}>
-                            <Typography inline className={classes.text} variant='caption'>
-                                API
-                            </Typography>
-                        </Link>
+                        <Typography inline className={classes.text} component={(props) => <a href='/rest/api' {...props}>API</a>} variant='caption'>
+                            API
+                        </Typography>
                         <Typography inline className={classes.textSeparator} variant='caption'>
                             |
                         </Typography>

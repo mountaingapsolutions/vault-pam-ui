@@ -13,15 +13,12 @@ import {
     ListItemSecondaryAction,
     ListItemText,
     Paper,
-    SnackbarContent,
     Tooltip,
     Typography
 } from '@material-ui/core';
 import {withStyles} from '@material-ui/core/styles';
 import AddIcon from '@material-ui/icons/Add';
-import CloseIcon from '@material-ui/icons/Close';
 import DeleteIcon from '@material-ui/icons/Delete';
-import ErrorIcon from '@material-ui/icons/Error';
 import FileCopyIcon from '@material-ui/icons/FileCopy';
 import FolderIcon from '@material-ui/icons/Folder';
 import ListIcon from '@material-ui/icons/List';
@@ -38,6 +35,7 @@ import Button from 'app/core/components/common/Button';
 import ListModal from 'app/core/components/common/ListModal';
 import CreateUpdateSecretModal from 'app/core/components/CreateUpdateSecretModal';
 import ConfirmationModal from 'app/core/components/ConfirmationModal';
+import SnackbarContent from 'app/core/components/SnackbarContent';
 import Constants from 'app/util/Constants';
 
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
@@ -309,37 +307,6 @@ class SecretsList extends Component {
     }
 
     /**
-     * Renders a dismissible error message.
-     *
-     * @private
-     * @param {string} error The error message.
-     * @returns {React.ReactElement}
-     */
-    _renderDismissibleError(error) {
-        const {classes, dismissError} = this.props;
-        return <SnackbarContent
-            action={[
-                <IconButton
-                    aria-label='dimiss'
-                    className={classes.close}
-                    color='inherit'
-                    key='dimiss'
-                    onClick={dismissError}
-                >
-                    <CloseIcon/>
-                </IconButton>,
-            ]}
-            aria-describedby='dismissible-error'
-            className={classes.dismissibleError}
-            message={
-                <span className={classes.dismissibleErrorMessage} id='dismissible-error'>
-                    <ErrorIcon className={classes.dismissibleErrorIcon}/> {error}
-                </span>
-            }
-        />;
-    }
-
-    /**
      * Renders the secrets list area.
      *
      * @private
@@ -478,14 +445,14 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {deleteRequest, classes, deleteSecrets, dismissibleError, isEnterprise, match, requestSecret, secrets, vaultLookupSelf} = this.props;
+        const {deleteRequest, classes, deleteSecrets, dismissError, dismissibleError, isEnterprise, match, requestSecret, secrets, vaultLookupSelf} = this.props;
         const requesterEntityId = vaultLookupSelf.data && vaultLookupSelf.data.data.entity_id;
         const {params} = match;
         const {mount} = params;
         const {deleteSecretConfirmation, isListModalOpen, requestSecretCancellation, requestSecretConfirmation, secretModalMode, secretModalInitialPath} = this.state;
         return <Card className={classes.card}>
             {this._renderBreadcrumbsArea()}
-            {dismissibleError && this._renderDismissibleError(dismissibleError)}
+            {dismissibleError && <SnackbarContent message={dismissibleError} variant='error' onClose={dismissError}/>}
             {this._renderSecretsListArea()}
             <ListModal
                 buttonTitle={'Request Secret'}
@@ -710,19 +677,6 @@ const _styles = (theme) => ({
     },
     disableMinWidth: {
         minWidth: 0
-    },
-    dismissibleError: {
-        backgroundColor: theme.palette.error.dark,
-        maxWidth: 'inherit',
-        marginLeft: theme.spacing.unit,
-        marginRight: theme.spacing.unit
-    },
-    dismissibleErrorIcon: {
-        marginRight: theme.spacing.unit
-    },
-    dismissibleErrorMessage: {
-        display: 'flex',
-        alignItems: 'center',
     },
     paperMessage: {
         padding: 40

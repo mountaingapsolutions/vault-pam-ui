@@ -1,4 +1,6 @@
+const request = require('request');
 const UserController = require('services/controllers/User');
+const {initApiRequest, sendError} = require('services/utils');
 
 /**
  * @swagger
@@ -14,55 +16,44 @@ const UserController = require('services/controllers/User');
  *         type: string
  *       email:
  *         type: string
- *     required:
- *       - entityId
- *       - firstName
- *       - lastName
- *       - email
  */
 
 /* eslint-disable new-cap */
 module.exports = require('express').Router()
 /* eslint-enable new-cap */
-    .use((req, res, next) => {
-        console.log('User service was called: ', Date.now());
-        next();
-    })
-    /**
-     * @swagger
-     * /rest/user/id/{id}:
-     *   get:
-     *     tags:
-     *       - User
-     *     name: Get user by id
-     *     summary: Get user by id
-     *     parameters:
-     *       - name: id
-     *         in: path
-     *         schema:
-     *           type: number
-     *         required:
-     *           - id
-     *     responses:
-     *       200:
-     *         description: User found
-     *       404:
-     *         description: User not found
-     */
-    .get('/id/:id', (req, res) => {
-        const id = req.params.id;
-        UserController.findById(id).then(user => {
-            res.json(user);
+/**
+ * @swagger
+ * /rest/user:
+ *   get:
+ *     tags:
+ *       - User
+ *     name: Get current session user.
+ *     summary: Get current session user.
+ *     responses:
+ *       200:
+ *         description: User found.
+ */
+    .get('/', (req, res) => {
+        const {REACT_APP_API_TOKEN: apiToken} = process.env;
+        const {domain, entityId} = req.session.user;
+        const apiUrl = `${domain}/v1/identity/entity/id/${entityId}`;
+
+        request(initApiRequest(apiToken, apiUrl), (error, response, body) => {
+            if (error) {
+                sendError(apiUrl, res, error);
+                return;
+            }
+            res.status(response.statusCode).json(body);
         });
     })
     /**
      * @swagger
-     * /rest/user/entityId/{entityId}:
+     * /rest/user/{entityId}:
      *   get:
      *     tags:
      *       - User
-     *     name: Get user by entityId
-     *     summary: Get user by entityId
+     *     name: Get user by entity id.
+     *     summary: Get user by entity id. If the id is not provided, defaults to the current session user.
      *     parameters:
      *       - name: entityId
      *         in: path
@@ -72,14 +63,20 @@ module.exports = require('express').Router()
      *           - entityId
      *     responses:
      *       200:
-     *         description: User found
-     *       404:
-     *         description: User not found
+     *         description: User found.
+     *       403:
+     *         description: Unauthorized.
      */
-    .get('/entityId/:entityId', (req, res) => {
-        const entityId = req.params.entityId;
-        UserController.findByEntityId(entityId).then(user => {
-            res.json(user);
+    .get('/:entityId', (req, res) => {
+        const {domain, token} = req.session.user;
+        const apiUrl = `${domain}/v1/identity/entity/id/${req.params.entityId}`;
+
+        request(initApiRequest(token, apiUrl), (error, response, body) => {
+            if (error) {
+                sendError(apiUrl, res, error);
+                return;
+            }
+            res.status(response.statusCode).json(body);
         });
     })
     /**
@@ -118,8 +115,8 @@ module.exports = require('express').Router()
      *   put:
      *     tags:
      *       - User
-     *     name: Update user
-     *     summary: Update user
+     *     name: Update current session user.
+     *     summary: Update current session user.
      *     requestBody:
      *       required: true
      *       content:
@@ -128,12 +125,35 @@ module.exports = require('express').Router()
      *             $ref: '#/definitions/user'
      *     responses:
      *       200:
-     *         description: User updated
+     *         description: User updated.
      */
-    .put('/update', (req, res) => {
-        const {entityId, firstName, lastName, email} = req.body;
-        UserController.update(entityId, firstName, lastName, email).then(user => {
-            res.json(user);
+    .put('/', (req, res) => {
+        const {REACT_APP_API_TOKEN: apiToken} = process.env;
+        const {domain, entityId} = req.session.user;
+        const apiUrl = `${domain}/v1/identity/entity/id/${entityId}`;
+
+        request(initApiRequest(apiToken, apiUrl), (error, response, body) => {
+            if (error) {
+                sendError(apiUrl, res, error);
+                return;
+            }
+            const {metadata = {}} = body.data || {};
+            request({
+                ...initApiRequest(apiToken, apiUrl),
+                method: 'POST',
+                json: {
+                    metadata: {
+                        ...metadata,
+                        ...req.body
+                    }
+                }
+            }, (updateError, updateResponse, updateBody) => {
+                if (error) {
+                    sendError(apiUrl, res, updateError);
+                    return;
+                }
+                res.status(updateResponse.statusCode).json(updateBody);
+            });
         });
     })
     /**

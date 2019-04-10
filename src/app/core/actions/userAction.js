@@ -15,30 +15,30 @@ class UserAction extends _Actions {
             DELETE_USER: 'DELETE_USER',
             GET_USER: 'GET_USER',
             LOGOUT: 'LOGOUT',
-            UPDATE_USER_DETAILS: 'UPDATE_USER_DETAILS',
+            UPDATE_USER: 'UPDATE_USER',
             UPDATE_USER_PASSWORD: 'UPDATE_USER_PASSWORD',
             UPDATE_USER_POLICIES: 'UPDATE_USER_POLICIES'
         });
     }
 
     /**
-     * Gets the properties of an existing username.
+     * Gets the properties of an existing user. If no entity id is provided, will default to the current session user.
      *
-     * @param {string} entityId The entityId for the user.
+     * @param {string} [entityId] The entityId for the user.
      * @returns {function} Redux dispatch function.
      */
-    getUser(entityId) {
-        return this._dispatchGet(this.ACTION_TYPES.GET_USER, `/rest/user/entityId/${entityId}`);
+    getUser(entityId = '') {
+        return this._dispatchGet(this.ACTION_TYPES.GET_USER, `/rest/user/${entityId}`);
     }
 
     /**
-     * Update the properties of an existing username.
+     * Updates the metadata of the current session user.
      *
-     * @param {Object} data The new user data.
+     * @param {Object} metadata The new user metadata.
      * @returns {function} Redux dispatch function.
      */
-    updateUser(data) {
-        return this._dispatchPut(this.ACTION_TYPES.UPDATE_USER_DETAILS, '/rest/user/update', data);
+    updateUser(metadata) {
+        return this._dispatchPut(this.ACTION_TYPES.UPDATE_USER, '/rest/user', metadata);
     }
     /**
      * Deletes the specified user.
