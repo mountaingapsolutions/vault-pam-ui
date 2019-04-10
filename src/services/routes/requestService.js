@@ -1,5 +1,54 @@
 const RequestController = require('services/controllers/Request');
+const {initApiRequest, sendEmail} = require('services/utils');
+const requestLib = require('request');
+const UserController = require('services/controllers/User');
 
+/**
+ * Retrieves the active Control Group requests from group metadata.
+ *
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
+const _getApproverGroupMembers = async (req) => {
+    const result = await new Promise( (resolve, reject) => {
+        const {REACT_APP_API_TOKEN: apiToken} = process.env;
+        if (!apiToken) {
+            reject('No API token configured.');
+            return;
+        }
+        const {domain} = req.session.user;
+        const groupName = 'pam-approver';
+        let groupMembersEmail = [];
+
+        requestLib(initApiRequest(apiToken, `${domain}/v1/identity/group/name/${groupName}`), (error, response, body) => {
+            if (body && body.data) {
+                const member_entity_ids = body.data.member_entity_ids;
+                const {type} = body.data.metadata;
+                if (type === 'admin' && member_entity_ids) {
+                    Promise.all(member_entity_ids.map(entityId => {
+                        return new Promise((memberResolve, memberReject) => {
+                            UserController.findByEntityId(entityId).then(user => {
+                                if (user) {
+                                    const userData = user.dataValues;
+                                    const {email} = userData;
+                                    groupMembersEmail.push(email);
+                                    memberResolve();
+                                } else {
+                                    memberReject();
+                                }
+                            });
+                        });
+                    })).then(() => {
+                        resolve(groupMembersEmail);
+                    }).catch((err) => {
+                        console.error(err);
+                    });
+                }
+            }
+        });
+    });
+    return result;
+};
 /**
  * @swagger
  * definitions:
@@ -157,9 +206,16 @@ module.exports = require('express').Router()
      *       200:
      *         description: Request created
      */
-    .post('/findOrCreate', (req, res) => {
+    .post('/findOrCreate', async (req, res) => {
         const {requesterEntityId, requestData, type, status, engineType} = req.body;
         RequestController.findOrCreate(requesterEntityId, requestData, type, status, engineType).then(request => {
+            // if a new request, send email to approvers
+            if (request._options.isNewRecord === true) {
+                _getApproverGroupMembers(req).then((approvers) => {
+                    sendEmail(approvers, 'test mail', 'hello there!');
+                });
+            }
+
             res.json(request);
         });
     })
