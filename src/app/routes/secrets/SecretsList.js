@@ -13,12 +13,15 @@ import {
     ListItemSecondaryAction,
     ListItemText,
     Paper,
+    SnackbarContent,
     Tooltip,
     Typography
 } from '@material-ui/core';
 import {withStyles} from '@material-ui/core/styles';
 import AddIcon from '@material-ui/icons/Add';
+import CloseIcon from '@material-ui/icons/Close';
 import DeleteIcon from '@material-ui/icons/Delete';
+import ErrorIcon from '@material-ui/icons/Error';
 import FileCopyIcon from '@material-ui/icons/FileCopy';
 import FolderIcon from '@material-ui/icons/Folder';
 import ListIcon from '@material-ui/icons/List';
@@ -193,7 +196,7 @@ class SecretsList extends Component {
      * @override
      */
     componentDidMount() {
-        const {history, listMounts, listSecretsAndCapabilities, match, secretsMounts} = this.props;
+        const {dismissError, history, listMounts, listSecretsAndCapabilities, match, secretsMounts} = this.props;
         const {params} = match;
         const {mount, path} = params;
 
@@ -206,6 +209,7 @@ class SecretsList extends Component {
         }
 
         this.unlisten = history.listen((location, action) => {
+            dismissError();
             if (action === 'POP') {
                 const {match: newMatch} = this.props;
                 const {params: newParams} = newMatch;
@@ -305,13 +309,44 @@ class SecretsList extends Component {
     }
 
     /**
+     * Renders a dismissible error message.
+     *
+     * @private
+     * @param {string} error The error message.
+     * @returns {React.ReactElement}
+     */
+    _renderDismissibleError(error) {
+        const {classes, dismissError} = this.props;
+        return <SnackbarContent
+            action={[
+                <IconButton
+                    aria-label='dimiss'
+                    className={classes.close}
+                    color='inherit'
+                    key='dimiss'
+                    onClick={dismissError}
+                >
+                    <CloseIcon/>
+                </IconButton>,
+            ]}
+            aria-describedby='dismissible-error'
+            className={classes.dismissibleError}
+            message={
+                <span className={classes.dismissibleErrorMessage} id='dismissible-error'>
+                    <ErrorIcon className={classes.dismissibleErrorIcon}/> {error}
+                </span>
+            }
+        />;
+    }
+
+    /**
      * Renders the secrets list area.
      *
      * @private
      * @returns {React.ReactElement}
      */
     _renderSecretsListArea() {
-        const {classes, errors, getSecrets, history, inProgress, listSecretsAndCapabilities, match, secretsPaths, unwrapSecret} = this.props;
+        const {classes, pageError, getSecrets, history, inProgress, listSecretsAndCapabilities, match, secretsPaths, unwrapSecret} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
         const requestAccessLabel = 'Request Access';
@@ -323,11 +358,11 @@ class SecretsList extends Component {
                     <CircularProgress className={classes.progress}/>
                 </Grid>
             </Grid>;
-        } else if (errors) {
+        } else if (pageError) {
             return <Paper className={classes.paper} elevation={2}>
                 <Typography
                     className={classes.paperMessage}
-                    color='textPrimary'>{errors}
+                    color='textPrimary'>{pageError}
                 </Typography>
             </Paper>;
         } else if ((secretsPaths.secrets || []).length > 0) {
@@ -360,7 +395,7 @@ class SecretsList extends Component {
                                 this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'update');
                                 getSecrets(name, this._getVersionFromMount(mount));
                             } else if (canOpen) {
-                                this._openListModal();
+                                this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'read');
                                 getSecrets(name, this._getVersionFromMount(mount));
                             } else if (isApproved) {
                                 /* eslint-disable no-alert */
@@ -443,13 +478,14 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {deleteRequest, classes, deleteSecrets, isEnterprise, match, requestSecret, secrets, vaultLookupSelf} = this.props;
+        const {deleteRequest, classes, deleteSecrets, dismissibleError, isEnterprise, match, requestSecret, secrets, vaultLookupSelf} = this.props;
         const requesterEntityId = vaultLookupSelf.data && vaultLookupSelf.data.data.entity_id;
         const {params} = match;
         const {mount} = params;
         const {deleteSecretConfirmation, isListModalOpen, requestSecretCancellation, requestSecretConfirmation, secretModalMode, secretModalInitialPath} = this.state;
         return <Card className={classes.card}>
             {this._renderBreadcrumbsArea()}
+            {dismissibleError && this._renderDismissibleError(dismissibleError)}
             {this._renderSecretsListArea()}
             <ListModal
                 buttonTitle={'Request Secret'}
@@ -514,7 +550,8 @@ SecretsList.propTypes = {
     classes: PropTypes.object.isRequired,
     deleteRequest: PropTypes.func.isRequired,
     deleteSecrets: PropTypes.func.isRequired,
-    errors: PropTypes.string,
+    dismissError: PropTypes.func.isRequired,
+    dismissibleError: PropTypes.string,
     getSecrets: PropTypes.func.isRequired,
     history: PropTypes.object.isRequired,
     inProgress: PropTypes.bool,
@@ -522,6 +559,7 @@ SecretsList.propTypes = {
     listMounts: PropTypes.func.isRequired,
     listSecretsAndCapabilities: PropTypes.func.isRequired,
     match: PropTypes.object.isRequired,
+    pageError: PropTypes.string,
     requestSecret: PropTypes.func.isRequired,
     secrets: PropTypes.object,
     secretsMounts: PropTypes.object,
@@ -538,13 +576,20 @@ SecretsList.propTypes = {
  * @returns {Object}
  */
 const _mapStateToProps = (state) => {
-    const actionsUsed = [kvAction.ACTION_TYPES.LIST_MOUNTS,
-        kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES,
-        kvAction.ACTION_TYPES.DELETE_SECRETS
-    ];
     return {
-        errors: createErrorsSelector(actionsUsed)(state.actionStatusReducer),
-        inProgress: createInProgressSelector(actionsUsed)(state.actionStatusReducer),
+        dismissibleError: createErrorsSelector([
+            kvAction.ACTION_TYPES.DELETE_SECRETS,
+            kvAction.ACTION_TYPES.REQUEST_SECRET
+        ])(state.actionStatusReducer),
+        pageError: createErrorsSelector([
+            kvAction.ACTION_TYPES.LIST_MOUNTS,
+            kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES
+        ])(state.actionStatusReducer),
+        inProgress: createInProgressSelector([
+            kvAction.ACTION_TYPES.LIST_MOUNTS,
+            kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES,
+            kvAction.ACTION_TYPES.DELETE_SECRETS
+        ])(state.actionStatusReducer),
         ...state.localStorageReducer,
         ...state.kvReducer,
         ...state.sessionReducer,
@@ -576,6 +621,19 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                             .catch(reject);
                     })
                     .catch(reject);
+            });
+        },
+        dismissError: () => {
+            return new Promise((resolve) => {
+                [
+                    kvAction.ACTION_TYPES.DELETE_SECRETS,
+                    kvAction.ACTION_TYPES.REQUEST_SECRET
+                ].forEach(type => {
+                    dispatch({
+                        type
+                    });
+                });
+                resolve();
             });
         },
         listMounts: () => dispatch(kvAction.listMounts()),
@@ -611,7 +669,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
-            const fullPath = `${mount}${version === 2 ? '/data' : ''}/${path}/${name}`;
+            const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
             return new Promise((resolve, reject) => {
                 let requestData = isEnterprise ? {'path': fullPath} : {
                     requesterEntityId: requesterEntityId,
@@ -652,6 +710,19 @@ const _styles = (theme) => ({
     },
     disableMinWidth: {
         minWidth: 0
+    },
+    dismissibleError: {
+        backgroundColor: theme.palette.error.dark,
+        maxWidth: 'inherit',
+        marginLeft: theme.spacing.unit,
+        marginRight: theme.spacing.unit
+    },
+    dismissibleErrorIcon: {
+        marginRight: theme.spacing.unit
+    },
+    dismissibleErrorMessage: {
+        display: 'flex',
+        alignItems: 'center',
     },
     paperMessage: {
         padding: 40

@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 const chalk = require('chalk');
-
+const nodemailer = require('nodemailer');
 /**
  * Just a collection of service utility methods.
  */
@@ -84,8 +84,37 @@ const setSessionData = (req, sessionUserData) => {
     };
 };
 
+/**
+ * Sends email.
+ *
+ * @param {Array} recipients The email recipients.
+ * @param {string} subject The email subject.
+ * @param {string} message The email message.
+ */
+const sendEmail = (recipients, subject, message) => {
+    const {PAM_MAIL_SERVICE, PAM_MAIL_USER, PAM_MAIL_PASS} = process.env;
+    const smtpTransport = nodemailer.createTransport({
+        service: PAM_MAIL_SERVICE,
+        auth: {
+            user: PAM_MAIL_USER,
+            pass: PAM_MAIL_PASS
+        }
+    });
+    const mailOptions = {
+        to: recipients,
+        subject: subject,
+        html: message
+    };
+    smtpTransport.sendMail(mailOptions).then((info) => {
+        console.log('Email sent.', info);
+    }).catch((err) => {
+        console.log(err);
+    });
+};
+
 module.exports = {
     initApiRequest,
+    sendEmail,
     sendError,
     setSessionData
 };
