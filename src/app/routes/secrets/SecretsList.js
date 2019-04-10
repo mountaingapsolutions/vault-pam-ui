@@ -13,12 +13,15 @@ import {
     ListItemSecondaryAction,
     ListItemText,
     Paper,
+    SnackbarContent,
     Tooltip,
     Typography
 } from '@material-ui/core';
 import {withStyles} from '@material-ui/core/styles';
 import AddIcon from '@material-ui/icons/Add';
+import CloseIcon from '@material-ui/icons/Close';
 import DeleteIcon from '@material-ui/icons/Delete';
+import ErrorIcon from '@material-ui/icons/Error';
 import FileCopyIcon from '@material-ui/icons/FileCopy';
 import FolderIcon from '@material-ui/icons/Folder';
 import ListIcon from '@material-ui/icons/List';
@@ -146,7 +149,7 @@ class SecretsList extends Component {
      *
      * @private
      * @param {string} secretModalInitialPath The initial path for the secrets modal.
-     * @param {string} [secretModalMode] The secret modal mode. Either 'create' or 'update'. No value will hide the modal.
+     * @param {string} [secretModalMode] The secret modal mode. Valid values are 'create', 'read', or 'update'. No value will hide the modal.
      */
     _toggleCreateUpdateSecretModal(secretModalInitialPath = '', secretModalMode = '') {
         this.setState({
@@ -194,7 +197,7 @@ class SecretsList extends Component {
      * @override
      */
     componentDidMount() {
-        const {history, listMounts, listSecretsAndCapabilities, match, secretsMounts} = this.props;
+        const {dismissError, history, listMounts, listSecretsAndCapabilities, match, secretsMounts} = this.props;
         const {params} = match;
         const {mount, path} = params;
         if ((secretsMounts.data || []).length === 0) {
@@ -206,6 +209,7 @@ class SecretsList extends Component {
         }
 
         this.unlisten = history.listen((location, action) => {
+            dismissError();
             if (action === 'POP') {
                 const {match: newMatch} = this.props;
                 const {params: newParams} = newMatch;
@@ -305,13 +309,44 @@ class SecretsList extends Component {
     }
 
     /**
+     * Renders a dismissible error message.
+     *
+     * @private
+     * @param {string} error The error message.
+     * @returns {React.ReactElement}
+     */
+    _renderDismissibleError(error) {
+        const {classes, dismissError} = this.props;
+        return <SnackbarContent
+            action={[
+                <IconButton
+                    aria-label='dimiss'
+                    className={classes.close}
+                    color='inherit'
+                    key='dimiss'
+                    onClick={dismissError}
+                >
+                    <CloseIcon/>
+                </IconButton>,
+            ]}
+            aria-describedby='dismissible-error'
+            className={classes.dismissibleError}
+            message={
+                <span className={classes.dismissibleErrorMessage} id='dismissible-error'>
+                    <ErrorIcon className={classes.dismissibleErrorIcon}/> {error}
+                </span>
+            }
+        />;
+    }
+
+    /**
      * Renders the secrets list area.
      *
      * @private
      * @returns {React.ReactElement}
      */
     _renderSecretsListArea() {
-        const {classes, errors, getSecrets, groupData, history, inProgress, listSecretsAndCapabilities, match, requestListFromDatabase, secretsPaths, vaultLookupSelf} = this.props;
+        const {classes, pageError, getSecrets, groupData, history, inProgress, listSecretsAndCapabilities, match, requestListFromDatabase, secretsPaths, unwrapSecret, vaultLookupSelf} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
         const requestAccessLabel = 'Request Access';
@@ -326,21 +361,22 @@ class SecretsList extends Component {
                     <CircularProgress className={classes.progress}/>
                 </Grid>
             </Grid>;
-        } else if (errors) {
+        } else if (pageError) {
             return <Paper className={classes.paper} elevation={2}>
                 <Typography
                     className={classes.paperMessage}
-                    color='textPrimary'>{errors}
+                    color='textPrimary'>{pageError}
                 </Typography>
             </Paper>;
         } else if ((secretsPaths.secrets || []).length > 0) {
             return <List>{
                 (secretsPaths.secrets || []).map((secret, i) => {
                     const {capabilities, data = {}, name} = secret;
+                    const {wrap_info: wrapInfo} = data;
                     const currentPath = path ? `${path}/${name}` : name;
                     const mountPath = `${mount}/${currentPath}`;
                     const url = `/secrets/${mountPath}`;
-                    const isWrapped = !!data.wrap_info;
+                    const isWrapped = !!wrapInfo;
                     const canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped;
                     const canUpdate = capabilities.some(capability => capability === 'update' || capability === 'root');
                     const requiresRequest = capabilities.includes('deny') && !name.endsWith('/') || isWrapped;
@@ -363,7 +399,7 @@ class SecretsList extends Component {
                             isPendingInDatabase = true;
                         }
                     });
-                    const creationTime = isPendingInDatabase ? databaseRequestTime : data.request_info && isWrapped ? new Date(data.wrap_info.creation_time) : null;
+                    const creationTime = isPendingInDatabase ? databaseRequestTime : data.request_info && isWrapped ? new Date(wrapInfo.creation_time) : null;
                     let standardRequest = isPendingInDatabase ? !isOwnRequest ? Constants.REQUEST_STATUS.LOCKED : `${requestStatus} Request type: Standard Request` : null;
                     let secondaryText = !standardRequest ? requiresRequest ? `Request type: ${isWrapped ? 'Control Groups' : 'Default'}` : '' : standardRequest;
                     if (creationTime) {
@@ -379,12 +415,13 @@ class SecretsList extends Component {
                                 this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'update');
                                 getSecrets(name, this._getVersionFromMount(mount));
                             } else if (canOpen) {
-                                this._openListModal();
+                                this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'read');
                                 getSecrets(name, this._getVersionFromMount(mount));
                             } else if (isApproved) {
                                 /* eslint-disable no-alert */
                                 if (window.confirm(`You have been granted access to ${name}. Be careful, you can only access this data once. If you need access again in the future you will need to get authorized again.`)) {
-                                    window.alert('TODO: Unwrap secret and open modal.');
+                                    this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'read');
+                                    unwrapSecret(name, wrapInfo.token);
                                 }
                                 /* eslint-enable no-alert */
                             } else {
@@ -461,12 +498,14 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {deleteRequest, classes, deleteSecrets, match, requestSecret, secrets} = this.props;
+        const {deleteRequest, classes, deleteSecrets, dismissibleError, isEnterprise, match, requestSecret, secrets, vaultLookupSelf} = this.props;
+        const requesterEntityId = vaultLookupSelf.data && vaultLookupSelf.data.data.entity_id;
         const {params} = match;
         const {mount} = params;
         const {deleteSecretConfirmation, isListModalOpen, requestSecretCancellation, requestSecretConfirmation, secretModalMode, secretModalInitialPath} = this.state;
         return <Card className={classes.card}>
             {this._renderBreadcrumbsArea()}
+            {dismissibleError && this._renderDismissibleError(dismissibleError)}
             {this._renderSecretsListArea()}
             <ListModal
                 buttonTitle={'Request Secret'}
@@ -503,7 +542,7 @@ class SecretsList extends Component {
                 title='Privilege Access Request'
                 onClose={confirm => {
                     if (confirm) {
-                        requestSecret(requestSecretConfirmation, this._getVersionFromMount(mount));
+                        requestSecret(requestSecretConfirmation, isEnterprise, requesterEntityId, this._getVersionFromMount(mount));
                     }
                     this.setState({
                         requestSecretConfirmation: null
@@ -531,7 +570,8 @@ SecretsList.propTypes = {
     classes: PropTypes.object.isRequired,
     deleteRequest: PropTypes.func.isRequired,
     deleteSecrets: PropTypes.func.isRequired,
-    errors: PropTypes.string,
+    dismissError: PropTypes.func.isRequired,
+    dismissibleError: PropTypes.string,
     getSecrets: PropTypes.func.isRequired,
     groupData: PropTypes.object,
     history: PropTypes.object.isRequired,
@@ -540,11 +580,13 @@ SecretsList.propTypes = {
     listMounts: PropTypes.func.isRequired,
     listSecretsAndCapabilities: PropTypes.func.isRequired,
     match: PropTypes.object.isRequired,
+    pageError: PropTypes.string,
     requestListFromDatabase: PropTypes.array,
     requestSecret: PropTypes.func.isRequired,
     secrets: PropTypes.object,
     secretsMounts: PropTypes.object,
     secretsPaths: PropTypes.object,
+    unwrapSecret: PropTypes.func.isRequired,
     vaultLookupSelf: PropTypes.object
 };
 
@@ -556,13 +598,20 @@ SecretsList.propTypes = {
  * @returns {Object}
  */
 const _mapStateToProps = (state) => {
-    const actionsUsed = [kvAction.ACTION_TYPES.LIST_MOUNTS,
-        kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES,
-        kvAction.ACTION_TYPES.DELETE_SECRETS
-    ];
     return {
-        errors: createErrorsSelector(actionsUsed)(state.actionStatusReducer),
-        inProgress: createInProgressSelector(actionsUsed)(state.actionStatusReducer),
+        dismissibleError: createErrorsSelector([
+            kvAction.ACTION_TYPES.DELETE_SECRETS,
+            kvAction.ACTION_TYPES.REQUEST_SECRET
+        ])(state.actionStatusReducer),
+        pageError: createErrorsSelector([
+            kvAction.ACTION_TYPES.LIST_MOUNTS,
+            kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES
+        ])(state.actionStatusReducer),
+        inProgress: createInProgressSelector([
+            kvAction.ACTION_TYPES.LIST_MOUNTS,
+            kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES,
+            kvAction.ACTION_TYPES.DELETE_SECRETS
+        ])(state.actionStatusReducer),
         ...state.localStorageReducer,
         ...state.kvReducer,
         ...state.sessionReducer,
@@ -596,6 +645,19 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                     .catch(reject);
             });
         },
+        dismissError: () => {
+            return new Promise((resolve) => {
+                [
+                    kvAction.ACTION_TYPES.DELETE_SECRETS,
+                    kvAction.ACTION_TYPES.REQUEST_SECRET
+                ].forEach(type => {
+                    dispatch({
+                        type
+                    });
+                });
+                resolve();
+            });
+        },
         listMounts: () => dispatch(kvAction.listMounts()),
         listSecretsAndCapabilities: (path = '', version) => {
             const {match} = ownProps;
@@ -625,22 +687,18 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                     .catch(reject);
             });
         },
-        requestSecret: (name, version) => {
+        requestSecret: (name, isEnterprise, requesterEntityId, version) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
-            // TODO: implement this
-            const storeState = window.app.store.getState();
-            const isEnterprise = storeState.systemReducer.isEnterprise === 'true';
             const fullPath = `${mount}${version === 2 ? isEnterprise ? '/data' : '' : ''}${path ? `/${path}` : ''}/${name}`;
-            const entity_id = storeState.sessionReducer.vaultLookupSelf.data.data.entity_id;
             return new Promise((resolve, reject) => {
                 let requestData = isEnterprise ? {'path': fullPath} : {
-                    requesterEntityId: entity_id,
+                    requesterEntityId: requesterEntityId,
                     requestData: fullPath,
-                    type: '',
                     status: Constants.REQUEST_STATUS.PENDING,
-                    engineType: ''
+                    type: null, // nothing here yet.
+                    engineType: null // nothing here yet.
                 };
                 dispatch(kvAction.requestSecret(requestData, isEnterprise))
                     .then(() => {
@@ -650,7 +708,8 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                     })
                     .catch(reject);
             });
-        }
+        },
+        unwrapSecret: (name, token) => dispatch(kvAction.unwrapSecret(name, token))
     };
 };
 
@@ -673,6 +732,19 @@ const _styles = (theme) => ({
     },
     disableMinWidth: {
         minWidth: 0
+    },
+    dismissibleError: {
+        backgroundColor: theme.palette.error.dark,
+        maxWidth: 'inherit',
+        marginLeft: theme.spacing.unit,
+        marginRight: theme.spacing.unit
+    },
+    dismissibleErrorIcon: {
+        marginRight: theme.spacing.unit
+    },
+    dismissibleErrorMessage: {
+        display: 'flex',
+        alignItems: 'center',
     },
     paperMessage: {
         padding: 40

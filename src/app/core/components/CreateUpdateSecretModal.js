@@ -85,7 +85,7 @@ class CreateUpdateSecretModal extends Component {
     static getDerivedStateFromProps(props, state) {
         const {inProgress, mode, secrets} = props;
         const {loaded} = state;
-        if (mode === 'update' && !loaded && inProgress === false) {
+        if ((mode === 'read' || mode === 'update') && !loaded && inProgress === false) {
             // Check if KV engine is version 2, as the resource data is different.
             const isV2 = secrets.data && secrets.metadata && secrets.data && secrets.metadata.version;
             let secretsData;
@@ -94,14 +94,15 @@ class CreateUpdateSecretModal extends Component {
             } else {
                 secretsData = {...secrets};
             }
+            const derivedSecrets = Object.keys(secretsData).map(key => {
+                return {
+                    key,
+                    value: secretsData[key],
+                    showPassword: false
+                };
+            });
             return {
-                secrets: Object.keys(secretsData).map(key => {
-                    return {
-                        key,
-                        value: secretsData[key],
-                        showPassword: false
-                    };
-                }).concat({ // Create an empty row as well.
+                secrets: mode === 'read' ? derivedSecrets : derivedSecrets.concat({ // Create an empty row if mode is update.
                     key: '',
                     value: '',
                     showPassword: false
@@ -450,7 +451,7 @@ class CreateUpdateSecretModal extends Component {
      * @returns {React.ReactElement}
      */
     _renderSecretsList() {
-        const {classes} = this.props;
+        const {classes, mode} = this.props;
         const {errors, secrets} = this.state;
 
         return <Paper elevation={1}>
@@ -487,7 +488,9 @@ class CreateUpdateSecretModal extends Component {
                                             <IconButton
                                                 aria-label='Toggle password visibility'
                                                 className={classes.iconButton}
-                                                onClick={(e) => {this._togglePasswordVisibility(e, `toggle-${i}`);}}
+                                                onClick={(e) => {
+                                                    this._togglePasswordVisibility(e, `toggle-${i}`);
+                                                }}
                                             >
                                                 {showPassword ? <VisibilityOffIcon/> : <VisibilityIcon/>}
                                             </IconButton>
@@ -502,35 +505,37 @@ class CreateUpdateSecretModal extends Component {
                                     onChange={this._onValueChange}/>
                             </Grid>
                         </Grid>
-                        <ListItemSecondaryAction>
-                            {i === secrets.length - 1 ?
-                                <IconButton aria-label='Add' className={classes.iconButton} onClick={() => {
-                                    const updatedSecrets = [...secrets];
-                                    updatedSecrets.push({
-                                        key: '',
-                                        value: ''
-                                    });
-                                    this.setState({
-                                        secrets: updatedSecrets
-                                    });
-                                }}>
-                                    <NoteAddIcon/>
-                                </IconButton>
-                                :
-                                <IconButton aria-label='Delete' className={classes.iconButton} onClick={() => {
-                                    const updatedErrors = {...errors};
-                                    delete updatedErrors[keyKey];
-                                    delete updatedErrors[valueKey];
-                                    const updatedSecrets = [...secrets];
-                                    updatedSecrets.splice(i, 1);
-                                    this.setState({
-                                        errors: updatedErrors,
-                                        secrets: updatedSecrets
-                                    });
-                                }}>
-                                    <DeleteIcon/>
-                                </IconButton>}
-                        </ListItemSecondaryAction>
+                        {
+                            mode !== 'read' && <ListItemSecondaryAction>
+                                {i === secrets.length - 1 ?
+                                    <IconButton aria-label='Add' className={classes.iconButton} onClick={() => {
+                                        const updatedSecrets = [...secrets];
+                                        updatedSecrets.push({
+                                            key: '',
+                                            value: ''
+                                        });
+                                        this.setState({
+                                            secrets: updatedSecrets
+                                        });
+                                    }}>
+                                        <NoteAddIcon/>
+                                    </IconButton>
+                                    :
+                                    <IconButton aria-label='Delete' className={classes.iconButton} onClick={() => {
+                                        const updatedErrors = {...errors};
+                                        delete updatedErrors[keyKey];
+                                        delete updatedErrors[valueKey];
+                                        const updatedSecrets = [...secrets];
+                                        updatedSecrets.splice(i, 1);
+                                        this.setState({
+                                            errors: updatedErrors,
+                                            secrets: updatedSecrets
+                                        });
+                                    }}>
+                                        <DeleteIcon/>
+                                    </IconButton>}
+                            </ListItemSecondaryAction>
+                        }
                     </ListItem>;
                 })}
             </List>
@@ -544,7 +549,7 @@ class CreateUpdateSecretModal extends Component {
      * @returns {React.ReactElement}
      */
     _renderSecretsListWithInputBase() {
-        const {classes} = this.props;
+        const {classes, mode} = this.props;
         const {errors, secrets} = this.state;
         return secrets.map((secret, i) => {
             const {key = '', value = '', showPassword} = secret;
@@ -577,41 +582,47 @@ class CreateUpdateSecretModal extends Component {
                         <IconButton
                             aria-label={togglePasswordLabel}
                             className={classes.iconButton}
-                            onClick={(e) => {this._togglePasswordVisibility(e, `toggle-${i}`);}}
+                            onClick={(e) => {
+                                this._togglePasswordVisibility(e, `toggle-${i}`);
+                            }}
                         >
                             {showPassword ? <VisibilityOffIcon/> : <VisibilityIcon/>}
                         </IconButton>
                     </Tooltip>
-                    <Divider className={classes.pathDivider}/>
-                    <Tooltip aria-label='Delete' title='Delete'>
-                        {i === secrets.length - 1 ?
-                            <IconButton aria-label='Add' className={classes.iconButton} onClick={() => {
-                                const updatedSecrets = [...secrets];
-                                updatedSecrets.push({
-                                    key: '',
-                                    value: ''
-                                });
-                                this.setState({
-                                    secrets: updatedSecrets
-                                });
-                            }}>
-                                <NoteAddIcon/>
-                            </IconButton>
-                            :
-                            <IconButton aria-label='Delete' className={classes.iconButton} onClick={() => {
-                                const updatedErrors = {...errors};
-                                delete updatedErrors[keyKey];
-                                delete updatedErrors[valueKey];
-                                const updatedSecrets = [...secrets];
-                                updatedSecrets.splice(i, 1);
-                                this.setState({
-                                    errors: updatedErrors,
-                                    secrets: updatedSecrets
-                                });
-                            }}>
-                                <DeleteIcon/>
-                            </IconButton>}
-                    </Tooltip>
+                    {
+                        mode !== 'read' && <React.Fragment>
+                            <Divider className={classes.pathDivider}/>
+                            <Tooltip aria-label='Delete' title='Delete'>
+                                {i === secrets.length - 1 ?
+                                    <IconButton aria-label='Add' className={classes.iconButton} onClick={() => {
+                                        const updatedSecrets = [...secrets];
+                                        updatedSecrets.push({
+                                            key: '',
+                                            value: ''
+                                        });
+                                        this.setState({
+                                            secrets: updatedSecrets
+                                        });
+                                    }}>
+                                        <NoteAddIcon/>
+                                    </IconButton>
+                                    :
+                                    <IconButton aria-label='Delete' className={classes.iconButton} onClick={() => {
+                                        const updatedErrors = {...errors};
+                                        delete updatedErrors[keyKey];
+                                        delete updatedErrors[valueKey];
+                                        const updatedSecrets = [...secrets];
+                                        updatedSecrets.splice(i, 1);
+                                        this.setState({
+                                            errors: updatedErrors,
+                                            secrets: updatedSecrets
+                                        });
+                                    }}>
+                                        <DeleteIcon/>
+                                    </IconButton>}
+                            </Tooltip>
+                        </React.Fragment>
+                    }
                 </div>
                 {(keyError || valueError) &&
                 <FormHelperText error className={classes.pathError}>{keyError || valueError}</FormHelperText>}
@@ -629,23 +640,43 @@ class CreateUpdateSecretModal extends Component {
     render() {
         const {classes, mode, onClose, open} = this.props;
         const {loaded, saving} = this.state;
-        return <Dialog fullWidth maxWidth='md' open={open} onClose={() => onClose(false)} onExit={this._resetState}>
+        let title;
+        switch (mode) {
+            case 'read':
+                title = 'Secret';
+                break;
+            case 'update':
+                title = 'Edit Secret';
+                break;
+            default:
+                title = 'Create Secret';
+        }
+        return <Dialog fullWidth maxWidth='md' open={open} onClose={() => onClose(mode === 'read')} onExit={this._resetState}>
             <form autoComplete='off' onSubmit={this._onSubmit}>
                 <DialogTitle id='create-new-folder-modal'>
-                    {mode === 'create' ? 'New' : 'Edit'} Secret
+                    {title}
                 </DialogTitle>
                 <DialogContent>
                     {this._renderPathsInput()}
-                    {mode === 'update' && !loaded || saving ? this._renderLoadingProgress() : this._renderSecretsListWithInputBase()}
+                    {mode !== 'create' && !loaded || saving ? this._renderLoadingProgress() : this._renderSecretsListWithInputBase()}
                 </DialogContent>
-                <DialogActions>
-                    <Button variant='text' onClick={() => onClose(false)}>
-                        Cancel
-                    </Button>
-                    <Button disabled={saving} type='submit' onClick={this._onSubmit}>
-                        {mode === 'create' ? 'Create' : 'Save'}
-                    </Button>
-                </DialogActions>
+                {
+                    mode === 'read' ?
+                        <DialogActions>
+                            <Button onClick={() => onClose(true)}>
+                                Close
+                            </Button>
+                        </DialogActions>
+                        :
+                        <DialogActions>
+                            <Button variant='text' onClick={() => onClose(false)}>
+                                Cancel
+                            </Button>
+                            <Button disabled={saving} type='submit' onClick={this._onSubmit}>
+                                {mode === 'create' ? 'Create' : 'Save'}
+                            </Button>
+                        </DialogActions>
+                }
                 {/* Trick to prevent browser save password popup. See https://stackoverflow.com/questions/32369/disable-browser-save-password-functionality. */}
                 <div className={classes.hidden}>
                     {/* And for whatever reason, it took 4 of these hidden fields to fully suppress it. */}
@@ -669,7 +700,7 @@ CreateUpdateSecretModal.propTypes = {
     error: PropTypes.string,
     initialPath: PropTypes.string.isRequired,
     inProgress: PropTypes.bool,
-    mode: PropTypes.oneOf(['', 'create', 'update']),
+    mode: PropTypes.oneOf(['', 'create', 'read', 'update']),
     onClose: PropTypes.func.isRequired,
     open: PropTypes.bool,
     saveSecret: PropTypes.func.isRequired,
@@ -685,7 +716,7 @@ CreateUpdateSecretModal.propTypes = {
  * @returns {Object}
  */
 const _mapStateToProps = (state) => {
-    const actionsUsed = [kvAction.ACTION_TYPES.GET_SECRETS];
+    const actionsUsed = [kvAction.ACTION_TYPES.GET_SECRETS, kvAction.ACTION_TYPES.UNWRAP_SECRET];
     return {
         inProgress: createInProgressSelector(actionsUsed)(state.actionStatusReducer),
         ...state.kvReducer

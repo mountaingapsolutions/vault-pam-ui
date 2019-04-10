@@ -22,6 +22,7 @@ export default (previousState = {
 }, action) => {
     switch (action.type) {
         case kvAction.ACTION_TYPES.GET_SECRETS:
+        case kvAction.ACTION_TYPES.UNWRAP_SECRET:
             return {
                 ...previousState,
                 secrets: (action.data || {}).data || {}
@@ -59,6 +60,27 @@ export default (previousState = {
                 ...previousState,
                 requestListFromDatabase: mappedDatabaseSecretRequest
             };
+        // case kvAction.ACTION_TYPES.UNWRAP_SECRET:
+        //     if (action.data) {
+        //         const {name, data} = action.data;
+        //         const updatedSecrets = {
+        //             ...previousState.secretsPaths
+        //         };
+        //         updatedSecrets.secrets.some((secret) => {
+        //             if (secret.name === name) {
+        //                 secret.data = data;
+        //                 return true;
+        //             }
+        //             return false;
+        //         });
+        //         return {
+        //             ...previousState,
+        //             secretsPaths: updatedSecrets
+        //         };
+        //     }
+        //     return {
+        //         ...previousState
+        //     };
         default:
             return {...previousState};
     }

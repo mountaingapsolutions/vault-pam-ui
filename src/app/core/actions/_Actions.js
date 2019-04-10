@@ -8,8 +8,8 @@ export default class _Actions {
     /**
      * The constructor method. Executed upon class instantiation.
      *
-     * @param {string} namespace - The concrete Action class name.
-     * @param {string} actionTypes - Map of action types of the concrete Action class.
+     * @param {string} namespace The concrete Action class name.
+     * @param {string} actionTypes Map of action types of the concrete Action class.
      * @public
      */
     constructor(namespace, actionTypes) {
@@ -31,81 +31,86 @@ export default class _Actions {
      * Dispatches a GET call.
      *
      * @protected
-     * @param {string} type - The action type.
-     * @param {string} url - The XHR url.
-     * @param {Object} [data] - The data to query by.
-     * @param {Object} [headers] - custom headers
+     * @param {string} type The action type.
+     * @param {string} url The XHR url.
+     * @param {Object} [data] The data to query by.
+     * @param {Object} [headers] custom headers.
+     * @param {function} [thunk] Optional thunk method.
      * @returns {function} Redux dispatch function.
      */
-    _dispatchGet(type, url, data, headers) {
-        return this._orchestrateRequest('GET', type, url, data, headers);
+    _dispatchGet(type, url, data, headers, thunk) {
+        return this._orchestrateRequest('GET', type, url, data, headers, thunk);
     }
 
     /**
      * Dispatches a POST call.
      *
      * @protected
-     * @param {string} type - The action type.
-     * @param {string} url - The XHR url.
-     * @param {Object} [data] - The data to post.
-     * @param {Object} [headers] - custom headers
+     * @param {string} type The action type.
+     * @param {string} url The XHR url.
+     * @param {Object} [data] The data to post.
+     * @param {Object} [headers] custom headers.
+     * @param {function} [thunk] Optional thunk method.
      * @returns {function} Redux dispatch function.
      */
-    _dispatchPost(type, url, data, headers) {
-        return this._orchestrateRequest('POST', type, url, data, headers);
+    _dispatchPost(type, url, data, headers, thunk) {
+        return this._orchestrateRequest('POST', type, url, data, headers, thunk);
     }
 
     /**
      * Dispatches a PUT call.
      *
      * @protected
-     * @param {string} type - The action type.
-     * @param {string} url - The XHR url.
-     * @param {Object} [data] - The data to post.
-     * @param {Object} [headers] - custom headers
+     * @param {string} type The action type.
+     * @param {string} url The XHR url.
+     * @param {Object} [data] The data to post.
+     * @param {Object} [headers] custom headers.
+     * @param {function} [thunk] Optional thunk method.
      * @returns {function} Redux dispatch function.
      */
-    _dispatchPut(type, url, data, headers) {
-        return this._orchestrateRequest('PUT', type, url, data, headers);
+    _dispatchPut(type, url, data, headers, thunk) {
+        return this._orchestrateRequest('PUT', type, url, data, headers, thunk);
     }
 
     /**
      * Dispatches a DELETE call.
      *
      * @protected
-     * @param {string} type - The action type.
-     * @param {string} url - The XHR url.
-     * @param {Object} [data] - The data to query by.
-     * @param {Object} [headers] - custom headers
+     * @param {string} type The action type.
+     * @param {string} url The XHR url.
+     * @param {Object} [data] The data to query by.
+     * @param {Object} [headers] custom headers.
+     * @param {function} [thunk] Optional thunk method.
      * @returns {function} Redux dispatch function.
      */
-    _dispatchDelete(type, url, data, headers) {
-        return this._orchestrateRequest('DELETE', type, url, data, headers);
+    _dispatchDelete(type, url, data, headers, thunk) {
+        return this._orchestrateRequest('DELETE', type, url, data, headers, thunk);
     }
 
     /**
      * Orchestrates the REST call by dispatching the initial request, followed up by dispatching the response.
      *
      * @private
-     * @param {string} method - The HTTP method.
-     * @param {string} type - The action type.
-     * @param {string} url - The XHR url.
-     * @param {Object} data - The data to post or query by.
-     * @param {Object} [headers] - custom headers
+     * @param {string} method The HTTP method.
+     * @param {string} type The action type.
+     * @param {string} url The XHR url.
+     * @param {Object} data The data to post or query by.
+     * @param {Object} [headers] Custom headers.
+     * @param {function} [thunk] Optional thunk method.
      * @returns {function} Redux dispatch function.
      */
-    _orchestrateRequest(method, type, url, data, headers) {
+    _orchestrateRequest(method, type, url, data, headers, thunk) {
         return dispatch => {
             // Kickoff the initial inProgress dispatch.
-            dispatch(this._createResourceData(type, undefined, undefined, true));
+            dispatch(this._createResourceData(type, undefined, undefined, true, thunk));
 
             return new Promise((resolve, reject) => {
                 this._fetch(method, url, data, headers).then(res => {
-                    const responseData = this._createResourceData(type, undefined, res, false);
+                    const responseData = this._createResourceData(type, undefined, res, false, thunk);
                     dispatch(responseData);
                     resolve(responseData);
                 }).catch(err => {
-                    const errorData = this._createResourceData(type, err.errors || [err], undefined, false);
+                    const errorData = this._createResourceData(type, err.errors || [err], undefined, false, thunk);
                     dispatch(errorData);
                     reject(errorData);
                 });
@@ -117,10 +122,10 @@ export default class _Actions {
      * Wrapper for a fetch call with client-triggered timeout logic.
      *
      * @protected
-     * @param {string} method - The HTTP method.
-     * @param {string} url - The XHR url.
-     * @param {Object} data - The data to post or query by.
-     * @param {Object} [headers] - custom headers
+     * @param {string} method The HTTP method.
+     * @param {string} url The XHR url.
+     * @param {Object} data The data to post or query by.
+     * @param {Object} [headers] custom headers.
      * @returns {Promise}
      */
     _fetch(method, url, data, headers) {
@@ -172,18 +177,20 @@ export default class _Actions {
      * Creates the response resource data.
      *
      * @protected
-     * @param {string} type - Specified action type from the ACTION_TYPES constant.
-     * @param {Array} errors - The error data field of the REST call returned with an array of errors.
-     * @param {Object} data - The response data field if the REST call was successful.
-     * @param {Object} inProgress - Indicator if the REST call is in-flight.
+     * @param {string} type Specified action type from the ACTION_TYPES constant.
+     * @param {Array} errors The error data field of the REST call returned with an array of errors.
+     * @param {Object} data The response data field if the REST call was successful.
+     * @param {boolean} inProgress Indicator if the REST call is in-flight.
+     * @param {function} [thunk] Optional thunk method used to manipulate the final response.
      * @returns {Object} Resource data.
      */
-    _createResourceData(type, errors, data, inProgress) {
-        return {
+    _createResourceData(type, errors, data, inProgress, thunk) {
+        const resourceData = {
             type,
             errors,
             data,
             inProgress
         };
+        return thunk ? thunk(resourceData) : resourceData;
     }
 }

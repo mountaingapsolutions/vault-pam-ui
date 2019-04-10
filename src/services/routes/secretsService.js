@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 const chalk = require('chalk');
 const request = require('request');
-const {checkControlGroupRequestStatus, getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
+const {checkControlGroupRequestStatus, getControlGroupPaths, getPathFromEncodedMetaKey, revokeAccessor} = require('services/routes/controlGroupService');
 const {initApiRequest, sendError, setSessionData} = require('services/utils');
 
 /**
@@ -41,7 +41,7 @@ const _getActiveRequestsByEntityId = async (req, entityId) => {
             })).then(() => {
                 const promises = Object.keys(metadataMap).filter(key => key.startsWith(`entity=${entityId}`)).map((key) => {
                     return new Promise((requestCheck) => {
-                        const path = key.split('==path=')[1].replace(/_/g, '/');
+                        const path = getPathFromEncodedMetaKey(key);
                         // Validate that the request accessor is still active. If the accessor is no longer available, it typically means that the request has expired.
                         const wrapInfo = JSON.parse(metadataMap[key]);
                         checkControlGroupRequestStatus(req, wrapInfo.accessor)
