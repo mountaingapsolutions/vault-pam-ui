@@ -17,7 +17,8 @@ class Constants {
         };
         this.REQUEST_STATUS = {
             PENDING: 'PENDING',
-            APPROVED: 'APPROVED'
+            APPROVED: 'APPROVED',
+            LOCKED: 'LOCKED'
         };
     }
 }

@@ -16,6 +16,7 @@ class KvAction extends _Actions {
             DELETE_REQUEST: 'DELETE_REQUEST',
             DELETE_SECRETS: 'DELETE_SECRETS',
             GET_SECRETS: 'GET_SECRETS',
+            GET_SECRETS_REQUEST_FROM_DATABASE: 'GET_SECRETS_REQUEST_FROM_DATABASE',
             LIST_MOUNTS: 'LIST_MOUNTS',
             LIST_SECRETS: 'LIST_SECRETS', // TODO - Remove?
             LIST_SECRETS_AND_CAPABILITIES: 'LIST_SECRETS_AND_CAPABILITIES',
@@ -101,12 +102,16 @@ class KvAction extends _Actions {
      *
      * @param {string} [path] Specifies the path of the secrets to list.
      * @param {number} [version] The KV engine version.
+     * @param {string} [requesterEntityId] Entity ID of requester.
      * @returns {function} Redux dispatch function.
      */
     listSecretsAndCapabilities(path = '', version = 2) {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES, `/rest/secrets/${path}`, {
-            version
-        });
+        return dispatch => {
+            dispatch(this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES, `/rest/secrets/${path}`, {
+                version
+            }));
+            dispatch(this._dispatchGet(this.ACTION_TYPES.GET_SECRETS_REQUEST_FROM_DATABASE, '/rest/request'));
+        };
     }
 
     /**

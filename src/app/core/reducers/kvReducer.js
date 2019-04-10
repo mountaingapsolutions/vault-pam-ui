@@ -14,6 +14,7 @@ import kvAction from 'app/core/actions/kvAction';
  * @returns {Object} The updated state.
  */
 export default (previousState = {
+    requestListFromDatabase: [],
     secrets: {},
     secretsMounts: {},
     secretsPaths: {},
@@ -53,6 +54,12 @@ export default (previousState = {
                 ...previousState,
                 secretsPaths: (action.data || {}).data || {}
             };
+        case kvAction.ACTION_TYPES.GET_SECRETS_REQUEST_FROM_DATABASE:
+            const mappedDatabaseSecretRequest = _mapSecretRequestsFromDatabase(action.data || []);
+            return {
+                ...previousState,
+                requestListFromDatabase: mappedDatabaseSecretRequest
+            };
         // case kvAction.ACTION_TYPES.UNWRAP_SECRET:
         //     if (action.data) {
         //         const {name, data} = action.data;
@@ -77,4 +84,24 @@ export default (previousState = {
         default:
             return {...previousState};
     }
+};
+
+/**
+ * Helper method to map secret request data.
+ *
+ * @public
+ * @param {Object} data - The previous user data.
+ * @returns {Object} Filtered request data.
+ */
+const _mapSecretRequestsFromDatabase = (data) => {
+    return data.map(item => {
+        const {createdAt, engineType, requestData, requesterEntityId, status} = item;
+        return {
+            createdAt,
+            engineType,
+            requestData,
+            requesterEntityId,
+            status
+        };
+    });
 };

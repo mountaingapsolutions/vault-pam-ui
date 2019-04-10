@@ -41,6 +41,7 @@ import ConfirmationModal from 'app/core/components/ConfirmationModal';
 import Constants from 'app/util/Constants';
 
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
+import calendarUtil from 'app/util/CalendarUtil';
 
 /**
  * The secrets list container.
@@ -199,7 +200,6 @@ class SecretsList extends Component {
         const {dismissError, history, listMounts, listSecretsAndCapabilities, match, secretsMounts} = this.props;
         const {params} = match;
         const {mount, path} = params;
-
         if ((secretsMounts.data || []).length === 0) {
             listMounts().then(() => {
                 listSecretsAndCapabilities(path, this._getVersionFromMount(mount));
@@ -346,12 +346,15 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     _renderSecretsListArea() {
-        const {classes, pageError, getSecrets, history, inProgress, listSecretsAndCapabilities, match, secretsPaths, unwrapSecret} = this.props;
+        const {classes, pageError, getSecrets, groupData, history, inProgress, listSecretsAndCapabilities, match, requestListFromDatabase, secretsPaths, unwrapSecret, vaultLookupSelf} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
         const requestAccessLabel = 'Request Access';
         const deleteLabel = 'Delete';
         const openLabel = 'Open';
+        const currentUserEntityId = vaultLookupSelf.data && vaultLookupSelf.data.data.entity_id;
+        const approverEntityIds = groupData.data && groupData.data.member_entity_ids || [];
+        const isApprover = approverEntityIds.includes(currentUserEntityId);
         if (inProgress) {
             return <Grid container justify='center'>
                 <Grid item>
@@ -371,7 +374,8 @@ class SecretsList extends Component {
                     const {capabilities, data = {}, name} = secret;
                     const {wrap_info: wrapInfo} = data;
                     const currentPath = path ? `${path}/${name}` : name;
-                    const url = `/secrets/${mount}/${currentPath}`;
+                    const mountPath = `${mount}/${currentPath}`;
+                    const url = `/secrets/${mountPath}`;
                     const isWrapped = !!wrapInfo;
                     const canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped;
                     const canUpdate = capabilities.some(capability => capability === 'update' || capability === 'root');
@@ -379,9 +383,25 @@ class SecretsList extends Component {
                     const {request_info: requestInfo = {}} = data;
                     const isApproved = isWrapped && requestInfo.approved;
                     const authorizations = isWrapped && requestInfo.authorizations;
-                    const creationTime = data.request_info && isWrapped ? new Date(wrapInfo.creation_time) : null;
                     const canDelete = capabilities.includes('delete');
-                    let secondaryText = requiresRequest ? `Request type: ${isWrapped ? 'Control Groups' : 'Default'}` : '';
+                    let isOwnRequest = false;
+                    let isPendingInDatabase = false;
+                    let requestStatus = null;
+                    let databaseRequestTime = null;
+                    requestListFromDatabase.map(request => {
+                        const {createdAt, requestData, requesterEntityId, status} = request;
+                        if (!isOwnRequest && requesterEntityId === currentUserEntityId && requestData === mountPath) {
+                            requestStatus = status;
+                            isOwnRequest = true;
+                            databaseRequestTime = calendarUtil.dateFormat(createdAt);
+                        }
+                        if (!isApprover && !isPendingInDatabase && requestData === mountPath) {
+                            isPendingInDatabase = true;
+                        }
+                    });
+                    const creationTime = isPendingInDatabase ? databaseRequestTime : data.request_info && isWrapped ? new Date(wrapInfo.creation_time) : null;
+                    let standardRequest = isPendingInDatabase ? `${!isOwnRequest ? Constants.REQUEST_STATUS.LOCKED : requestStatus} Request type: Standard Request` : null;
+                    let secondaryText = !standardRequest ? requiresRequest ? `Request type: ${isWrapped ? 'Control Groups' : 'Default'}` : '' : standardRequest;
                     if (creationTime) {
                         secondaryText += ` (Requested at ${creationTime.toLocaleString()})`;
                     }
@@ -408,7 +428,7 @@ class SecretsList extends Component {
                                 this._toggleRequestSecretModal(name, !data.request_info);
                             }
                         }
-                    }}/>} key={`key-${i}`}>
+                    }}/>} disabled={isPendingInDatabase && requestStatus !== Constants.REQUEST_STATUS.APPROVED} key={`key-${i}`}>
                         <ListItemAvatar>
                             <Avatar>{
                                 name.endsWith('/') ? <FolderIcon/> : <FileCopyIcon/>
@@ -423,7 +443,7 @@ class SecretsList extends Component {
                             </React.Fragment>
                         }/>
                         <ListItemSecondaryAction>
-                            {requiresRequest && !isApproved &&
+                            {!isPendingInDatabase && requiresRequest && !isApproved &&
                             <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
                                 <IconButton
                                     aria-label={requestAccessLabel}
@@ -431,7 +451,7 @@ class SecretsList extends Component {
                                     <LockIcon/>
                                 </IconButton>
                             </Tooltip>}
-                            {canOpen && <Tooltip aria-label={openLabel} title={openLabel}>
+                            {!isPendingInDatabase && canOpen && <Tooltip aria-label={openLabel} title={openLabel}>
                                 <IconButton aria-label={openLabel} onClick={() => {
                                     this._openListModal();
                                     getSecrets(name, this._getVersionFromMount(mount));
@@ -450,7 +470,7 @@ class SecretsList extends Component {
                                     <LockOpenIcon/>
                                 </IconButton>
                             </Tooltip>}
-                            {canDelete && <Tooltip aria-label={deleteLabel} title={deleteLabel}>
+                            {!isPendingInDatabase && canDelete && <Tooltip aria-label={deleteLabel} title={deleteLabel}>
                                 <IconButton aria-label={deleteLabel} onClick={() => this.setState({
                                     deleteSecretConfirmation: name
                                 })}>
@@ -553,6 +573,7 @@ SecretsList.propTypes = {
     dismissError: PropTypes.func.isRequired,
     dismissibleError: PropTypes.string,
     getSecrets: PropTypes.func.isRequired,
+    groupData: PropTypes.object,
     history: PropTypes.object.isRequired,
     inProgress: PropTypes.bool,
     isEnterprise: PropTypes.bool,
@@ -560,6 +581,7 @@ SecretsList.propTypes = {
     listSecretsAndCapabilities: PropTypes.func.isRequired,
     match: PropTypes.object.isRequired,
     pageError: PropTypes.string,
+    requestListFromDatabase: PropTypes.array,
     requestSecret: PropTypes.func.isRequired,
     secrets: PropTypes.object,
     secretsMounts: PropTypes.object,
@@ -669,7 +691,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
-            const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
+            const fullPath = `${mount}${version === 2 ? isEnterprise ? '/data' : '' : ''}${path ? `/${path}` : ''}/${name}`;
             return new Promise((resolve, reject) => {
                 let requestData = isEnterprise ? {'path': fullPath} : {
                     requesterEntityId: requesterEntityId,
