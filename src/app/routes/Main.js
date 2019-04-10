@@ -306,7 +306,7 @@ class Main extends Component {
                 open={isSecretRequestsModalOpen}
                 onClose={() => this._closeModal('isSecretRequestsModalOpen')}/>
             <UserProfileModal
-                closable={!firstTimeLoginMessage}
+                closeable={!firstTimeLoginMessage}
                 message={firstTimeLoginMessage}
                 open={isUserProfileModalOpen}
                 onClose={() => this._closeModal('isUserProfileModalOpen')}/>

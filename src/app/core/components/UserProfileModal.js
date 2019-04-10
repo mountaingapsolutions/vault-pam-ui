@@ -191,15 +191,14 @@ class UserProfileModal extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, closable, inProgress, onClose, open} = this.props;
+        const {classes, closeable, inProgress, onClose, open} = this.props;
         return <Dialog
-            disableBackdropClick
-            disableEscapeKeyDown
             fullWidth
             aria-labelledby='modal-title'
             classes={{paper: classes.dialogPaper}}
             maxWidth={'sm'}
             open={open}
+            onClose={closeable ? onClose : null}
             onEnter={this._mapPropsToState}>
             <form onSubmit={this._updateProfile}>
                 <DialogTitle id='modal-title'>
@@ -217,7 +216,7 @@ class UserProfileModal extends Component {
                     }
                 </DialogContent>
                 <DialogActions>
-                    {closable && <Button variant='text' onClick={onClose}>
+                    {closeable && <Button variant='text' onClick={onClose}>
                         Close
                     </Button>}
                     <Button disabled={inProgress} type='submit' onClick={this._updateProfile}>
@@ -230,12 +229,12 @@ class UserProfileModal extends Component {
 }
 
 UserProfileModal.defaultProps = {
-    closable: true
+    closeable: true
 };
 
 UserProfileModal.propTypes = {
     classes: PropTypes.object.isRequired,
-    closable: PropTypes.bool,
+    closeable: PropTypes.bool,
     inProgress: PropTypes.bool,
     message: PropTypes.string,
     onClose: PropTypes.func.isRequired,
