@@ -3,7 +3,6 @@ const chalk = require('chalk');
 const request = require('request');
 const swaggerUi = require('swagger-ui-express');
 const {options, swaggerDoc} = require('services/Swagger');
-const User = require('services/controllers/User');
 const {router: controlGroupServiceRouter} = require('services/routes/controlGroupService');
 const {router: secretsServiceRouter} = require('services/routes/secretsService');
 const userService = require('services/routes/userService');

@@ -62,8 +62,10 @@ class UserProfileModal extends Component {
      */
     _mapPropsToState() {
         const {userMetadata} = this.props;
+        const {user} = this.state;
         this.setState({
             user: {
+                ...user,
                 ...userMetadata
             }
         });

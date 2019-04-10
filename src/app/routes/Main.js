@@ -156,7 +156,7 @@ class Main extends Component {
                     showRootWarning: true
                 });
             }
-            const {metadata = {}} = user.data;
+            const metadata = (user.data || {}).metadata || {};
             const isFirstTimeLogin = ['firstName', 'lastName', 'email'].some((field) => !metadata[field]);
             if (isFirstTimeLogin) {
                 this.setState({
