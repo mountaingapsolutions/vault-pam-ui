@@ -92,13 +92,17 @@ const setSessionData = (req, sessionUserData) => {
  * @param {string} message The email message.
  */
 const sendEmail = (recipients, subject, message) => {
-    const {PAM_MAIL_SERVICE, PAM_MAIL_USER, PAM_MAIL_PASS} = process.env;
+    const {PAM_MAIL_SMTP_PORT, PAM_MAIL_SMTP_HOST, PAM_MAIL_SERVICE, PAM_MAIL_USER, PAM_MAIL_PASS} = process.env;
     const smtpTransport = nodemailer.createTransport({
         service: PAM_MAIL_SERVICE,
+        port: PAM_MAIL_SMTP_PORT,
+        host: PAM_MAIL_SMTP_HOST,
+        secure: true,
         auth: {
             user: PAM_MAIL_USER,
-            pass: PAM_MAIL_PASS
-        }
+            pass: PAM_MAIL_PASS,
+        },
+        debug: true
     });
     const mailOptions = {
         to: recipients,
@@ -108,7 +112,7 @@ const sendEmail = (recipients, subject, message) => {
     smtpTransport.sendMail(mailOptions).then((info) => {
         console.log('Email sent.', info);
     }).catch((err) => {
-        console.log(err);
+        console.error(err);
     });
 };
 
