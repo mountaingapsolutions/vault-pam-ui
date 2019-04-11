@@ -720,6 +720,7 @@ const router = require('express').Router()
 
 module.exports = {
     checkControlGroupRequestStatus,
+    getActiveRequestsByEntityId,
     getControlGroupPaths,
     getPathFromEncodedMetaKey,
     revokeAccessor,
