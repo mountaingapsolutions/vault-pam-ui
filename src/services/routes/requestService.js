@@ -1,5 +1,5 @@
 const RequestController = require('services/controllers/Request');
-const {initApiRequest, sendEmail} = require('services/utils');
+const {initApiRequest, sendEmail, sendError} = require('services/utils');
 const {getRequestEmailContent} = require('services/mail/templates');
 const requestLib = require('request');
 const UserController = require('services/controllers/User');
@@ -128,6 +128,9 @@ module.exports = require('express').Router()
         const id = req.params.id;
         RequestController.findById(id).then(request => {
             res.json(request);
+        }).catch((error) => {
+            const {url} = req;
+            sendError(url, res, error);
         });
     })
     /**
@@ -155,6 +158,9 @@ module.exports = require('express').Router()
         const entityId = req.params.entityId;
         RequestController.findAllByRequester(entityId).then(requests => {
             res.json(requests);
+        }).catch((error) => {
+            const {url} = req;
+            sendError(url, res, error);
         });
     })
     /**
@@ -182,6 +188,9 @@ module.exports = require('express').Router()
         const entityId = req.params.entityId;
         RequestController.findAllByApprover(entityId).then(requests => {
             res.json(requests);
+        }).catch((error) => {
+            const {url} = req;
+            sendError(url, res, error);
         });
     })
     /**
@@ -242,12 +251,14 @@ module.exports = require('express').Router()
                         engineType,
                         approvers
                     };
-                    const emailContents = getRequestEmailContent(emailData);
-                    sendEmail(approvers, emailContents.subject, emailContents.body);
+                    const {subject, body} = getRequestEmailContent(emailData);
+                    sendEmail(approvers, subject, body);
                 });
             }
-
             res.json(request);
+        }).catch((error) => {
+            const {url} = req;
+            sendError(url, res, error);
         });
     })
     /**
@@ -282,6 +293,9 @@ module.exports = require('express').Router()
         const {id, approverEntityId, status} = req.body;
         RequestController.updateStatusByApprover(id, approverEntityId, status).then(request => {
             res.json(request);
+        }).catch((error) => {
+            const {url} = req;
+            sendError(url, res, error);
         });
     })
     /**
@@ -314,5 +328,8 @@ module.exports = require('express').Router()
         const {id, status} = req.body;
         RequestController.updateStatus(id, status).then(request => {
             res.json(request);
+        }).catch((error) => {
+            const {url} = req;
+            sendError(url, res, error);
         });
     });
