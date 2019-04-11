@@ -25,6 +25,7 @@ import ListIcon from '@material-ui/icons/List';
 import LockIcon from '@material-ui/icons/Lock';
 import LockOpenIcon from '@material-ui/icons/LockOpen';
 import {Breadcrumbs} from '@material-ui/lab';
+import {safeWrap, unwrap} from '@mountaingapsolutions/objectutil';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
@@ -476,7 +477,7 @@ class SecretsList extends Component {
             {this._renderSecretsListArea()}
             <ListModal
                 buttonTitle={'Request Secret'}
-                items={(secrets || {}).data ? secrets.data : secrets}
+                items={unwrap(safeWrap(secrets).data) || {}}
                 listTitle={'Secrets'}
                 open={isListModalOpen}
                 onClick={() => {
