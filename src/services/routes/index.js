@@ -5,7 +5,7 @@ const swaggerUi = require('swagger-ui-express');
 const {options, swaggerDoc} = require('services/Swagger');
 const {router: controlGroupServiceRouter} = require('services/routes/controlGroupService');
 const {router: secretsServiceRouter} = require('services/routes/secretsService');
-const userService = require('services/routes/userService');
+const {router: userServiceRouter} = require('services/routes/userService');
 const requestService = require('services/routes/requestService');
 const {initApiRequest, sendError, setSessionData} = require('services/utils');
 
@@ -190,7 +190,7 @@ const authenticatedRoutes = require('express').Router()
             }
         }
     })
-    .use('/user', userService)
+    .use('/user', userServiceRouter)
     .use('/request', requestService)
     .use('/control-group', controlGroupServiceRouter)
     .use('/secrets', secretsServiceRouter)

@@ -32,13 +32,15 @@ class UserAction extends _Actions {
     }
 
     /**
-     * Updates the metadata of the current session user.
+     * Updates the user data of the current session user.
      *
      * @param {Object} metadata The new user metadata.
      * @returns {function} Redux dispatch function.
      */
     updateUser(metadata) {
-        return this._dispatchPut(this.ACTION_TYPES.UPDATE_USER, '/rest/user', metadata);
+        return this._dispatchPut(this.ACTION_TYPES.UPDATE_USER, '/rest/user', {
+            metadata
+        });
     }
     /**
      * Deletes the specified user.
