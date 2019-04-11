@@ -232,8 +232,8 @@ module.exports = require('express').Router()
                         engineType,
                         approvers
                     };
-                    const emailContents = getRequestEmailContent(emailData);
-                    sendEmail(approvers, emailContents.subject, emailContents.body);
+                    const {subject, body} = getRequestEmailContent(emailData);
+                    sendEmail(approvers, subject, body);
                 });
             }
             res.json(request);
