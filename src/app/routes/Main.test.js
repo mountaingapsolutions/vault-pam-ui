@@ -7,6 +7,7 @@ import {Provider} from 'react-redux';
 import {Router} from 'react-router-dom';
 
 import sessionReducer from 'app/core/reducers/sessionReducer';
+import userReducer from 'app/core/reducers/userReducer';
 
 import Main from './Main';
 import reduxThunk from 'redux-thunk';
@@ -21,7 +22,8 @@ import reduxThunk from 'redux-thunk';
 const _configureStore = (initialState) => {
     return createStore(
         combineReducers({
-            sessionReducer
+            sessionReducer,
+            userReducer
         }),
         initialState,
         applyMiddleware(reduxThunk)
