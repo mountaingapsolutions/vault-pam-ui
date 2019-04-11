@@ -3,10 +3,9 @@ const chalk = require('chalk');
 const request = require('request');
 const swaggerUi = require('swagger-ui-express');
 const {options, swaggerDoc} = require('services/Swagger');
-const User = require('services/controllers/User');
 const {router: controlGroupServiceRouter} = require('services/routes/controlGroupService');
 const {router: secretsServiceRouter} = require('services/routes/secretsService');
-const userService = require('services/routes/userService');
+const {router: userServiceRouter} = require('services/routes/userService');
 const requestService = require('services/routes/requestService');
 const {initApiRequest, sendError, setSessionData} = require('services/utils');
 
@@ -191,7 +190,7 @@ const authenticatedRoutes = require('express').Router()
             }
         }
     })
-    .use('/user', userService)
+    .use('/user', userServiceRouter)
     .use('/request', requestService)
     .use('/control-group', controlGroupServiceRouter)
     .use('/secrets', secretsServiceRouter)
@@ -245,13 +244,7 @@ const _sendTokenValidationResponse = (domain, token, req, res) => {
             return;
         }
         try {
-            const {display_name, entity_id: entityId, path} = body.data || {};
-            if (entityId) {
-                const engineType = path.split('/')[1];
-                User.findOrCreate(entityId, display_name, engineType).then(user => {
-                    console.log(`Entity ID logged in: ${user.entityId}`);
-                });
-            }
+            const {entity_id: entityId} = body.data || {};
             setSessionData(req, {
                 domain,
                 token,

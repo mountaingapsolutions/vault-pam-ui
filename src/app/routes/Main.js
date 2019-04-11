@@ -59,6 +59,7 @@ class Main extends Component {
 
         this.state = {
             accountAnchorElement: null,
+            firstTimeLoginMessage: null,
             isSecretRequestsModalOpen: false,
             isUserProfileModalOpen: false,
             notificationAnchorElement: null,
@@ -147,12 +148,20 @@ class Main extends Component {
     componentDidMount() {
         const {checkSession, listRequests} = this.props;
         checkSession().then(() => {
-            const {listMounts, getGroupData, getSealStatus, getServerLicense, vaultLookupSelf} = this.props;
+            const {listMounts, getGroupData, getSealStatus, getServerLicense, user, vaultLookupSelf} = this.props;
 
             if (vaultLookupSelf.data.data.policies.includes('root')) {
                 localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
                 this.setState({
                     showRootWarning: true
+                });
+            }
+            const metadata = (user.data || {}).metadata || {};
+            const isFirstTimeLogin = ['firstName', 'lastName', 'email'].some((field) => !metadata[field]);
+            if (isFirstTimeLogin) {
+                this.setState({
+                    firstTimeLoginMessage: 'This appears to be your first time logging into Vault PAM UI. Please complete your user profile to continue.',
+                    isUserProfileModalOpen: true
                 });
             }
             getGroupData();
@@ -189,7 +198,7 @@ class Main extends Component {
     render() {
         const {classes, logout, secretsMounts = {}, secretsRequests = [], sealStatus} = this.props;
         const isVaultSealed = sealStatus && sealStatus.sealed;
-        const {accountAnchorElement, isSecretRequestsModalOpen, isUserProfileModalOpen, notificationAnchorElement, showRootWarning} = this.state;
+        const {accountAnchorElement, firstTimeLoginMessage, isSecretRequestsModalOpen, isUserProfileModalOpen, notificationAnchorElement, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
         return <div>
             <AppBar position='static'>
@@ -281,10 +290,6 @@ class Main extends Component {
                         </Card>
                     </Route>
                     <Route component={SecretsList} path='/secrets/:mount/:path*'/>
-                    <Route component={() => {
-                        window.location.pathname = '/rest/api';
-                        return null;
-                    }} path='/rest/api'/>
                     <Redirect to='/'/>
                 </Switch>
             </Grid>
@@ -301,6 +306,8 @@ class Main extends Component {
                 open={isSecretRequestsModalOpen}
                 onClose={() => this._closeModal('isSecretRequestsModalOpen')}/>
             <UserProfileModal
+                closeable={!firstTimeLoginMessage}
+                message={firstTimeLoginMessage}
                 open={isUserProfileModalOpen}
                 onClose={() => this._closeModal('isUserProfileModalOpen')}/>
             <NotificationsModal open={!!notificationAnchorElement} onClose={() => this.setState({
@@ -326,6 +333,7 @@ Main.propTypes = {
     sealStatus: PropTypes.object.isRequired,
     secretsMounts: PropTypes.object,
     secretsRequests: PropTypes.array,
+    user: PropTypes.object,
     vaultDomain: PropTypes.object.isRequired,
     vaultLookupSelf: PropTypes.object.isRequired
 };
@@ -360,7 +368,9 @@ const _mapDispatchToProps = (dispatch) => {
             return new Promise((resolve, reject) => {
                 dispatch(sessionAction.validateToken()).then(() => {
                     dispatch(sessionAction.setToken(localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN)));
-                    resolve();
+                    dispatch(userAction.getUser())
+                        .then(resolve)
+                        .catch(reject);
                 }).catch(reject);
             });
         },
