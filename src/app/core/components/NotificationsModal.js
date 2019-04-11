@@ -85,7 +85,7 @@ class NotificationsModal extends Component {
                                 const {data = {}, request_id: requestId} = requestData.request_info;
                                 const {accessor, creation_time: creationTime} = requestData.wrap_info;
                                 const {authorizations, request_entity: requestEntity, request_path: requestPath} = data;
-                                const {id: entityId, name: entityName} = requestEntity;
+                                const {id: entityId, name: entityName} = requestEntity || {};
                                 const requestType = requestData.wrap_info ? 'Control Groups' : 'Standard Request';
                                 const alreadyAuthorizedBySelf = authorizations && authorizations.some((authorization) => authorization.entity_id === entityIdSelf);
                                 return <React.Fragment key={requestId}>

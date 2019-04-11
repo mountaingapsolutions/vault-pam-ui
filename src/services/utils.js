@@ -1,6 +1,8 @@
 /* eslint-disable no-console */
 const chalk = require('chalk');
 const nodemailer = require('nodemailer');
+const request = require('request');
+
 /**
  * Just a collection of service utility methods.
  */
@@ -15,6 +17,30 @@ const SESSION_USER_DATA_MAP = {
     DOMAIN: 'domain',
     ENTITY_ID: 'entityId',
     TOKEN: 'token'
+};
+
+/**
+ * Check if control groups are supported
+ *
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
+const checkControlGroupSupport = async (req) => {
+    const {domain} = req.session.user;
+    const {REACT_APP_API_TOKEN: apiToken} = process.env;
+    return await new Promise((resolve, reject) => {
+        request({
+            ...initApiRequest(apiToken, `${domain}/v1/sys/license`),
+            method: 'GET',
+        }, (error, response, body) => {
+            if (error) {
+                reject(error);
+            } else {
+                const {data} = body;
+                resolve(data && data.features.includes('Control Groups'));
+            }
+        });
+    });
 };
 
 /**
@@ -117,6 +143,7 @@ const sendEmail = (recipients, subject, body) => {
 };
 
 module.exports = {
+    checkControlGroupSupport,
     initApiRequest,
     sendEmail,
     sendError,

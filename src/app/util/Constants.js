@@ -16,6 +16,8 @@ class Constants {
             SECRET_REQUEST_ADD_SPLIT: 'SECRET_REQUEST_ADD_SPLIT'
         };
         this.REQUEST_STATUS = {
+            CANCELED: 'CANCELED',
+            DENIED: 'DENIED',
             PENDING: 'PENDING',
             APPROVED: 'APPROVED',
             LOCKED: 'LOCKED'
