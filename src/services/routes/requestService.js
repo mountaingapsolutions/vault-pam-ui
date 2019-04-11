@@ -1,5 +1,6 @@
 const RequestController = require('services/controllers/Request');
 const {initApiRequest, sendEmail} = require('services/utils');
+const {getRequestEmailContent} = require('services/mail/templates');
 const requestLib = require('request');
 const UserController = require('services/controllers/User');
 
@@ -208,11 +209,22 @@ module.exports = require('express').Router()
      */
     .post('/findOrCreate', async (req, res) => {
         const {requesterEntityId, requestData, type, status, engineType} = req.body;
+        const {domain} = req.session.user;
         RequestController.findOrCreate(requesterEntityId, requestData, type, status, engineType).then(request => {
             // if a new request, send email to approvers
             if (request._options.isNewRecord === true) {
                 _getApproverGroupMembers(req).then((approvers) => {
-                    sendEmail(approvers, 'test mail', 'hello there!');
+                    const emailData = {
+                        domain,
+                        requesterEntityId,
+                        requestData,
+                        type,
+                        status,
+                        engineType,
+                        approvers
+                    };
+                    const emailContents = getRequestEmailContent(emailData);
+                    sendEmail(approvers, emailContents.subject, emailContents.body);
                 });
             }
 
