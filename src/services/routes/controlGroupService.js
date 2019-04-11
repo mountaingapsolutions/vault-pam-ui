@@ -83,7 +83,6 @@ const getActiveRequestsByEntityId = async (req, entityId) => {
                 Promise.all(promises).then(() => {
                     // Execute non-blocking call to clean up any expired requests.
                     const invalidRequestKeys = Object.keys(invalidRequests);
-                    console.warn('groups: ', groups[0].name);
                     if (invalidRequestKeys.length > 0) {
                         groups.forEach(group => {
                             const {id, metadata = {}, name} = group;
