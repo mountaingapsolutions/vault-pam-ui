@@ -1,94 +1,8 @@
 /* eslint-disable no-console */
 const chalk = require('chalk');
 const request = require('request');
-const {checkControlGroupRequestStatus, getControlGroupPaths, getPathFromEncodedMetaKey, revokeAccessor} = require('services/routes/controlGroupService');
+const {getActiveRequestsByEntityId, getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
 const {initApiRequest, sendError, setSessionData} = require('services/utils');
-
-/**
- * Retrieves the active Control Group requests from group metadata.
- *
- * @param {Object} req The HTTP request object.
- * @param {string} entityId The entity id.
- * @returns {Promise}
- */
-const _getActiveRequestsByEntityId = async (req, entityId) => {
-    const result = await new Promise((resolve, reject) => {
-        const {REACT_APP_API_TOKEN: apiToken} = process.env;
-        if (!apiToken) {
-            reject('No API token configured.');
-            return;
-        }
-        const {domain} = req.session.user;
-        let metadataMap = {};
-        let activeRequests = {};
-        let invalidRequests = {};
-        const groups = [];
-        request(initApiRequest(apiToken, `${domain}/v1/identity/group/id?list=true`), (error, response, body) => {
-            Promise.all((((body || {}).data || {}).keys || []).map(key => {
-                return new Promise((groupResolve) => {
-                    request(initApiRequest(apiToken, `${domain}/v1/identity/group/id/${key}`), (groupError, groupResponse, groupBody) => {
-                        if (groupBody && groupBody.data) {
-                            const {metadata = {}} = groupBody.data;
-                            metadataMap = {
-                                ...metadataMap,
-                                ...metadata
-                            };
-                            groups.push(groupBody.data);
-                        }
-                        groupResolve();
-                    });
-                });
-            })).then(() => {
-                const promises = Object.keys(metadataMap).filter(key => key.startsWith(`entity=${entityId}`)).map((key) => {
-                    return new Promise((requestCheck) => {
-                        const path = getPathFromEncodedMetaKey(key);
-                        // Validate that the request accessor is still active. If the accessor is no longer available, it typically means that the request has expired.
-                        const wrapInfo = JSON.parse(metadataMap[key]);
-                        checkControlGroupRequestStatus(req, wrapInfo.accessor)
-                            .then((requestData) => {
-                                if (requestData.errors) {
-                                    invalidRequests[key] = requestData;
-                                } else {
-                                    activeRequests[path] = {
-                                        request_info: requestData.data,
-                                        wrap_info: wrapInfo
-                                    };
-                                }
-                                requestCheck();
-                            })
-                            .catch((err) => {
-                                invalidRequests[key] = err;
-                                requestCheck();
-                            });
-                    });
-                });
-                Promise.all(promises).then(() => {
-                    // Execute non-blocking call to clean up any expired requests.
-                    const invalidRequestKeys = Object.keys(invalidRequests);
-                    if (invalidRequestKeys.length > 0) {
-                        groups.forEach(group => {
-                            const {id, metadata = {}} = group;
-                            const updatedMetadata = Object.keys(metadata).filter(key => !invalidRequestKeys.includes(key)).reduce((dataMap, k) => {
-                                dataMap[k] = metadata[k];
-                                return dataMap;
-                            }, {});
-                            request({
-                                ...initApiRequest(apiToken, `${domain}/v1/identity/group/id/${id}`),
-                                method: 'POST',
-                                json: {
-                                    metadata: updatedMetadata
-                                }
-                            });
-                        });
-                    }
-                    resolve(activeRequests);
-                });
-            });
-        });
-    });
-    return result;
-};
-
 
 /* eslint-disable new-cap */
 const router = require('express').Router()
@@ -149,7 +63,7 @@ const router = require('express').Router()
         const apiUrl = `${domain}/v1/${listUrlParts.join('/')}?list=true`;
 
         // Get active Control Group requests.
-        const activeRequests = await _getActiveRequestsByEntityId(req, entityId);
+        const activeRequests = await getActiveRequestsByEntityId(req, entityId);
 
         console.log(`Listing secrets from ${chalk.yellow.bold(apiUrl)}.`);
         request(initApiRequest(token, apiUrl), (error, response, body) => {
