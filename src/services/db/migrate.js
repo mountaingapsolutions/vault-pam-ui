@@ -20,7 +20,7 @@ const umzug = new Umzug({
                 throw new Error('Migration tried to use old style "done" callback. Please upgrade to "umzug" and return a promise instead.');
             }
         ],
-        path: './migrations',
+        path: `${path.resolve(__dirname)}/migrations`,
         pattern: /\.js$/
     },
 

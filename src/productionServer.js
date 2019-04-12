@@ -89,6 +89,9 @@ express().use(compression())
         connection.start()
             .then(() => {
                 console.info('DB connection successful. ᕕ( ᐛ )ᕗ\r\n');
+                // DB migrations
+                // const {migrate} = require('services/db/migrate');
+                // migrate('up');
             })
             .catch((error) => {
                 console.error(error);

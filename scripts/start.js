@@ -113,13 +113,12 @@ checkBrowsers(paths.appPath, isInteractive)
             openBrowser(urls.localUrlForBrowser);
 
             const connection = require('services/db/connection');
-            const {migrate} = require('services/db/migrate');
-
             connection.start()
                 .then(() => {
                     console.info('DB connection successful. ᕕ( ᐛ )ᕗ\r\n');
                     // DB migrations
-                    migrate('up');
+                    // const {migrate} = require('services/db/migrate');
+                    // migrate('up');
                 })
                 .catch((error) => {
                     console.error(error);
