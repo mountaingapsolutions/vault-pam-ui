@@ -40,6 +40,26 @@ const {initApiRequest, sendError} = require('services/utils');
  * @returns {Promise}
  */
 const _initializeEntity = async (req, username, password) => {
+    const loginResponse = await _login(req, username, password);
+    const {entity_id: id} = loginResponse.body.auth;
+    const saveUserResponse = await saveUser(req, {
+        id,
+        name: username
+    });
+    console.log(`Updating entity ${id} with the name ${username}. Status code: ${saveUserResponse.statusCode}`);
+    return saveUserResponse;
+};
+
+/**
+ * Helper method to initialize a newly created userpass with an entity.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @param {string} username The userpass user name.
+ * @param {string} password The userpass password.
+ * @returns {Promise}
+ */
+const _login = async (req, username, password) => {
     return new Promise((resolve, reject) => {
         const {domain} = req.session.user;
         const apiUrl = `${domain}/v1/auth/userpass/login/${username}`;
@@ -49,16 +69,10 @@ const _initializeEntity = async (req, username, password) => {
             json: {
                 password
             }
-        }, async (error, response, body) => {
+        }, async (error, response) => {
             if (error) {
                 reject(error);
             } else if (response.statusCode === 200) {
-                const {entity_id: id} = body.auth;
-                const saveUserResponse = await saveUser(req, {
-                    id,
-                    name: username
-                });
-                console.log(`Updating entity ${id} with the name ${username}. Status code: ${saveUserResponse.statusCode}`);
                 resolve(response);
             } else {
                 reject(response);
@@ -131,6 +145,27 @@ const updateUser = async (req, userData) => {
                 resolve(getUserResponse);
             } else {
                 const {data: currentData} = getUserResponse.body;
+                const {password, newPassword} = userData;
+                if (password && newPassword) {
+                    // Validate password.
+                    try {
+                        // Verify by attempting to log in using the current password. If incorrect, it'll fall into the catch block.
+                        await _login(req, currentData.name, password);
+
+                        await saveUserpass(req, {
+                            name: currentData.name,
+                            password: newPassword
+                        });
+                    } catch (err) {
+                        // Massage the error message.
+                        if (Array.isArray(err.body.errors)) {
+                            err.body.errors[0] = 'The current password is incorrect.';
+                        }
+                        reject(err.body.errors);
+                        return;
+                    }
+                }
+
                 // Merge the existing metadata with metadata in the request.
                 const metadata = {
                     ...currentData.metadata || {},

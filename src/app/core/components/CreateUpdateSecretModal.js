@@ -26,6 +26,7 @@ import FolderIcon from '@material-ui/icons/Folder';
 import NoteAddIcon from '@material-ui/icons/NoteAdd';
 import VisibilityIcon from '@material-ui/icons/Visibility';
 import VisibilityOffIcon from '@material-ui/icons/VisibilityOff';
+import {toObject} from '@mountaingapsolutions/objectutil';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
@@ -263,11 +264,8 @@ class CreateUpdateSecretModal extends Component {
                 saving: true
             });
             const {onClose, saveSecret, secretsMounts} = this.props;
-            const promise = saveSecret(secretsMounts, newPaths, secretsToPersist.reduce((secretsData, secret) => {
-                const {key, value} = secret;
-                secretsData[key] = value;
-                return secretsData;
-            }, {}));
+            const secretsMap = toObject(secretsToPersist, 'key', (secret) => secret.value);
+            const promise = saveSecret(secretsMounts, newPaths, secretsMap);
             if (mode === 'create') {
                 promise.then(() => onClose(true)).catch(() => onClose(false));
             } else {
