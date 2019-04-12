@@ -3,7 +3,7 @@ const chalk = require('chalk');
 const request = require('request');
 const {getActiveRequestsByEntityId, getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
 const {initApiRequest, sendError, setSessionData} = require('services/utils');
-
+const RequestController = require('services/controllers/Request');
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
@@ -66,6 +66,15 @@ const router = require('express').Router()
         const activeRequests = await getActiveRequestsByEntityId(req, entityId);
 
         console.log(`Listing secrets from ${chalk.yellow.bold(apiUrl)}.`);
+        // Get Secret Requests from Database
+        let requestsFromDatabase = null;
+        await RequestController.findAll().then(requestFromDB => {
+            requestsFromDatabase = requestFromDB;
+        });
+        const databaseRequestMap = requestsFromDatabase.reduce((accumulatedRequest, currentRequest) => {
+            accumulatedRequest[currentRequest.requestData] = currentRequest;
+            return accumulatedRequest;
+        }, {});
         request(initApiRequest(token, apiUrl), (error, response, body) => {
             if (error) {
                 sendError(url, res, error);
@@ -116,9 +125,9 @@ const router = require('express').Router()
                             const lastPath = keySplit[keySplit.length - 1];
                             const secret = {
                                 name: lastPath === '' ? `${keySplit[keySplit.length - 2]}/` : lastPath,
-                                capabilities: capabilities[key] || []
+                                capabilities: capabilities[key] || [],
+                                databaseRequestData: databaseRequestMap[key]
                             };
-
                             const canRead = (capabilities[key] || []).includes('read');
                             if (canRead && !key.endsWith('/')) {
                                 promises.push(new Promise((secretResolve) => {
