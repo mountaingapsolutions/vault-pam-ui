@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+const {filter, safeWrap, unwrap} = require('@mountaingapsolutions/objectutil');
 const chalk = require('chalk');
 const hcltojson = require('hcl-to-json');
 const request = require('request');
@@ -86,10 +87,7 @@ const getActiveRequestsByEntityId = async (req, entityId) => {
                     if (invalidRequestKeys.length > 0) {
                         groups.forEach(group => {
                             const {id, metadata = {}, name} = group;
-                            const updatedMetadata = Object.keys(metadata).filter(key => !invalidRequestKeys.includes(key)).reduce((dataMap, k) => {
-                                dataMap[k] = metadata[k];
-                                return dataMap;
-                            }, {});
+                            const updatedMetadata = filter(metadata, (key) => !invalidRequestKeys.includes(key));
                             console.log(`Removing invalid/expired requests from ${name}: ${JSON.stringify(invalidRequests)}`);
                             request({
                                 ...initApiRequest(apiToken, `${domain}/v1/identity/group/id/${id}`),
@@ -322,10 +320,9 @@ const createControlGroupRequest = async (req) => {
 
         const matches = Object.keys(controlGroupPaths).filter(controlGroupPath => {
             const regex = new RegExp(controlGroupPath.endsWith('/*') ? controlGroupPath.replace('/*', '/.+') : controlGroupPath);
-            console.warn('regex: ', regex, ' --- ', controlGroupPath);
             return path.match(regex);
         }).map(controlGroupPath => controlGroupPaths[controlGroupPath]);
-        const {group_names: groupNames = []} = (((matches[0] || {}).factor || {}).approvers || {}).identity || {};
+        const {group_names: groupNames = []} = unwrap(safeWrap(matches[0]).factor.approvers.identity) || {};
         if (groupNames.length === 0) {
             reject({message: 'Unable to process request - no approvers found.', statusCode: 404});
         }
@@ -414,10 +411,7 @@ const deleteControlGroupRequest = async (req) => {
             await new Promise(resolve => {
                 Promise.all(groups.map(group => new Promise((groupResolve) => {
                     const {id, metadata = {}} = group.data || {};
-                    const updatedMetadata = Object.keys(metadata).filter(metadataKey => key !== metadataKey).reduce((dataMap, k) => {
-                        dataMap[k] = metadata[k];
-                        return dataMap;
-                    }, {});
+                    const updatedMetadata = filter(metadata, (metadataKey) => key !== metadataKey);
                     // Update the group metadata with the removed request.
                     request({
                         ...initApiRequest(apiToken, `${domain}/v1/identity/group/id/${id}`),
@@ -494,7 +488,6 @@ const revokeAccessor = async (req, accessor) => {
                 accessor
             }
         }, (error, response) => {
-            console.warn('status: ', response.statusCode);
             if (response.statusCode === 204) {
                 console.log(`Accessor successfully revoked: ${accessor}.`);
                 resolve();
@@ -726,14 +719,12 @@ const router = require('express').Router()
         try {
             await new Promise((resolve) => {
                 request(initApiRequest(token, `${domain}/v1/identity/group/id?list=true`), (error, response, body) => {
-                    Promise.all((((body || {}).data || {}).keys || []).map(key => {
+                    const keys = unwrap(safeWrap(body).data.keys) || [];
+                    Promise.all(keys.map(key => {
                         return new Promise((groupResolve) => {
                             request(initApiRequest(token, `${domain}/v1/identity/group/id/${key}`), (groupError, groupResponse, groupBody) => {
                                 const {id, metadata = {}} = (groupBody || {}).data || {};
-                                const updatedMetadata = Object.keys(metadata).filter(metaKey => !metaKey.startsWith('entity=')).reduce((dataMap, metaKey) => {
-                                    dataMap[metaKey] = metadata[metaKey];
-                                    return dataMap;
-                                }, {});
+                                const updatedMetadata = filter(metadata, metaKey => !metaKey.startsWith('entity='));
                                 request({
                                     ...initApiRequest(token, `${domain}/v1/identity/group/id/${id}`),
                                     method: 'POST',

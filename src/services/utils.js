@@ -2,6 +2,7 @@
 const chalk = require('chalk');
 const nodemailer = require('nodemailer');
 const request = require('request');
+const {filter} = require('@mountaingapsolutions/objectutil');
 
 /**
  * Just a collection of service utility methods.
@@ -93,16 +94,13 @@ const setSessionData = (req, sessionUserData) => {
     const validValues = Object.values(SESSION_USER_DATA_MAP);
 
     // Filter out any invalid properties.
-    const filteredSessionUserData = Object.keys(sessionUserData).filter(key => {
+    const filteredSessionUserData = filter(sessionUserData, key => {
         const isValid = validValues.includes(key);
         if (!isValid) {
             console.warn(`Ignored property ${chalk.bold.yellow(key)}. If this property is intended to be stored, update utils.SESSION_USER_DATA_MAP.`);
         }
         return isValid;
-    }).reduce((dataMap, key) => {
-        dataMap[key] = sessionUserData[key];
-        return dataMap;
-    }, {});
+    });
 
     req.session.user = {
         ...req.session.user,

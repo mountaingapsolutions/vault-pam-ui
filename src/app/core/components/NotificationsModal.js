@@ -22,9 +22,9 @@ import AccountCircleIcon from '@material-ui/icons/AccountCircle';
 import CheckIcon from '@material-ui/icons/Check';
 import ClearIcon from '@material-ui/icons/Clear';
 import {withStyles} from '@material-ui/core/styles';
+import {safeWrap, unwrap} from '@mountaingapsolutions/objectutil';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
-
 import kvAction from 'app/core/actions/kvAction';
 import Button from 'app/core/components/common/Button';
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
@@ -44,7 +44,7 @@ class NotificationsModal extends Component {
      */
     _renderAuthorizations(authorizations) {
         const {classes, vaultLookupSelf} = this.props;
-        const {entity_id: entityIdSelf} = (vaultLookupSelf.data || {}).data || {};
+        const {entity_id: entityIdSelf} = unwrap(safeWrap(vaultLookupSelf).data.data) || {};
         // Exclude self from names list. If the user did approve the request, then that user will be listed first.
         const namesList = authorizations.filter((authorization) => authorization.entity_id !== entityIdSelf).map((authorization) => authorization.entity_name);
         const alreadyAuthorizedBySelf = authorizations && authorizations.some((authorization) => authorization.entity_id === entityIdSelf);
@@ -65,7 +65,7 @@ class NotificationsModal extends Component {
      */
     render() {
         const {authorizeRequest, classes, inProgress, onClose, open, rejectRequest, secretsRequests = [], vaultLookupSelf} = this.props;
-        const {entity_id: entityIdSelf} = (vaultLookupSelf.data || {}).data || {};
+        const {entity_id: entityIdSelf} = unwrap(safeWrap(vaultLookupSelf).data.data) || {};
         return <Dialog
             fullWidth
             aria-describedby='notifications-dialog-description'
