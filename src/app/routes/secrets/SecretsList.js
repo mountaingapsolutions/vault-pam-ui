@@ -464,8 +464,7 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {deleteRequest, classes, deleteSecrets, dismissError, dismissibleError, isEnterprise, match, requestSecret, secrets, vaultLookupSelf} = this.props;
-        const requesterEntityId = vaultLookupSelf.data && vaultLookupSelf.data.data.entity_id;
+        const {deleteRequest, classes, deleteSecrets, dismissError, dismissibleError, match, requestSecret, secrets} = this.props;
         const {params} = match;
         const {mount} = params;
         const {deleteSecretConfirmation, isListModalOpen, requestSecretCancellation, requestSecretConfirmation, secretModalMode, secretModalInitialPath} = this.state;
@@ -508,7 +507,7 @@ class SecretsList extends Component {
                 title='Privilege Access Request'
                 onClose={confirm => {
                     if (confirm) {
-                        requestSecret(requestSecretConfirmation, isEnterprise, requesterEntityId, this._getVersionFromMount(mount));
+                        requestSecret(requestSecretConfirmation, this._getVersionFromMount(mount));
                     }
                     this.setState({
                         requestSecretConfirmation: null
@@ -542,7 +541,6 @@ SecretsList.propTypes = {
     groupData: PropTypes.object,
     history: PropTypes.object.isRequired,
     inProgress: PropTypes.bool,
-    isEnterprise: PropTypes.bool,
     listMounts: PropTypes.func.isRequired,
     listSecretsAndCapabilities: PropTypes.func.isRequired,
     match: PropTypes.object.isRequired,
@@ -652,20 +650,20 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                     .catch(reject);
             });
         },
-        requestSecret: (name, isEnterprise, requesterEntityId, version) => {
+        requestSecret: (name, version) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
             const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
             return new Promise((resolve, reject) => {
-                let requestData = isEnterprise ? {'path': fullPath} : {
-                    requesterEntityId: requesterEntityId,
+                let requestData = {
+                    path: fullPath,
                     requestData: fullPath,
                     status: Constants.REQUEST_STATUS.PENDING,
                     type: null, // nothing here yet.
                     engineType: null // nothing here yet.
                 };
-                dispatch(kvAction.requestSecret(requestData, isEnterprise))
+                dispatch(kvAction.requestSecret(requestData))
                     .then(() => {
                         dispatch(kvAction.listSecretsAndCapabilities(`${mount}${path ? `/${path}` : ''}`, version))
                             .then(resolve)

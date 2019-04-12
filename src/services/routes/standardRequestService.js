@@ -117,6 +117,34 @@ const createStandardRequest = (req) => {
     });
 };
 
+const createOrGetStandardRequest = (req) => {
+    const {requestData, type, status, engineType} = req.body;
+    const {domain, entityId: requesterEntityId} = req.session.user;
+    return new Promise((resolve, reject) => {
+        RequestController.findOrCreate(requesterEntityId, requestData, type, status, engineType).then(request => {
+            // if a new request, send email to approvers
+            if (request._options.isNewRecord === true) {
+                _getApproverGroupMemberEmails(req).then((approvers) => {
+                    const emailData = {
+                        domain,
+                        requesterEntityId,
+                        requestData,
+                        type,
+                        status,
+                        engineType,
+                        approvers
+                    };
+                    const emailContents = getRequestEmailContent(emailData);
+                    sendEmail(approvers, emailContents.subject, emailContents.body);
+                });
+            }
+            resolve(request);
+        }).catch((error) => {
+            reject(error);
+        });
+    });
+};
+
 const getStandardRequestsByApprover = (req) => {
     const {entityId} = req.session.user;
     return new Promise( (resolve, reject) => {
@@ -307,27 +335,14 @@ const router = require('express').Router()
      *         description: Request created
      */
     .post('/findOrCreate', async (req, res) => {
-        const {requestData, type, status, engineType} = req.body;
-        const {domain, entityId: requesterEntityId} = req.session.user;
-        RequestController.findOrCreate(requesterEntityId, requestData, type, status, engineType).then(request => {
-            // if a new request, send email to approvers
-            if (request._options.isNewRecord === true) {
-                _getApproverGroupMemberEmails(req).then((approvers) => {
-                    const emailData = {
-                        domain,
-                        requesterEntityId,
-                        requestData,
-                        type,
-                        status,
-                        engineType,
-                        approvers
-                    };
-                    const emailContents = getRequestEmailContent(emailData);
-                    sendEmail(approvers, emailContents.subject, emailContents.body);
-                });
-            }
-            res.json(request);
-        });
+        let result;
+        try {
+            result = await createOrGetStandardRequest(req);
+        } catch (err) {
+            sendError(req.originalUrl, res, err);
+            return;
+        }
+        res.json(result);
     })
     /**
      * @swagger
@@ -400,6 +415,7 @@ const router = require('express').Router()
 
 module.exports = {
     createStandardRequest,
+    createOrGetStandardRequest,
     router,
     getStandardRequestsByApprover,
     getStandardRequestsByRequester,

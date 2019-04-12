@@ -34,7 +34,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     authorizeRequest(accessor) {
-        return this._dispatchPost(this.ACTION_TYPES.AUTHORIZE_REQUEST, '/rest/control-group/request/authorize', {
+        return this._dispatchPost(this.ACTION_TYPES.AUTHORIZE_REQUEST, '/rest/requests/request/authorize', {
             accessor
         });
     }
@@ -47,7 +47,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     deleteRequest(path, entityId = '') {
-        return this._dispatchDelete(this.ACTION_TYPES.DELETE_REQUEST, '/rest/control-group/request', {
+        return this._dispatchDelete(this.ACTION_TYPES.DELETE_REQUEST, '/rest/requests/request', {
             path,
             entityId
         });
@@ -113,20 +113,13 @@ class KvAction extends _Actions {
     /**
      * Requests access to a secret.
      *
-     * @param {Object} requestData Specifies the path of the secrets to request(enterprise) or (standard).
-     * @param {boolean} isEnterprise The enterprise flag.
+     * @param {Object} requestData Specifies the path of the secrets to request
      * @returns {function} Redux dispatch function.
      */
-    requestSecret(requestData, isEnterprise) {
-        if (isEnterprise) {
-            return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/control-group/request', {
-                path: requestData.path
-            });
-        } else {
-            return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/request/findOrCreate', {
-                ...requestData
-            });
-        }
+    requestSecret(requestData) {
+        return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/requests/request', {
+            ...requestData
+        });
     }
 
     /**
@@ -146,7 +139,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     listRequests() {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_REQUESTS, '/rest/control-group/requests');
+        return this._dispatchGet(this.ACTION_TYPES.LIST_REQUESTS, '/rest/requests/requests');
     }
 
     /**

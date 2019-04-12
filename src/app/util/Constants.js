@@ -17,7 +17,6 @@ class Constants {
         };
         this.REQUEST_STATUS = {
             CANCELED: 'CANCELED',
-            DENIED: 'DENIED',
             PENDING: 'PENDING',
             APPROVED: 'APPROVED',
             LOCKED: 'LOCKED'

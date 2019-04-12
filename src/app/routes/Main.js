@@ -149,7 +149,7 @@ class Main extends Component {
     componentDidMount() {
         const {checkSession, listRequests} = this.props;
         checkSession().then(() => {
-            const {listMounts, getGroupData, getSealStatus, getServerLicense, user, vaultLookupSelf} = this.props;
+            const {listMounts, getGroupData, getSealStatus, user, vaultLookupSelf} = this.props;
 
             if (vaultLookupSelf.data.data.policies.includes('root')) {
                 localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
@@ -167,7 +167,6 @@ class Main extends Component {
             }
             getGroupData();
             getSealStatus();
-            getServerLicense();
             listMounts();
         });
         listRequests();
@@ -329,9 +328,7 @@ Main.propTypes = {
     classes: PropTypes.object.isRequired,
     getGroupData: PropTypes.func.isRequired,
     getSealStatus: PropTypes.func.isRequired,
-    getServerLicense: PropTypes.func.isRequired,
     group: PropTypes.object,
-    isEnterprise: PropTypes.bool,
     isLoggedIn: PropTypes.bool,
     listMounts: PropTypes.func.isRequired,
     listRequests: PropTypes.func.isRequired,
@@ -384,7 +381,6 @@ const _mapDispatchToProps = (dispatch) => {
         listRequests: () => dispatch(kvAction.listRequests()),
         getGroupData: () => dispatch(systemAction.getGroupData()),
         getSealStatus: () => dispatch(systemAction.getSealStatus()),
-        getServerLicense: () => dispatch(systemAction.getServerLicense()),
         logout: () => dispatch(userAction.logout())
     };
 };
