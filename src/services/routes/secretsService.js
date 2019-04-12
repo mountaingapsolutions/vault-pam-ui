@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+const {toObject} = require('@mountaingapsolutions/objectutil');
 const chalk = require('chalk');
 const request = require('request');
 const {getActiveRequestsByEntityId, getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
@@ -67,14 +68,7 @@ const router = require('express').Router()
 
         console.log(`Listing secrets from ${chalk.yellow.bold(apiUrl)}.`);
         // Get Secret Requests from Database
-        let requestsFromDatabase = null;
-        await RequestController.findAll().then(requestFromDB => {
-            requestsFromDatabase = requestFromDB;
-        });
-        const databaseRequestMap = requestsFromDatabase.reduce((accumulatedRequest, currentRequest) => {
-            accumulatedRequest[currentRequest.requestData] = currentRequest;
-            return accumulatedRequest;
-        }, {});
+        const databaseRequestMap = toObject(await RequestController.findAll(), 'requestData');
         request(initApiRequest(token, apiUrl), (error, response, body) => {
             if (error) {
                 sendError(url, res, error);
@@ -86,23 +80,22 @@ const router = require('express').Router()
                     res.status(statusCode).json(body);
                     return;
                 }
+                // Maintain the list of paths as a key/value map as well for easier access later.
+                const pathsMap = {};
                 const paths = (((body || {}).data || {}).keys || []).map(key => {
                     const getUrlParts = [...urlParts];
                     if (isV2) {
                         getUrlParts.splice(1, 0, key.endsWith('/') ? 'metadata' : 'data');
                     }
-                    return `${getUrlParts.join('/')}/${key}`;
+                    const path = `${getUrlParts.join('/')}/${key}`;
+                    pathsMap[path] = path;
+                    return path;
                 });
 
                 // Make sure to include listing path.
                 const listingPath = listUrlParts.join('/');
                 paths.push(listingPath);
-
-                // Convert the list of paths to a key/value map for easier access later.
-                const pathsMap = paths.reduce((accumulatedPaths, currentPath) => {
-                    accumulatedPaths[currentPath] = currentPath;
-                    return accumulatedPaths;
-                }, {});
+                pathsMap[listingPath] = listingPath;
 
                 const capabilitiesUrl = `${domain}/v1/sys/capabilities-self`;
                 console.log(`Checking capabilities with paths ${chalk.yellow.bold(JSON.stringify(paths))}.`);

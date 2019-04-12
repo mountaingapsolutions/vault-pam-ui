@@ -5,6 +5,8 @@ import {
     DialogContent,
     DialogTitle,
     Grid,
+    IconButton,
+    InputAdornment,
     List,
     ListItem,
     ListItemText,
@@ -13,7 +15,10 @@ import {
 } from '@material-ui/core';
 import {
     AccountCircle,
-    Email
+    Email,
+    Lock,
+    Visibility,
+    VisibilityOff
 } from '@material-ui/icons';
 import {withStyles} from '@material-ui/core/styles/index';
 import PropTypes from 'prop-types';
@@ -24,12 +29,30 @@ import isEmail from 'validator/lib/isEmail';
 import userAction from 'app/core/actions/userAction';
 import Button from 'app/core/components/common/Button';
 import SnackbarContent from 'app/core/components/SnackbarContent';
-import {createInProgressSelector} from 'app/util/actionStatusSelector';
+import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 
 /**
  * Settings with Change Password Modal component.
  */
 class UserProfileModal extends Component {
+
+    _defaultState = {
+        errors: {},
+        loaded: false,
+        password: {
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: '',
+            showCurrentPassword: false,
+            showNewPassword: false,
+            showConfirmPassword: false
+        },
+        user: {
+            firstName: '',
+            lastName: '',
+            email: ''
+        }
+    };
 
     /**
      * The constructor method. Executed upon class instantiation.
@@ -39,19 +62,16 @@ class UserProfileModal extends Component {
      */
     constructor(props) {
         super(props);
+
         this.state = {
-            errors: {},
-            loaded: false,
-            user: {
-                firstName: '',
-                lastName: '',
-                email: '',
-                ...props.userMetadata
-            }
+            ...this._defaultState
         };
 
         this._mapPropsToState = this._mapPropsToState.bind(this);
         this._handleChange = this._handleChange.bind(this);
+        this._handleChangePassword = this._handleChangePassword.bind(this);
+        this._resetState = this._resetState.bind(this);
+        this._togglePasswordVisibility = this._togglePasswordVisibility.bind(this);
         this._updateProfile = this._updateProfile.bind(this);
     }
 
@@ -72,7 +92,7 @@ class UserProfileModal extends Component {
     }
 
     /**
-     * Handle for when back button is pressed.
+     * Handle for user field updates.
      *
      * @private
      * @param {SyntheticMouseEvent} event The event.
@@ -93,6 +113,62 @@ class UserProfileModal extends Component {
     }
 
     /**
+     * Handle for password field updates.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _handleChangePassword(event) {
+        const {name, value} = event.target;
+        const {errors, password} = this.state;
+        const updatedErrors = {
+            ...errors,
+            [name]: ''
+        };
+        if (name === 'newPassword' || name === 'confirmPassword') {
+            updatedErrors.newPassword = updatedErrors.confirmPassword = '';
+        } else {
+            updatedErrors.currentPassword = '';
+        }
+        this.setState({
+            errors: updatedErrors,
+            password: {
+                ...password,
+                [name]: value
+            }
+        });
+    }
+
+    /**
+     * Resets the internal state.
+     *
+     * @private
+     */
+    _resetState() {
+        this.setState({
+            ...this._defaultState
+        });
+    }
+
+    /**
+     * Handle for toggling the password masking.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _togglePasswordVisibility(event) {
+        event.stopPropagation();
+        const {name} = event.currentTarget;
+        const ariaLabel = event.currentTarget.getAttribute('aria-label');
+        this.setState({
+            password: {
+                ...this.state.password,
+                [name]: ariaLabel.startsWith('Show')
+            }
+        });
+    }
+
+    /**
      * Handle for when save button is pressed.
      *
      * @private
@@ -102,16 +178,30 @@ class UserProfileModal extends Component {
         event.preventDefault();
 
         const {onClose, updateUser} = this.props;
-        const {user} = this.state;
+        const {password, user} = this.state;
         const {email, firstName, lastName} = user;
+        const {currentPassword, newPassword, confirmPassword} = password;
         const errors = {};
+        // Validate required fields.
         ['email', 'firstName', 'lastName'].forEach((field) => {
             if (!user[field]) {
                 errors[field] = 'Please fill out this field.';
             }
         });
+        // Validate email.
         if (email && !isEmail(email)) {
             errors.email = `${email} does not appear to be a valid email.`;
+        }
+        // Validate password.
+        if (currentPassword) {
+            ['newPassword', 'confirmPassword'].forEach((field) => {
+                if (!password[field]) {
+                    errors[field] = 'Please fill out this field.';
+                }
+            });
+            if (newPassword !== confirmPassword) {
+                errors.newPassword = errors.confirmPassword = 'Your new password and confirmation password do not match.';
+            }
         }
         this.setState({
             errors
@@ -120,7 +210,9 @@ class UserProfileModal extends Component {
             updateUser({
                 firstName,
                 lastName,
-                email
+                email,
+                password: currentPassword,
+                newPassword
             }).then(onClose);
         }
     }
@@ -133,8 +225,9 @@ class UserProfileModal extends Component {
      */
     _renderProfileDetails() {
         const {classes, message} = this.props;
-        const {errors, user} = this.state;
+        const {errors, password, user} = this.state;
         const {email, firstName, lastName} = user;
+        const {currentPassword, newPassword, confirmPassword, showCurrentPassword, showNewPassword, showConfirmPassword} = password;
         return (
             <Paper>
                 {message && <SnackbarContent message={message} variant='info'/>}
@@ -143,6 +236,7 @@ class UserProfileModal extends Component {
                         <AccountCircle color='primary' fontSize='large'/>
                         <ListItemText primary={<React.Fragment>
                             <TextField
+                                autoFocus
                                 required
                                 className={`${classes.inlineNameFields} ${classes.paddingRight}`}
                                 error={!!errors.firstName}
@@ -180,9 +274,112 @@ class UserProfileModal extends Component {
                                 variant='outlined'
                                 onChange={this._handleChange}/>}/>
                     </ListItem>
+                    <ListItem dense className={classes.passwordItem}>
+                        <Lock className={classes.passwordIcon} color='primary' fontSize='large'/>
+                        <ListItemText primary={
+                            <React.Fragment>
+                                <TextField
+                                    fullWidth
+                                    autoComplete='current-password'
+                                    className={classes.passwordPadding}
+                                    error={!!errors.currentPassword}
+                                    helperText={errors.currentPassword}
+                                    InputProps={{
+                                        endAdornment: <InputAdornment position='end'>
+                                            <IconButton
+                                                aria-label={`${showCurrentPassword ? 'Hide' : 'Show'} current password`}
+                                                className={classes.iconButton}
+                                                name='showCurrentPassword'
+                                                onClickCapture={this._togglePasswordVisibility}>
+                                                {showCurrentPassword ? <VisibilityOff/> : <Visibility/>}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    }}
+                                    label='Current password'
+                                    name='currentPassword'
+                                    type={showCurrentPassword ? 'text' : 'password'}
+                                    value={currentPassword}
+                                    variant='outlined'
+                                    onChange={this._handleChangePassword}/>
+                                <TextField
+                                    fullWidth
+                                    autoComplete='new-password'
+                                    className={classes.passwordPadding}
+                                    disabled={!password.currentPassword}
+                                    error={!!errors.newPassword}
+                                    helperText={errors.newPassword}
+                                    InputProps={{
+                                        endAdornment: <InputAdornment position='end'>
+                                            <IconButton
+                                                aria-label={`${showNewPassword ? 'Hide' : 'Show'} new password`}
+                                                className={classes.iconButton}
+                                                disabled={!password.currentPassword}
+                                                name='showNewPassword'
+                                                onClickCapture={this._togglePasswordVisibility}>
+                                                {showNewPassword ? <VisibilityOff/> : <Visibility/>}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    }}
+                                    label='New password'
+                                    name='newPassword'
+                                    type={showNewPassword ? 'text' : 'password'}
+                                    value={newPassword}
+                                    variant='outlined'
+                                    onChange={this._handleChangePassword}/>
+                                <TextField
+                                    fullWidth
+                                    autoComplete='new-password'
+                                    className={classes.passwordPadding}
+                                    disabled={!password.currentPassword}
+                                    error={!!errors.confirmPassword}
+                                    helperText={errors.confirmPassword}
+                                    InputProps={{
+                                        endAdornment: <InputAdornment position='end'>
+                                            <IconButton
+                                                aria-label={`${showConfirmPassword ? 'Hide' : 'Show'} confirm password`}
+                                                className={classes.iconButton}
+                                                disabled={!password.currentPassword}
+                                                name='showConfirmPassword'
+                                                onClickCapture={this._togglePasswordVisibility}>
+                                                {showConfirmPassword ? <VisibilityOff/> : <Visibility/>}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    }}
+                                    label='Confirm new password'
+                                    name='confirmPassword'
+                                    type={showConfirmPassword ? 'text' : 'password'}
+                                    value={confirmPassword}
+                                    variant='outlined'
+                                    onChange={this._handleChangePassword}/>
+                            </React.Fragment>}/>
+                    </ListItem>
                 </List>
             </Paper>
         );
+    }
+
+    /**
+     * Required React Component lifecycle method. Invoked right before calling the render method, both on the initial mount and on subsequent updates.
+     *
+     * @protected
+     * @override
+     * @param {Object} props - Next set of updated props.
+     * @param {Object} state - The current state.
+     * @returns {Object}
+     */
+    static getDerivedStateFromProps(props, state) {
+        const {dismissUpdateUserError, updateUserError} = props;
+        if (updateUserError && updateUserError.indexOf('password') > 0) {
+            // Can immediately clear out the error in props since it will get set in state.
+            dismissUpdateUserError();
+            return {
+                errors: {
+                    ...state.errors,
+                    currentPassword: updateUserError
+                }
+            };
+        }
+        return null;
     }
 
     /**
@@ -201,7 +398,8 @@ class UserProfileModal extends Component {
             maxWidth={'sm'}
             open={open}
             onClose={closeable ? onClose : null}
-            onEnter={this._mapPropsToState}>
+            onEnter={this._mapPropsToState}
+            onExit={this._resetState}>
             <form onSubmit={this._updateProfile}>
                 <DialogTitle id='modal-title'>
                     Edit User Profile
@@ -237,11 +435,13 @@ UserProfileModal.defaultProps = {
 UserProfileModal.propTypes = {
     classes: PropTypes.object.isRequired,
     closeable: PropTypes.bool,
+    dismissUpdateUserError: PropTypes.func.isRequired,
     inProgress: PropTypes.bool,
     message: PropTypes.string,
     onClose: PropTypes.func.isRequired,
     open: PropTypes.bool.isRequired,
     updateUser: PropTypes.func.isRequired,
+    updateUserError: PropTypes.string,
     userMetadata: PropTypes.object,
 };
 
@@ -266,6 +466,15 @@ const _styles = (theme) => ({
     paperChangePassword: {
         marginTop: 10,
         padding: 20
+    },
+    passwordItem: {
+        alignItems: 'inherit'
+    },
+    passwordIcon: {
+        paddingTop: theme.spacing.unit
+    },
+    passwordPadding: {
+        paddingBottom: theme.spacing.unit * 2
     }
 });
 
@@ -279,9 +488,27 @@ const _styles = (theme) => ({
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        updateUser: (metadata) => {
+        dismissUpdateUserError: () => {
+            return new Promise((resolve) => {
+                dispatch({
+                    type: userAction.ACTION_TYPES.UPDATE_USER
+                });
+                resolve();
+            });
+        },
+        updateUser: (userData) => {
             return new Promise((resolve, reject) => {
-                dispatch(userAction.updateUser(metadata))
+                const {firstName, lastName, email, test, password, newPassword} = userData;
+                dispatch(userAction.updateUser({
+                    password,
+                    newPassword,
+                    metadata: {
+                        firstName,
+                        lastName,
+                        email,
+                        test
+                    }
+                }))
                     .then(() => {
                         dispatch(userAction.getUser())
                             .then(resolve)
@@ -305,6 +532,9 @@ const _mapStateToProps = (state) => {
         userMetadata: {
             ...((state.userReducer.user || {}).data || {}).metadata || {}
         },
+        updateUserError: createErrorsSelector([
+            userAction.ACTION_TYPES.UPDATE_USER
+        ])(state.actionStatusReducer),
         inProgress: createInProgressSelector([
             userAction.ACTION_TYPES.GET_USER,
             userAction.ACTION_TYPES.UPDATE_USER

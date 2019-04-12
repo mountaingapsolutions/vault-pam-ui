@@ -27,6 +27,7 @@ import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
 import ListIcon from '@material-ui/icons/List';
 import LockOpenIcon from '@material-ui/icons/LockOpen';
 import NotificationsIcon from '@material-ui/icons/Notifications';
+import {safeWrap, unwrap} from '@mountaingapsolutions/objectutil';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
@@ -196,7 +197,7 @@ class Main extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, logout, secretsMounts = {}, secretsRequests = [], sealStatus} = this.props;
+        const {classes, logout, secretsMounts = {}, secretsRequests = [], sealStatus, user} = this.props;
         const isVaultSealed = sealStatus && sealStatus.sealed;
         const {accountAnchorElement, firstTimeLoginMessage, isSecretRequestsModalOpen, isUserProfileModalOpen, notificationAnchorElement, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
@@ -243,10 +244,15 @@ class Main extends Component {
                             <AccountCircle/>
                         </IconButton>
                         <Menu
+                            disableAutoFocusItem
                             anchorEl={accountAnchorElement}
                             open={!!accountAnchorElement}
                             onClose={this._toggleAccountMenu}>
-                            <MenuItem onClick={() => this._openModal('isUserProfileModalOpen')}>
+                            <MenuItem disabled>
+                                <AccountCircle className={classes.marginRight}/>
+                                {unwrap(safeWrap(user).data.name)}
+                            </MenuItem>
+                            <MenuItem selected={false} onClick={() => this._openModal('isUserProfileModalOpen')}>
                                 <img
                                     className={classes.marginRight}
                                     src='/assets/settings-icon.svg'
