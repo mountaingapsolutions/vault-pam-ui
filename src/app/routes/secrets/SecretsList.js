@@ -656,7 +656,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
-            const fullPath = `${mount}${version === 2 ? '/data' : ''}/${path}/${name}`;
+            const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
             return new Promise((resolve, reject) => {
                 let requestData = isEnterprise ? {'path': fullPath} : {
                     requesterEntityId: requesterEntityId,
