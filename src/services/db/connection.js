@@ -28,7 +28,7 @@ if (PAM_DATABASE && PAM_DATABASE_USER && PAM_DATABASE_PASSWORD && PAM_DATABASE_U
         });
         sequelize.sync({
             logging: true
-        }).then(resolve).catch(reject);
+        }).then(resolve()).catch(reject);
     });
 } else {
     promise = new Promise((resolve, reject) => {
@@ -46,7 +46,12 @@ const getModel = (modelName) => {
     return dataModel[modelName];
 };
 
+const getSequelize = () => {
+    return sequelize;
+};
+
 module.exports = {
     start,
-    getModel
+    getModel,
+    getSequelize
 };
