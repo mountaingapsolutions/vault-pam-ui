@@ -658,6 +658,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const {mount, path} = params;
             const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
             return new Promise((resolve, reject) => {
+                console.log('==> STARTED SECRET REQUEST ** isEnterprise = ' + isEnterprise); //DELETE MARKER
                 let requestData = isEnterprise ? {'path': fullPath} : {
                     requesterEntityId: requesterEntityId,
                     requestData: fullPath,

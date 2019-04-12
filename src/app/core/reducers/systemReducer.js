@@ -28,6 +28,7 @@ export default (previousState = {
             return {...previousState, sealStatus: action.data || {}, action};
         case systemAction.ACTION_TYPES.GET_SERVER_LICENSE:
             const license = action.data;
+            console.log('==> SYSTEM REDUCER GET_SERVER_LICENSE ** action.data = ' + JSON.stringify(action.data)); //DELETE MARKER
             return {...previousState, isEnterprise: license && license.data && license.data.features.includes('Control Groups') || false, action};
         default:
             return {...previousState};

@@ -118,6 +118,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     requestSecret(requestData, isEnterprise) {
+        console.log('==> KV ACTION REQUEST SECRET ** isEnterprise = ' + isEnterprise); //DELETE MARKER
         if (isEnterprise) {
             return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/control-group/request', {
                 path: requestData.path
