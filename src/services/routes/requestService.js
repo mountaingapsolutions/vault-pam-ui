@@ -41,7 +41,7 @@ const router = require('express').Router()
         if (controlGroupSupported === true) {
             try {
                 const controlGroupRequests = await getControlGroupRequests(req);
-                requests.concat(controlGroupRequests);
+                requests = requests.concat(controlGroupRequests);
             } catch (err) {
                 sendError(req.originalUrl, res, err);
             }
@@ -50,7 +50,7 @@ const router = require('express').Router()
         // TODO Check if server supports standard requests
         try {
             const standardRequests = await getStandardRequestsByApprover(req);
-            requests.concat(standardRequests);
+            requests = requests.concat(standardRequests);
         } catch (err) {
             sendError(req.originalUrl, res, err);
         }
@@ -82,7 +82,7 @@ const router = require('express').Router()
         if (controlGroupSupported === true) {
             try {
                 const controlGroupSelfRequests = await getControlGroupRequests(req);
-                requests.concat(controlGroupSelfRequests);
+                requests = requests.concat(controlGroupSelfRequests);
             } catch (err) {
                 sendError(req.originalUrl, res, err);
             }
@@ -91,7 +91,7 @@ const router = require('express').Router()
         // TODO Check if server supports standard requests
         try {
             const standardSelfRequests = await getStandardRequestsByRequester(req);
-            requests.concat(standardSelfRequests);
+            requests = requests.concat(standardSelfRequests);
         } catch (err) {
             sendError(req.originalUrl, res, err);
         }
