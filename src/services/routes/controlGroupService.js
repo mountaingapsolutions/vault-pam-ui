@@ -303,7 +303,7 @@ const authorizeControlGroupRequest = async (req) => {
 
 const createControlGroupRequest = async (req) => {
     const {REACT_APP_API_TOKEN: apiToken} = process.env;
-    return new Promise((finalResolve, reject) => {
+    return new Promise(async (finalResolve, reject) => {
         if (!apiToken) {
             reject({message: 'no API token was set.', statusCode: 403});
         }
@@ -327,7 +327,7 @@ const createControlGroupRequest = async (req) => {
             reject({message: 'Unable to process request - no approvers found.', statusCode: 404});
         }
 
-        const secretRequest = new Promise((resolve) => {
+        const secretRequest = await new Promise((resolve) => {
             const getSecretApiUrl = `${domain}/v1/${path}`;
             request(initApiRequest(token, getSecretApiUrl), (error, response, body) => resolve(body));
         });

@@ -191,7 +191,7 @@ const router = require('express').Router()
      *         description: No approval group has been configured.
      */
     .post('/request', async (req, res) => {
-        const {requestData} = req.body;
+        const {path, requestData} = req.body;
         let controlGroupSupported = false;
         let result;
         try {
@@ -202,9 +202,9 @@ const router = require('express').Router()
         }
 
         try {
-            if (controlGroupSupported === true && requestData.path) {
+            if (controlGroupSupported === true && path) {
                 result = await createControlGroupRequest(req);
-                //TODO add engineType checking - requestData.engineType
+                //TODO add engineType checking - engineType
             } else if (requestData) {
                 result = await createOrGetStandardRequest(req);
             }
