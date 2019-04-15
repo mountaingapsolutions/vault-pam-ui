@@ -3,6 +3,7 @@ const {filter, safeWrap, unwrap} = require('@mountaingapsolutions/objectutil');
 const chalk = require('chalk');
 const hcltojson = require('hcl-to-json');
 const request = require('request');
+const notificationsManager = require('services/notificationsManager');
 const {initApiRequest, sendError} = require('services/utils');
 
 const KEY_REPLACEMENT_MAP = {
@@ -200,10 +201,11 @@ const getControlGroupPaths = async (req) => {
  * @returns {Promise}
  */
 const getGroupsByUser = async (req) => {
-    const {domain, entityId, token} = req.session.user;
+    const {REACT_APP_API_TOKEN: apiToken} = process.env;
+    const {domain, entityId} = req.session.user;
     const result = await new Promise((resolve, reject) => {
         const groups = [];
-        request(initApiRequest(token, `${domain}/v1/identity/group/id?list=true`), (error, response, body) => {
+        request(initApiRequest(apiToken, `${domain}/v1/identity/group/id?list=true`), (error, response, body) => {
             if (error) {
                 reject(error);
             } else if (response.statusCode !== 200) {
@@ -211,7 +213,7 @@ const getGroupsByUser = async (req) => {
             } else {
                 Promise.all((((body || {}).data || {}).keys || []).map(key => {
                     return new Promise((groupResolve) => {
-                        request(initApiRequest(token, `${domain}/v1/identity/group/id/${key}`), (groupError, groupResponse, groupBody) => {
+                        request(initApiRequest(apiToken, `${domain}/v1/identity/group/id/${key}`), (groupError, groupResponse, groupBody) => {
                             if (groupBody) {
                                 const {member_entity_ids: entityIds = []} = groupBody.data || {};
                                 if (entityIds.includes(entityId)) {
@@ -306,16 +308,19 @@ const createControlGroupRequest = async (req) => {
     return new Promise(async (finalResolve, reject) => {
         if (!apiToken) {
             reject({message: 'no API token was set.', statusCode: 403});
+            return;
         }
 
         const {controlGroupPaths, domain, entityId, token} = req.session.user;
         if (!controlGroupPaths) {
             reject({message: 'No approval group has been configured.', statusCode: 500});
+            return;
         }
 
         const {path} = req.body;
         if (!path) {
             reject({message: 'Required input data not provided.'});
+            return;
         }
 
         const matches = Object.keys(controlGroupPaths).filter(controlGroupPath => {
@@ -325,6 +330,7 @@ const createControlGroupRequest = async (req) => {
         const {group_names: groupNames = []} = unwrap(safeWrap(matches[0]).factor.approvers.identity) || {};
         if (groupNames.length === 0) {
             reject({message: 'Unable to process request - no approvers found.', statusCode: 404});
+            return;
         }
 
         const secretRequest = await new Promise((resolve) => {
@@ -335,7 +341,9 @@ const createControlGroupRequest = async (req) => {
         const {wrap_info: wrapInfo} = secretRequest || {};
         if (!wrapInfo) {
             reject({message: 'Unable to process request ${path}'});
+            return;
         }
+        const requestInfo = await checkControlGroupRequestStatus(req, wrapInfo.accessor);
 
         // Persist the data.
         const promises = groupNames.map((groupName) => {
@@ -353,6 +361,13 @@ const createControlGroupRequest = async (req) => {
                         const {metadata = {}} = (body || {}).data;
                         const metaKey = _encodeMetaKey(entityId, path);
                         const metaValue = JSON.stringify(wrapInfo);
+                        const requestNotification = {
+                            accessor: wrapInfo.accessor,
+                            request_info: requestInfo,
+                            wrap_info: wrapInfo
+                        };
+                        console.warn('Emit ', requestNotification, ' to ', groupName);
+                        notificationsManager.getInstance().in(groupName).emit('request', requestNotification);
                         console.log(`Persisting to ${apiGroupUrl} with the key/value pair: ${chalk.bold.yellow(metaKey)} / ${chalk.bold.yellow(metaValue)}`);
                         request({
                             ...initApiRequest(apiToken, apiGroupUrl),
@@ -385,7 +400,7 @@ const createControlGroupRequest = async (req) => {
 
 const deleteControlGroupRequest = async (req) => {
     const {REACT_APP_API_TOKEN: apiToken} = process.env;
-    return new Promise(async(finalResolve, reject) => {
+    return new Promise(async (finalResolve, reject) => {
         const {entityId, path} = req.query;
         if (!path) {
             reject({message: 'Required input path not provided.'});
@@ -438,7 +453,7 @@ const deleteControlGroupRequest = async (req) => {
 };
 
 const getControlGroupRequests = async (req) => {
-    return new Promise(async (finalResolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         let groups = [];
         try {
             groups = await getGroupsByUser(req);
@@ -446,7 +461,7 @@ const getControlGroupRequests = async (req) => {
             reject({message: err});
         }
         if (groups.length === 0) {
-            finalResolve([]);
+            resolve([]);
         }
         const requests = {};
         groups.forEach(group => {
@@ -459,8 +474,9 @@ const getControlGroupRequests = async (req) => {
         const wrapInfoList = Object.keys(requests).map(key => JSON.parse(requests[key]));
         Promise.all(wrapInfoList.map(requestData => checkControlGroupRequestStatus(req, requestData.accessor)))
             .then((results) => {
-                finalResolve(results.map((request_info, i) => {
+                resolve(results.map((request_info, i) => {
                     return {
+                        accessor: wrapInfoList[i].accessor,
                         request_info,
                         wrap_info: wrapInfoList[i]
                     };
@@ -756,6 +772,7 @@ module.exports = {
     getActiveRequestsByEntityId,
     getControlGroupPaths,
     getControlGroupRequests,
+    getGroupsByUser,
     getPathFromEncodedMetaKey,
     revokeAccessor,
     router

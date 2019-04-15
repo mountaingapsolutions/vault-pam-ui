@@ -32,10 +32,12 @@ import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import {Link, Redirect, Route, Switch, withRouter} from 'react-router-dom';
+
 import kvAction from 'app/core/actions/kvAction';
 import sessionAction from 'app/core/actions/sessionAction';
 import systemAction from 'app/core/actions/systemAction';
 import userAction from 'app/core/actions/userAction';
+import NotificationsManager from 'app/core/components/NotificationsManager';
 import UserProfileModal from 'app/core/components/UserProfileModal';
 import Footer from 'app/core/components/common/Footer';
 import NotificationsModal from 'app/core/components/NotificationsModal';
@@ -308,6 +310,7 @@ class Main extends Component {
             <NotificationsModal open={!!notificationAnchorElement} onClose={() => this.setState({
                 notificationAnchorElement: null
             })}/>
+            <NotificationsManager/>
             <Footer/>
         </div>;
     }

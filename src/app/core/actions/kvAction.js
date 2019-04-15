@@ -23,7 +23,8 @@ class KvAction extends _Actions {
             REJECT_REQUEST: 'REJECT_REQUEST',
             REQUEST_SECRET: 'REQUEST_SECRET',
             SAVE_SECRET: 'SAVE_SECRET',
-            UNWRAP_SECRET: 'UNWRAP_SECRET'
+            UNWRAP_SECRET: 'UNWRAP_SECRET',
+            UPDATE_REQUEST: 'UPDATE_REQUEST'
         });
     }
 
@@ -140,6 +141,16 @@ class KvAction extends _Actions {
      */
     listRequests() {
         return this._dispatchGet(this.ACTION_TYPES.LIST_REQUESTS, '/rest/requests/requests');
+    }
+
+    /**
+     * Update the request in the client data model.
+     *
+     * @param {Object} data The request data to update.
+     * @returns {function} Redux dispatch function.
+     */
+    updateRequest(data) {
+        return this._createResourceData(this.ACTION_TYPES.UPDATE_REQUEST, undefined, data, false);
     }
 
     /**

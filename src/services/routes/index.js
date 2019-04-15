@@ -3,7 +3,7 @@ const chalk = require('chalk');
 const request = require('request');
 const swaggerUi = require('swagger-ui-express');
 const {options, swaggerDoc} = require('services/Swagger');
-const {router: controlGroupServiceRouter} = require('services/routes/controlGroupService');
+const {router: controlGroupServiceRouter, getGroupsByUser} = require('services/routes/controlGroupService');
 const {router: secretsServiceRouter} = require('services/routes/secretsService');
 const {router: userServiceRouter} = require('services/routes/userService');
 const {router: requestServiceRouter} = require('services/routes/requestService');
@@ -183,7 +183,15 @@ const authenticatedRoutes = require('express').Router()
                         token: clientToken,
                         entityId
                     });
-                    next();
+                    res.cookie('entity_id', entityId, {
+                        httpOnly: true
+                    });
+                    getGroupsByUser(req).then(groups => {
+                        setSessionData(req, {
+                            groups: groups.map(group => group.data.name)
+                        });
+                        next();
+                    });
                 });
             } else {
                 console.info('Move along. Nothing to see here.');
@@ -252,7 +260,15 @@ const _sendTokenValidationResponse = (domain, token, req, res) => {
                 token,
                 entityId
             });
-            res.status(response.statusCode).json(body);
+            res.cookie('entity_id', entityId, {
+                httpOnly: true
+            });
+            getGroupsByUser(req).then(groups => {
+                setSessionData(req, {
+                    groups: groups.map(group => group.data.name)
+                });
+                res.status(response.statusCode).json(body);
+            });
         } catch (err) {
             _sendVaultDomainError(apiUrl, res, err);
         }

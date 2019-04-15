@@ -44,6 +44,7 @@ const router = require('express').Router()
                 requests = requests.concat(controlGroupRequests);
             } catch (err) {
                 sendError(req.originalUrl, res, err);
+                return;
             }
         }
 
@@ -53,6 +54,7 @@ const router = require('express').Router()
             requests = requests.concat(standardRequests);
         } catch (err) {
             sendError(req.originalUrl, res, err);
+            return;
         }
 
         res.json(requests);

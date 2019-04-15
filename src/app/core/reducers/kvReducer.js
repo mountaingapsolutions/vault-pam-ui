@@ -1,3 +1,4 @@
+import {updateOrAppend} from '@mountaingapsolutions/objectutil';
 import kvAction from 'app/core/actions/kvAction';
 
 /**
@@ -42,6 +43,11 @@ export default (previousState = {
             return {
                 ...previousState,
                 secretsRequests: action.data || []
+            };
+        case kvAction.ACTION_TYPES.UPDATE_REQUEST:
+            return {
+                ...previousState,
+                secretsRequests: updateOrAppend(previousState.secretsRequests, action.data, 'accessor')
             };
         // Deprecated?
         case kvAction.ACTION_TYPES.LIST_SECRETS:

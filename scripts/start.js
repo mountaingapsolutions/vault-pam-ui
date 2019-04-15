@@ -14,8 +14,9 @@ process.on('unhandledRejection', err => {
 
 // Add the root project directory to the app module search path:
 const path = require('path');
-require('app-module-path').addPath(path.join(__dirname, '..'));
-require('app-module-path').addPath(path.join(__dirname, '..', 'src'));
+const appModulePath = require('app-module-path');
+appModulePath.addPath(path.join(__dirname, '..'));
+appModulePath.addPath(path.join(__dirname, '..', 'src'));
 
 // Ensure environment variables are read.
 require('config/env');
@@ -101,6 +102,8 @@ checkBrowsers(paths.appPath, isInteractive)
             urls.lanUrlForConfig
         );
         const devServer = new WebpackDevServer(compiler, serverConfig);
+        require('services/notificationsManager').start(devServer.listeningApp);
+
         // Launch WebpackDevServer.
         devServer.listen(port, HOST, err => {
             if (err) {

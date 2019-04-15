@@ -1,8 +1,19 @@
 /* eslint-disable no-console */
 const chalk = require('chalk');
+const session = require('express-session');
 const nodemailer = require('nodemailer');
 const request = require('request');
 const {filter} = require('@mountaingapsolutions/objectutil');
+
+const getSessionMiddleware = session({
+    key: 'entity_id',
+    secret: process.env.SESSION_SECRET || 'correct horse battery staple',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        maxAge: 600000
+    }
+});
 
 /**
  * Just a collection of service utility methods.
@@ -17,7 +28,8 @@ const SESSION_USER_DATA_MAP = {
     CONTROL_GROUP_PATHS: 'controlGroupPaths',
     DOMAIN: 'domain',
     ENTITY_ID: 'entityId',
-    TOKEN: 'token'
+    TOKEN: 'token',
+    GROUPS: 'groups'
 };
 
 /**
@@ -143,6 +155,7 @@ const sendEmail = (recipients, subject, body) => {
 module.exports = {
     checkControlGroupSupport,
     initApiRequest,
+    getSessionMiddleware,
     sendEmail,
     sendError,
     setSessionData
