@@ -1,4 +1,4 @@
-import {updateOrAppend} from '@mountaingapsolutions/objectutil';
+import {clone, safeWrap, unwrap, updateIn, updateOrAppend} from '@mountaingapsolutions/objectutil';
 import kvAction from 'app/core/actions/kvAction';
 
 /**
@@ -21,6 +21,7 @@ export default (previousState = {
     secretsPaths: {},
     secretsRequests: []
 }, action) => {
+    let secretsPaths;
     switch (action.type) {
         case kvAction.ACTION_TYPES.GET_SECRETS:
         case kvAction.ACTION_TYPES.UNWRAP_SECRET:
@@ -44,7 +45,39 @@ export default (previousState = {
                 ...previousState,
                 secretsRequests: action.data || []
             };
-        case kvAction.ACTION_TYPES.UPDATE_REQUEST:
+        case kvAction.ACTION_TYPES.REMOVE_REQUEST_DATA:
+            secretsPaths = clone(previousState.secretsPaths);
+            // Remove from secretPaths (requester's perspective).
+            if (secretsPaths.secrets) {
+                secretsPaths.secrets.forEach(secret => {
+                    if (unwrap(safeWrap(secret).data.wrap_info.accessor) === action.data) {
+                        delete secret.data.request_info;
+                    }
+                });
+            }
+            // Remove from secretsRequests (approver's perspective).
+            const secretsRequests = clone(previousState.secretsRequests).filter(request => request.accessor !== action.data);
+            return {
+                ...previousState,
+                secretsPaths,
+                secretsRequests
+            };
+        case kvAction.ACTION_TYPES.APPROVE_REQUEST_DATA:
+            secretsPaths = clone(previousState.secretsPaths);
+            // Update secretPaths (requester's perspective).
+            if (secretsPaths.secrets) {
+                secretsPaths.secrets.forEach(secret => {
+                    if (unwrap(safeWrap(secret).data.wrap_info.accessor) === action.data.accessor) {
+                        secret.data.request_info = action.data.request_info.data;
+                    }
+                });
+            }
+            return {
+                ...previousState,
+                secretsPaths,
+                secretsRequests: updateIn(previousState.secretsRequests, action.data, 'accessor')
+            };
+        case kvAction.ACTION_TYPES.CREATE_REQUEST_DATA:
             return {
                 ...previousState,
                 secretsRequests: updateOrAppend(previousState.secretsRequests, action.data, 'accessor')

@@ -204,6 +204,10 @@ const authenticatedRoutes = require('express').Router()
     .use('/request', standardRequestServiceRouter)
     .use('/control-group', controlGroupServiceRouter)
     .use('/secrets', secretsServiceRouter)
+    .get('/session', (req, res) => {
+        const {'x-vault-domain': domain, 'x-vault-token': token} = req.headers;
+        _sendTokenValidationResponse(domain, token, req, res);
+    })
     .use((req, res) => {
         res.status(400).json({
             errors: ['These are\'t the droids you\'re looking for.']

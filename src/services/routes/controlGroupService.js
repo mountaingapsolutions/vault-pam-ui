@@ -267,7 +267,7 @@ const getGroupsByMetadata = async (req, metadataKey) => {
 
 const authorizeControlGroupRequest = async (req) => {
     return new Promise(async (finalResolve, reject) => {
-        const {domain, token} = req.session.user;
+        const {domain, groups, token} = req.session.user;
         const {accessor} = req.body;
 
         // Authorize the accessor.
@@ -292,12 +292,26 @@ const authorizeControlGroupRequest = async (req) => {
         let status;
         try {
             status = await checkControlGroupRequestStatus(req, accessor);
+            const requester = unwrap(safeWrap(status).data.request_entity.id);
+            if (requester) {
+                const requestInfo = {
+                    accessor,
+                    request_info: status
+                };
+                console.warn('Emit ', requestInfo, ' to ', requester, ' and the following groups: ', groups.join(', '));
+                notificationsManager.getInstance().to(requester).emit('approve-request', requestInfo);
+                groups.forEach((groupName) => {
+                    notificationsManager.getInstance().to(groupName).emit('approve-request', requestInfo);
+                });
+            }
         } catch (err) {
             reject({message: err});
+            return;
         }
 
         if (status.errors) {
             reject({message: status.errors});
+            return;
         }
         finalResolve(status);
     });
@@ -367,7 +381,7 @@ const createControlGroupRequest = async (req) => {
                             wrap_info: wrapInfo
                         };
                         console.warn('Emit ', requestNotification, ' to ', groupName);
-                        notificationsManager.getInstance().in(groupName).emit('request', requestNotification);
+                        notificationsManager.getInstance().in(groupName).emit('create-request', requestNotification);
                         console.log(`Persisting to ${apiGroupUrl} with the key/value pair: ${chalk.bold.yellow(metaKey)} / ${chalk.bold.yellow(metaValue)}`);
                         request({
                             ...initApiRequest(apiToken, apiGroupUrl),
@@ -404,6 +418,7 @@ const deleteControlGroupRequest = async (req) => {
         const {entityId, path} = req.query;
         if (!path) {
             reject({message: 'Required input path not provided.'});
+            return;
         }
         const decodedPath = decodeURIComponent(path);
         const {domain, entityId: entityIdSelf} = req.session.user;
@@ -412,6 +427,7 @@ const deleteControlGroupRequest = async (req) => {
             const groups = await getGroupsByMetadata(req, key);
             if (groups.length === 0) {
                 reject({message: `No active requests found for ${decodedPath}.`, statusCode: 404});
+                return;
             }
             // If an entity id is provided, also have to check permissions by checking if the current user is in any of the groups.
             if (entityId) {
@@ -421,6 +437,7 @@ const deleteControlGroupRequest = async (req) => {
                 });
                 if (!isAuthorized) {
                     reject({message: 'Unauthorized', statusCode: 403});
+                    return;
                 }
             }
             await new Promise(resolve => {
@@ -440,8 +457,22 @@ const deleteControlGroupRequest = async (req) => {
             const {accessor} = JSON.parse(groups[0].data.metadata[key]);
             if (!accessor) {
                 reject({message: `No accessor found for ${decodedPath}.`, statusCode: 404});
+                return;
             }
             await revokeAccessor(req, accessor);
+            // If entity id provided, it means it was a request rejection.
+            if (entityId) {
+                // Notify the user of the request rejection.
+                console.warn(`Emit reject-request of accessor ${accessor} to ${entityId}.`);
+                notificationsManager.getInstance().to(entityId).emit('reject-request', accessor);
+            }
+            groups.forEach(group => {
+                const requestType = entityId ? 'reject-request' : 'cancel-request';
+                // Notify the group of the cancellation or rejection.
+                console.warn(`Emit ${requestType} of accessor ${accessor} to ${group.data.name}.`);
+                notificationsManager.getInstance().to(group.data.name).emit(requestType, accessor);
+            });
+
             finalResolve({
                 status: 'ok'
             });
