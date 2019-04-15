@@ -408,7 +408,7 @@ const deleteControlGroupRequest = async (req) => {
         const decodedPath = decodeURIComponent(path);
         const {domain, entityId: entityIdSelf} = req.session.user;
         try {
-            const key = _encodeMetaKey(entityId, decodedPath);
+            const key = _encodeMetaKey(entityId || entityIdSelf, decodedPath);
             const groups = await getGroupsByMetadata(req, key);
             if (groups.length === 0) {
                 reject({message: `No active requests found for ${decodedPath}.`, statusCode: 404});
