@@ -25,13 +25,13 @@ const _encodeMetaKey = (entityId, path) => {
 };
 
 /**
- * Retrieves the active Control Group requests from group metadata.
+ * Retrieves the current user's active Control Group requests from group metadata.
  *
  * @param {Object} req The HTTP request object.
- * @param {string} entityId The entity id.
  * @returns {Promise}
  */
-const getActiveRequestsByEntityId = async (req, entityId) => {
+const getSelfActiveRequests = async (req) => {
+    const {entityId} = req.session.user;
     const result = await new Promise((resolve, reject) => {
         const {REACT_APP_API_TOKEN: apiToken} = process.env;
         if (!apiToken) {
@@ -668,9 +668,8 @@ const router = require('express').Router()
      *         description: Success.
      */
     .get('/requests/self', async (req, res) => {
-        const {entityId} = req.session.user;
         try {
-            const activeRequests = await getActiveRequestsByEntityId(req, entityId);
+            const activeRequests = await getSelfActiveRequests(req);
             res.json(Object.keys(activeRequests).map(key => activeRequests[key]));
         } catch (err) {
             sendError(req.originalUrl, res, err);
@@ -769,7 +768,7 @@ module.exports = {
     checkControlGroupRequestStatus,
     createControlGroupRequest,
     deleteControlGroupRequest,
-    getActiveRequestsByEntityId,
+    getSelfActiveRequests,
     getControlGroupPaths,
     getControlGroupRequests,
     getGroupsByUser,

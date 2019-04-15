@@ -3,7 +3,8 @@ const {
     authorizeControlGroupRequest,
     createControlGroupRequest,
     deleteControlGroupRequest,
-    getControlGroupRequests
+    getControlGroupRequests,
+    getSelfActiveRequests
 } = require('services/routes/controlGroupService');
 const {
     createOrGetStandardRequest,
@@ -83,10 +84,11 @@ const router = require('express').Router()
         }
         if (controlGroupSupported === true) {
             try {
-                const controlGroupSelfRequests = await getControlGroupRequests(req);
+                const controlGroupSelfRequests = await getSelfActiveRequests(req);
                 requests = requests.concat(controlGroupSelfRequests);
             } catch (err) {
                 sendError(req.originalUrl, res, err);
+                return;
             }
         }
 
@@ -96,6 +98,7 @@ const router = require('express').Router()
             requests = requests.concat(standardSelfRequests);
         } catch (err) {
             sendError(req.originalUrl, res, err);
+            return;
         }
 
         res.json(requests);
