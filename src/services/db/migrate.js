@@ -23,21 +23,25 @@ const umzug = new Umzug({
         path: `${path.resolve(__dirname)}/migrations`,
         pattern: /\.js$/
     },
-
     logging: (...args) => {
+        /* eslint-disable no-console */
         console.log(args);
+        /* eslint-enable no-console */
     },
 });
 
-
+/**
+ * Gets the migration status.
+ *
+ * @return {Promise}.
+ * @private
+ */
 const _status = () => {
     let result = {};
 
     return umzug.executed()
         .then(executed => {
             result.executed = executed;
-            // return umzug.pending();
-            return umzug.pending();
         }).then(pending => {
             result.pending = pending;
             return result;
@@ -58,17 +62,29 @@ const _status = () => {
                 executed: executed.map(m => m.file),
                 pending: pending && pending.map(m => m.file),
             };
-
+            /* eslint-disable no-console */
             console.log(JSON.stringify(umugStatus, null, 2));
-
+            /* eslint-enable no-console */
             return {executed, pending};
         });
 };
 
+/**
+ * Executes migration process.
+ *
+ * @return {Promise}.
+ * @private
+ */
 const _migrate = () => {
     return umzug.up();
 };
 
+/**
+ * Executes the next migration in que.
+ *
+ * @return {Promise}.
+ * @private
+ */
 const _migrateNext = () => {
     return _status()
         .then(({pending}) => {
@@ -80,10 +96,22 @@ const _migrateNext = () => {
         });
 };
 
+/**
+ * Reverts the migration.
+ *
+ * @return {Promise}.
+ * @private
+ */
 const _reset = () => {
     return umzug.down({to: 0});
 };
 
+/**
+ * Reverts the previous migration.
+ *
+ * @return {Promise}.
+ * @private
+ */
 const _resetPrev = () => {
     return _status()
         .then(({executed}) => {
@@ -95,9 +123,16 @@ const _resetPrev = () => {
         });
 };
 
+/**
+ * Resets the migration.
+ *
+ * @return {Promise}.
+ * @private
+ */
 const _hardReset = () => {
     return new Promise((resolve, reject) => {
         setImmediate(() => {
+            /* eslint-disable no-console */
             try {
                 const {PAM_DATABASE, PAM_DATABASE_USER} = process.env;
                 console.log(`dropdb ${PAM_DATABASE}`);
@@ -106,17 +141,25 @@ const _hardReset = () => {
                 child_process.spawnSync(`createdb ${PAM_DATABASE} --username ${PAM_DATABASE_USER}`);
                 resolve();
             } catch (e) {
-                console.log(e);
+                console.error(e);
                 reject(e);
             }
+            /* eslint-enable no-console */
         });
     });
 };
 
+/**
+ * Executes migration process.
+ *
+ * @param {string} cmd The migration command.
+ * @private
+ */
 const migrate = (cmd) => {
     let executedCmd;
+    /* eslint-disable no-console */
     console.log(`${ cmd.toUpperCase() } BEGIN`);
-
+    /* eslint-enable no-console */
     switch (cmd) {
         case 'status':
             executedCmd = _status();
@@ -147,7 +190,9 @@ const migrate = (cmd) => {
             break;
 
         default:
+            /* eslint-disable no-console */
             console.log(`invalid cmd: ${cmd}`);
+            /* eslint-enable no-console */
             process.exit(1);
     }
 
@@ -155,15 +200,19 @@ const migrate = (cmd) => {
         executedCmd
             .then(() => {
                 const doneStr = `${ cmd.toUpperCase() } DONE`;
+                /* eslint-disable no-console */
                 console.log(doneStr);
                 console.log('='.repeat(doneStr.length));
+                /* eslint-enable no-console */
             })
             .catch(err => {
+                /* eslint-disable no-console */
                 const errorStr = `${ cmd.toUpperCase() } ERROR`;
                 console.log(errorStr);
                 console.log('='.repeat(errorStr.length));
                 console.log(err);
                 console.log('='.repeat(errorStr.length));
+                /* eslint-enable no-console */
             })
             .then(() => {
                 if (cmd !== 'status' && cmd !== 'reset-hard') {
