@@ -10,8 +10,6 @@ const express = require('express');
 const path = require('path');
 const hsts = require('hsts');
 
-const {getSessionMiddleware} = require('services/utils');
-
 // Import any environment variables.
 require('dotenv').config();
 
@@ -19,6 +17,7 @@ require('dotenv').config();
 require('app-module-path').addPath(path.join(__dirname));
 
 const {api, validate, login, logout, authenticatedRoutes} = require('services/routes');
+const {getSessionMiddleware} = require('services/utils');
 
 // Overcome the DEPTH_ZERO_SELF_SIGNED_CERT error.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
