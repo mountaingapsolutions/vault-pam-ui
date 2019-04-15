@@ -2,7 +2,7 @@
 const {toObject} = require('@mountaingapsolutions/objectutil');
 const chalk = require('chalk');
 const request = require('request');
-const {getActiveRequestsByEntityId, getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
+const {getSelfActiveRequests, getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
 const {initApiRequest, sendError, setSessionData} = require('services/utils');
 const RequestController = require('services/controllers/Request');
 /* eslint-disable new-cap */
@@ -40,7 +40,7 @@ const router = require('express').Router()
  */
     .get('/secrets/*', async (req, res) => {
         // Check for Control Group policies.
-        const {controlGroupPaths, entityId} = req.session.user;
+        const {controlGroupPaths} = req.session.user;
         if (!controlGroupPaths) {
             let paths = {};
             try {
@@ -63,8 +63,8 @@ const router = require('express').Router()
         const {domain, token} = req.session.user;
         const apiUrl = `${domain}/v1/${listUrlParts.join('/')}?list=true`;
 
-        // Get active Control Group requests.
-        const activeRequests = await getActiveRequestsByEntityId(req, entityId);
+        // Get current user's active Control Group requests.
+        const activeRequests = await getSelfActiveRequests(req);
 
         console.log(`Listing secrets from ${chalk.yellow.bold(apiUrl)}.`);
         // Get Secret Requests from Database

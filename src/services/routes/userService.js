@@ -46,7 +46,9 @@ const _initializeEntity = async (req, username, password) => {
         id,
         name: username
     });
+    /* eslint-disable no-console */
     console.log(`Updating entity ${id} with the name ${username}. Status code: ${saveUserResponse.statusCode}`);
+    /* eslint-enable no-console */
     return saveUserResponse;
 };
 
@@ -86,20 +88,24 @@ const _login = async (req, username, password) => {
  *
  * @param {Object} req The HTTP request object.
  * @param {string} [id] The entity id.
+ * @param {string} userType The user type.
  * @returns {Promise}
  */
-const getUser = async (req, id) => {
+const getUser = async (req, id, userType = null) => {
     return await new Promise((resolve, reject) => {
         const {REACT_APP_API_TOKEN: apiToken} = process.env;
         const {domain, entityId: sessionUserEntityId, token: sessionUserToken} = req.session.user;
         let apiRequest;
-        // If entity id is provided, use the session user token to handle proper permissions. Otherwise, use the admin token to fetch the session user data.
-        if (id) {
-            apiRequest = initApiRequest(sessionUserToken, `${domain}/v1/identity/entity/id/${id}`);
+        if (userType === 'admin' && id) {
+            apiRequest = initApiRequest(apiToken, `${domain}/v1/identity/entity/id/${id}`);
         } else {
-            apiRequest = initApiRequest(apiToken, `${domain}/v1/identity/entity/id/${sessionUserEntityId}`);
+            // If entity id is provided, use the session user token to handle proper permissions. Otherwise, use the admin token to fetch the session user data.
+            if (id) {
+                apiRequest = initApiRequest(sessionUserToken, `${domain}/v1/identity/entity/id/${id}`);
+            } else {
+                apiRequest = initApiRequest(apiToken, `${domain}/v1/identity/entity/id/${sessionUserEntityId}`);
+            }
         }
-
         request(apiRequest, (error, response) => {
             if (error) {
                 reject(error);
@@ -252,7 +258,9 @@ const deleteUserpass = async (req, name) => {
             if (error) {
                 reject(error);
             } else {
+                /* eslint-disable no-console */
                 console.log(`Deleted userpass ${apiUrl}.`);
+                /* eslint-enable no-console */
                 resolve(response);
             }
         });
@@ -466,7 +474,9 @@ const router = require('express').Router()
     .put('/', async (req, res) => {
         // Delete the id from the request body in case it's erroneously added.
         if (req.body.id) {
+            /* eslint-disable no-console */
             console.log(`Ignoring user id ${req.body.id} in user PUT request.`);
+            /* eslint-enable no-console */
             delete req.body.id;
         }
         try {
@@ -556,5 +566,6 @@ const router = require('express').Router()
     });
 
 module.exports = {
-    router
+    router,
+    getUser
 };

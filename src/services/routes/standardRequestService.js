@@ -1,9 +1,8 @@
 const RequestController = require('services/controllers/Request');
+const {getUser} = require('services/routes/userService');
+const requestLib = require('request');
 const {initApiRequest, sendEmail, sendError} = require('services/utils');
 const {getRequestEmailContent} = require('services/mail/templates');
-const requestLib = require('request');
-const UserController = require('services/controllers/User');
-
 /**
  * @swagger
  * definitions:
@@ -45,25 +44,29 @@ const _getApproverGroupMemberEmails = async (req) => {
         requestLib(initApiRequest(apiToken, `${domain}/v1/identity/group/name/${groupName}`), (error, response, body) => {
             if (body && body.data) {
                 const member_entity_ids = body.data.member_entity_ids;
-                const {type} = body.data.metadata;
-                if (type === 'admin' && member_entity_ids) {
-                    Promise.all(member_entity_ids.map(entityId => {
+                const {type: userType} = body.data.metadata;
+                if (userType === 'admin' && member_entity_ids) {
+                    Promise.all(member_entity_ids.map(id => {
                         return new Promise((memberResolve, memberReject) => {
-                            UserController.findByEntityId(entityId).then(user => {
-                                if (user) {
-                                    const userData = user.dataValues;
-                                    const {email} = userData;
+                            // get user from getUser
+                            getUser(req, id, userType).then(user => {
+                                if (user && user.body.data && user.body.data.metadata) {
+                                    const {email} = user.body.data.metadata;
                                     groupMembersEmail.push(email);
                                     memberResolve();
                                 } else {
-                                    memberReject();
+                                    /* eslint-disable no-console */
+                                    console.warn(`User information not found. Entity ID: ${id}`);
+                                    /* eslint-enable no-console */
                                 }
+                            }).catch(err => {
+                                memberReject(err);
                             });
                         });
                     })).then(() => {
                         resolve(groupMembersEmail);
                     }).catch((err) => {
-                        console.error(err);
+                        reject(err);
                     });
                 }
             }
@@ -105,6 +108,12 @@ const _isApprover = async (req, entityId) => {
     });
 };
 
+/**
+ * Creates standard requests.
+ *
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
 const createStandardRequest = (req) => {
     return new Promise( (resolve, reject) => {
         const {requestData, type, status, engineType} = req.body;
@@ -117,6 +126,12 @@ const createStandardRequest = (req) => {
     });
 };
 
+/**
+ * Create or get standard requests.
+ *
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
 const createOrGetStandardRequest = (req) => {
     const {requestData, type, status, engineType} = req.body;
     const {domain, entityId: requesterEntityId} = req.session.user;
@@ -125,17 +140,22 @@ const createOrGetStandardRequest = (req) => {
             // if a new request, send email to approvers
             if (request._options.isNewRecord === true) {
                 _getApproverGroupMemberEmails(req).then((approvers) => {
-                    const emailData = {
-                        domain,
-                        requesterEntityId,
-                        requestData,
-                        type,
-                        status,
-                        engineType,
-                        approvers
-                    };
-                    const emailContents = getRequestEmailContent(emailData);
-                    sendEmail(approvers, emailContents.subject, emailContents.body);
+                    getUser(req, requesterEntityId, 'admin').then(requesterData => {
+                        if (requesterData && requesterData.body && requesterData.body.data) {
+                            const {data: requester} = requesterData.body;
+                            const emailData = {
+                                domain,
+                                requester,
+                                requestData,
+                                type,
+                                status,
+                                engineType,
+                                approvers
+                            };
+                            const emailContents = getRequestEmailContent(emailData);
+                            sendEmail(approvers, emailContents.subject, emailContents.body);
+                        }
+                    });
                 });
             }
             resolve(request);
@@ -145,6 +165,12 @@ const createOrGetStandardRequest = (req) => {
     });
 };
 
+/**
+ * Get standard requests by approver.
+ *
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
 const getStandardRequestsByApprover = (req) => {
     const {entityId} = req.session.user;
     return new Promise( (resolve, reject) => {
@@ -176,6 +202,12 @@ const getStandardRequests = () => {
     });
 };
 
+/**
+ * Get standard requests by requester.
+ *
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
 const getStandardRequestsByRequester = (req) => {
     const {entityId} = req.session.user;
     return new Promise( (resolve, reject) => {
@@ -197,6 +229,12 @@ const updateStandardRequestById = async (id, status) => {
     });
 };
 
+/**
+ * Updates standard requests by approver.
+ *
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
 const updateStandardRequestByApprover = async (req) => {
     const {id, status} = req.body;
     const {entityId: approverEntityId} = req.session.user;
@@ -221,10 +259,6 @@ const updateStandardRequestByApprover = async (req) => {
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
-    .use((req, res, next) => {
-        console.log('Request service was called: ', Date.now());
-        next();
-    })
     /**
      * @swagger
      * /rest/request:
