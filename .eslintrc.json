@@ -85,6 +85,7 @@
     "plugins": [
       "react"
     ],
+    "prefer-arrow-callback": 2,
     "quotes": ["error", "single"],
     "radix": ["error", "always"],
     "react/jsx-sort-props": ["error", {

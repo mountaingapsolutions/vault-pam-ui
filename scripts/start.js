@@ -131,8 +131,8 @@ checkBrowsers(paths.appPath, isInteractive)
             return null;
         });
 
-        ['SIGINT', 'SIGTERM'].forEach(function (sig) {
-            process.on(sig, function () {
+        ['SIGINT', 'SIGTERM'].forEach((sig) => {
+            process.on(sig, () => {
                 devServer.close();
                 process.exit();
             });
