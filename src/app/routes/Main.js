@@ -161,7 +161,7 @@ class Main extends Component {
             const isFirstTimeLogin = ['firstName', 'lastName', 'email'].some((field) => !metadata[field]);
             if (isFirstTimeLogin) {
                 this.setState({
-                    firstTimeLoginMessage: 'This appears to be your first time logging into Vault PAM UI. Please complete your user profile to continue.',
+                    firstTimeLoginMessage: 'This appears to be your first time logging into Vault PAM UI. Please complete your user profile to continue. Updating your initial password is optional, although highly encouraged.',
                     isUserProfileModalOpen: true
                 });
             }
@@ -306,7 +306,12 @@ class Main extends Component {
                 closeable={!firstTimeLoginMessage}
                 message={firstTimeLoginMessage}
                 open={isUserProfileModalOpen}
-                onClose={() => this._closeModal('isUserProfileModalOpen')}/>
+                onClose={() => {
+                    this.setState({
+                        firstTimeLoginMessage: ''
+                    });
+                    this._closeModal('isUserProfileModalOpen');
+                }}/>
             <NotificationsModal open={!!notificationAnchorElement} onClose={() => this.setState({
                 notificationAnchorElement: null
             })}/>
