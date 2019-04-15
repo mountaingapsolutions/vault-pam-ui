@@ -11,7 +11,7 @@ const {getSessionMiddleware} = require('services/utils');
  */
 const _generateId = (req) => {
     const generatedId = base64id.generateId();
-    const entityId = cookie.parse(req.headers.cookie).entity_id;
+    const entityId = cookie.parse(req.headers.cookie || '').entity_id;
     if (!entityId) {
         console.warn(`No entity id found in session. Returning generated id ${generatedId}.`);
     }
