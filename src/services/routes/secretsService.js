@@ -38,7 +38,7 @@ const router = require('express').Router()
  *       404:
  *         description: Not found.
  */
-    .get('/*', async (req, res) => {
+    .get('/secrets/*', async (req, res) => {
         // Check for Control Group policies.
         const {controlGroupPaths, entityId} = req.session.user;
         if (!controlGroupPaths) {
@@ -160,6 +160,25 @@ const router = require('express').Router()
             } catch (err) {
                 sendError(url, res, err);
             }
+        });
+    })
+    .get('/secret/*', async (req, res) => {
+        const {REACT_APP_API_TOKEN: apiToken} = process.env;
+        const {params = {}, query} = req;
+        const urlParts = (params[0] || '').split('/').filter(path => !!path);
+        const listUrlParts = [...urlParts];
+        const isV2 = String(query.version) === '2';
+        if (isV2) {
+            listUrlParts.splice(1, 0, 'metadata');
+        }
+        const {domain} = req.session.user;
+        const apiUrl = `${domain}/v1/${listUrlParts.join('/')}`;
+        request(initApiRequest(apiToken, apiUrl), (error, response, body) => {
+            if (error) {
+                sendError(error, response, body);
+                return;
+            }
+            res.json({...body});
         });
     });
 

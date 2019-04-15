@@ -345,7 +345,6 @@ class SecretsList extends Component {
                     const mountPath = `${mount}/${currentPath}`;
                     const url = `/secrets/${mountPath}`;
                     const isWrapped = !!wrapInfo;
-                    const canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped;
                     const canUpdate = capabilities.some(capability => capability === 'update' || capability === 'root');
                     const requiresRequest = capabilities.includes('deny') && !name.endsWith('/') || isWrapped;
                     const {request_info: requestInfo = {}} = data;
@@ -354,6 +353,7 @@ class SecretsList extends Component {
                     const canDelete = capabilities.includes('delete');
                     const {databaseRequestData} = secret;
                     const isPathInDB = databaseRequestData && !isApprover || false;
+                    let canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped;
                     let isOwnRequest = false;
                     let isPendingInDatabase = false;
                     let requestStatus = null;
@@ -364,6 +364,7 @@ class SecretsList extends Component {
                         isPendingInDatabase = isOwnRequest ? status !== Constants.REQUEST_STATUS.APPROVED : true;
                         requestStatus = status;
                         databaseRequestTime = calendarUtil.dateFormat(createdAt);
+                        canOpen = !isPendingInDatabase;
                     }
                     const creationTime = isPathInDB ? databaseRequestTime : data.request_info && isWrapped ? new Date(wrapInfo.creation_time) : null;
                     const standardRequest = isPathInDB ? `${!isOwnRequest ? Constants.REQUEST_STATUS.LOCKED : requestStatus} Request type: Standard Request` : null;
