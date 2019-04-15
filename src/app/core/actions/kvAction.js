@@ -32,11 +32,13 @@ class KvAction extends _Actions {
      * Authorizes a secrets request.
      *
      * @param {string} accessor The request accessor value.
+     * @param {string} id The request id in database.
      * @returns {function} Redux dispatch function.
      */
-    authorizeRequest(accessor) {
+    authorizeRequest(accessor, id) {
         return this._dispatchPost(this.ACTION_TYPES.AUTHORIZE_REQUEST, '/rest/requests/request/authorize', {
-            accessor
+            accessor,
+            id
         });
     }
 

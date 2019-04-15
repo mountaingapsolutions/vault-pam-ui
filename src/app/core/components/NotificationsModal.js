@@ -83,7 +83,7 @@ class NotificationsModal extends Component {
                         secretsRequests.length > 0 ?
                             secretsRequests.map(requestData => {
                                 const {data = {}, request_id: requestId} = requestData.request_info;
-                                const {accessor, creation_time: creationTime} = requestData.wrap_info;
+                                const {accessor, creation_time: creationTime} = requestData.wrap_info || requestData.request_info;
                                 const {authorizations, request_entity: requestEntity, request_path: requestPath} = data;
                                 const {id: entityId, name: entityName} = requestEntity || {};
                                 const requestType = requestData.wrap_info ? 'Control Groups' : 'Standard Request';
@@ -131,7 +131,7 @@ class NotificationsModal extends Component {
                                                         <IconButton
                                                             color='primary'
                                                             disabled={alreadyAuthorizedBySelf}
-                                                            onClick={() => authorizeRequest(accessor)}>
+                                                            onClick={() => authorizeRequest(accessor, requestId)}>
                                                             <CheckIcon/>
                                                         </IconButton>
                                                     </Tooltip>
@@ -224,9 +224,9 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        authorizeRequest: (path, entityId) => {
+        authorizeRequest: (path, entityId, requestId) => {
             return new Promise((resolve, reject) => {
-                dispatch(kvAction.authorizeRequest(path, entityId))
+                dispatch(kvAction.authorizeRequest(path, entityId, requestId))
                     .then(() => {
                         dispatch(kvAction.listRequests())
                             .then(resolve)
@@ -235,9 +235,9 @@ const _mapDispatchToProps = (dispatch) => {
                     .catch(reject);
             });
         },
-        rejectRequest: (path, entityId) => {
+        rejectRequest: (path, entityId, requestId) => {
             return new Promise((resolve, reject) => {
-                dispatch(kvAction.deleteRequest(path, entityId))
+                dispatch(kvAction.deleteRequest(path, entityId, requestId))
                     .then(() => {
                         dispatch(kvAction.listRequests())
                             .then(resolve)

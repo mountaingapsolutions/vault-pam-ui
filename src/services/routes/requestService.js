@@ -7,11 +7,13 @@ const {
 } = require('services/routes/controlGroupService');
 const {
     createOrGetStandardRequest,
-    getStandardRequestsByApprover,
     getStandardRequestsByRequester,
-    updateStandardRequestByApprover
+    getStandardRequestsByStatus,
+    updateStandardRequestByApprover,
+    updateStandardRequestById
 } = require('services/routes/standardRequestService');
 const {checkControlGroupSupport, sendError} = require('services/utils');
+const {REQUEST_STATUS} = require('services/constants');
 
 /* eslint-disable new-cap */
 const router = require('express').Router()
@@ -46,15 +48,15 @@ const router = require('express').Router()
                 sendError(req.originalUrl, res, err);
                 return;
             }
-        }
-
-        // TODO Check if server supports standard requests
-        try {
-            const standardRequests = await getStandardRequestsByApprover(req);
-            requests = requests.concat(standardRequests);
-        } catch (err) {
-            sendError(req.originalUrl, res, err);
-            return;
+        } else {
+            // TODO Check if server supports standard requests
+            try {
+                const standardRequests = await getStandardRequestsByStatus(REQUEST_STATUS.PENDING);
+                requests = requests.concat(standardRequests);
+            } catch (err) {
+                sendError(req.originalUrl, res, err);
+                return;
+            }
         }
 
         res.json(requests);
@@ -148,7 +150,7 @@ const router = require('express').Router()
                 result = await deleteControlGroupRequest(req);
 
             } else if (id) {
-                req.body.status = 'CANCELED';
+                req.body.status = REQUEST_STATUS.CANCELED;
                 result = await updateStandardRequestByApprover(req);
 
             }
@@ -258,8 +260,8 @@ const router = require('express').Router()
             if (controlGroupSupported === true && accessor) {
                 result = await authorizeControlGroupRequest(req);
             } else if (id) {
-                req.body.status = 'APPROVED';
-                result = await updateStandardRequestByApprover(req);
+                req.body.status = REQUEST_STATUS.APPROVED;
+                result = await updateStandardRequestById(id, REQUEST_STATUS.APPROVED);
             }
         } catch (err) {
             sendError(req.originalUrl, res, err.message, err.statusCode);

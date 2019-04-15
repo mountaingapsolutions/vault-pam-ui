@@ -156,10 +156,40 @@ const getStandardRequestsByApprover = (req) => {
     });
 };
 
+const getStandardRequestsByStatus = (status) => {
+    return new Promise( (resolve, reject) => {
+        RequestController.findAllByStatus(status).then(requests => {
+            resolve(requests);
+        }).catch((error) => {
+            reject(error);
+        });
+    });
+};
+
+const getStandardRequests = () => {
+    return new Promise( (resolve, reject) => {
+        RequestController.findAll().then(requests => {
+            resolve(requests);
+        }).catch((error) => {
+            reject(error);
+        });
+    });
+};
+
 const getStandardRequestsByRequester = (req) => {
     const {entityId} = req.session.user;
     return new Promise( (resolve, reject) => {
         RequestController.findAllByRequester(entityId).then(requests => {
+            resolve(requests);
+        }).catch((error) => {
+            reject(error);
+        });
+    });
+};
+
+const updateStandardRequestById = async (id, status) => {
+    return new Promise( (resolve, reject) => {
+        RequestController.updateStatus(id, status).then(requests => {
             resolve(requests);
         }).catch((error) => {
             reject(error);
@@ -417,7 +447,10 @@ module.exports = {
     createStandardRequest,
     createOrGetStandardRequest,
     router,
+    getStandardRequests,
     getStandardRequestsByApprover,
     getStandardRequestsByRequester,
-    updateStandardRequestByApprover
+    getStandardRequestsByStatus,
+    updateStandardRequestByApprover,
+    updateStandardRequestById
 };
