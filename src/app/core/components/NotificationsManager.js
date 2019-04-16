@@ -11,6 +11,7 @@ import Constants from 'app/util/Constants';
  * Notifications manager class. Note: this is a renderless component (https://kyleshevlin.com/renderless-components).
  */
 class NotificationsManager extends Component {
+
     /**
      * The constructor method. Executed upon class instantiation.
      *
@@ -24,12 +25,12 @@ class NotificationsManager extends Component {
     }
 
     /**
-     * Required React Component lifecycle method. Invoked once, only on the client (not on the server), immediately after the initial rendering occurs.
+     * Establishes a socket.io connection.
      *
-     * @protected
-     * @override
+     * @private
+     * @returns {Object}
      */
-    componentDidMount() {
+    _connect() {
         const {approveRequestData, createRequestData, removeRequestData} = this.props;
         const {protocol, host} = window.location;
         const socket = io(`${protocol}//${host}`, {
@@ -41,6 +42,26 @@ class NotificationsManager extends Component {
             socket.on(Constants.NOTIFICATION_EVENTS.REQUEST.CREATE, (data) => createRequestData(data));
             socket.on(Constants.NOTIFICATION_EVENTS.REQUEST.REJECT, (data) => removeRequestData(data));
             socket.on(Constants.NOTIFICATION_EVENTS.REQUEST.CANCEL, (data) => removeRequestData(data));
+            socket.on(Constants.NOTIFICATION_EVENTS.REQUEST.READ_APPROVED, (data) => removeRequestData(data));
+        });
+        return socket;
+    }
+
+    /**
+     * Required React Component lifecycle method. Invoked once, only on the client (not on the server), immediately after the initial rendering occurs.
+     *
+     * @protected
+     * @override
+     */
+    componentDidMount() {
+        const socket = this._connect();
+        socket.on('disconnect', () => {
+            console.info('Disconnected. Attempt to reconnect in 3 seconds...');
+            socket.disconnect();
+            setTimeout(() => {
+                console.info('Connecting again...');
+                this._connect();
+            }, 3000);
         });
     }
 

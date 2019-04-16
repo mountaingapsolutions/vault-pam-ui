@@ -163,7 +163,7 @@ const router = require('express').Router()
     })
     /**
      * @swagger
-     * /rest/requests/request:
+     * /rest/request:
      *   post:
      *     tags:
      *       - Requests
@@ -221,10 +221,10 @@ const router = require('express').Router()
     })
     /**
      * @swagger
-     * /rest/control-group/request/authorize:
+     * /rest/request/authorize:
      *   post:
      *     tags:
-     *       - Control-Group
+     *       - Requests
      *     summary: Authorizes a Control Group request.
      *     requestBody:
      *       required: true

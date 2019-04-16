@@ -25,6 +25,7 @@ class Constants {
                 APPROVE: 'approve-request',
                 CANCEL: 'cancel-request',
                 CREATE: 'create-request',
+                READ_APPROVED: 'read-approved-request',
                 REJECT: 'reject-request',
             }
         };

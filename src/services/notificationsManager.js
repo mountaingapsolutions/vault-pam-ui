@@ -11,7 +11,7 @@ const {getSessionMiddleware} = require('services/utils');
  * @returns {string}
  */
 const _generateId = (req) => {
-    const generatedId = base64id.generateId();
+    const generatedId = `generated-${base64id.generateId()}`;
     const entityId = cookie.parse(req.headers.cookie || '').entity_id;
     if (!entityId) {
         console.warn(chalk.bold.red(`No entity id found in session. Returning generated id ${generatedId}.`));
@@ -35,13 +35,13 @@ const start = (server) => {
         .use((socket, next) => {
             getSessionMiddleware(socket.request, socket.request.res, next);
         })
-        .on('connection', async (socket) => {
+        .on('connection', (socket) => {
             console.log('User connected: ', socket.id);
             socket.on('disconnect', () => {
                 console.log('User disconnected ', socket.id);
             });
 
-            if (socket.request.session.user) {
+            if (socket.request.session.user && !socket.id.startsWith('generated')) {
                 const {entityId, groups = []} = socket.request.session.user;
                 if (groups.length === 0) {
                     console.info(`${entityId} is not in an assigned group.`);
@@ -50,6 +50,9 @@ const start = (server) => {
                     console.log(`Joining ${entityId} to ${group}.`);
                     socket.join(group);
                 });
+            } else {
+                console.log(chalk.bold.red('No session user found: '), socket.request.session, chalk.bold.red(' ...disconnecting...'));
+                socket.disconnect();
             }
         });
 };
