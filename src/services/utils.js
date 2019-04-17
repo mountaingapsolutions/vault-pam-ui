@@ -6,7 +6,6 @@ const request = require('request');
 const {filter} = require('@mountaingapsolutions/objectutil');
 
 const getSessionMiddleware = session({
-    key: 'entity_id',
     secret: process.env.SESSION_SECRET || 'correct horse battery staple',
     resave: false,
     saveUninitialized: false,

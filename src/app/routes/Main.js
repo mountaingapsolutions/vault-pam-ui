@@ -27,7 +27,10 @@ import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
 import ListIcon from '@material-ui/icons/List';
 import LockOpenIcon from '@material-ui/icons/LockOpen';
 import NotificationsIcon from '@material-ui/icons/Notifications';
+import PowerSettingsNewIcon from '@material-ui/icons/PowerSettingsNew';
+import SettingsIcon from '@material-ui/icons/Settings';
 import {safeWrap, unwrap} from '@mountaingapsolutions/objectutil';
+import md5 from 'md5';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
@@ -64,7 +67,8 @@ class Main extends Component {
             firstTimeLoginMessage: null,
             isUserProfileModalOpen: false,
             notificationAnchorElement: null,
-            showRootWarning: false
+            showRootWarning: false,
+            useDefaultImage: false
         };
         this._closeModal = this._closeModal.bind(this);
         this._onClose = this._onClose.bind(this);
@@ -141,6 +145,27 @@ class Main extends Component {
     }
 
     /**
+     * Renders the profile image element.
+     *
+     * @private
+     * @param {string} [className] Optional class name.
+     * @returns {Element}
+     */
+    _renderProfileIcon(className = '') {
+        const {user} = this.props;
+        const email = unwrap(safeWrap(user).data.metadata.email);
+        const {useDefaultImage} = this.state;
+        if (useDefaultImage || !email) {
+            return <AccountCircle className={className}/>;
+        }
+        return <img alt='profile' className={className} src={`//www.gravatar.com/avatar/${md5(email.trim().toLowerCase())}?s=24&d=404`} onError={() => {
+            this.setState({
+                useDefaultImage: true
+            });
+        }}/>;
+    }
+
+    /**
      * Required React Component lifecycle method. Invoked once, only on the client (not on the server), immediately after the initial rendering occurs.
      *
      * @protected
@@ -161,7 +186,7 @@ class Main extends Component {
             const isFirstTimeLogin = ['firstName', 'lastName', 'email'].some((field) => !metadata[field]);
             if (isFirstTimeLogin) {
                 this.setState({
-                    firstTimeLoginMessage: 'This appears to be your first time logging into Vault PAM UI. Please complete your user profile to continue.',
+                    firstTimeLoginMessage: 'This appears to be your first time logging into Vault PAM UI. Please complete your user profile to continue. Updating your initial password is optional, although highly encouraged.',
                     isUserProfileModalOpen: true
                 });
             }
@@ -235,7 +260,7 @@ class Main extends Component {
                             aria-owns={accountAnchorElement ? 'material-appbar' : undefined}
                             color='inherit'
                             onClick={this._toggleAccountMenu}>
-                            <AccountCircle/>
+                            {this._renderProfileIcon()}
                         </IconButton>
                         <Menu
                             disableAutoFocusItem
@@ -243,17 +268,16 @@ class Main extends Component {
                             open={!!accountAnchorElement}
                             onClose={this._toggleAccountMenu}>
                             <MenuItem disabled>
-                                <AccountCircle className={classes.marginRight}/>
+                                {this._renderProfileIcon(classes.marginRight)}
                                 {unwrap(safeWrap(user).data.name)}
                             </MenuItem>
                             <MenuItem selected={false} onClick={() => this._openModal('isUserProfileModalOpen')}>
-                                <img
-                                    className={classes.marginRight}
-                                    src='/assets/settings-icon.svg'
-                                    width='20'/> Profile
+                                <SettingsIcon className={classes.marginRight}/>
+                                Profile
                             </MenuItem>
                             <MenuItem onClick={logout}>
-                                <img className={classes.marginRight} src='/assets/logout-icon.svg' width='20'/> Log Out
+                                <PowerSettingsNewIcon className={classes.marginRight}/>
+                                Log Out
                             </MenuItem>
                         </Menu>
                     </div>
@@ -306,7 +330,12 @@ class Main extends Component {
                 closeable={!firstTimeLoginMessage}
                 message={firstTimeLoginMessage}
                 open={isUserProfileModalOpen}
-                onClose={() => this._closeModal('isUserProfileModalOpen')}/>
+                onClose={() => {
+                    this.setState({
+                        firstTimeLoginMessage: ''
+                    });
+                    this._closeModal('isUserProfileModalOpen');
+                }}/>
             <NotificationsModal open={!!notificationAnchorElement} onClose={() => this.setState({
                 notificationAnchorElement: null
             })}/>

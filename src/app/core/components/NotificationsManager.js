@@ -5,11 +5,13 @@ import {withRouter} from 'react-router-dom';
 import io from 'socket.io-client';
 
 import kvAction from 'app/core/actions/kvAction';
+import Constants from 'app/util/Constants';
 
 /**
  * Notifications manager class. Note: this is a renderless component (https://kyleshevlin.com/renderless-components).
  */
 class NotificationsManager extends Component {
+
     /**
      * The constructor method. Executed upon class instantiation.
      *
@@ -23,20 +25,43 @@ class NotificationsManager extends Component {
     }
 
     /**
+     * Establishes a socket.io connection.
+     *
+     * @private
+     * @returns {Object}
+     */
+    _connect() {
+        const {approveRequestData, createRequestData, removeRequestData} = this.props;
+        const {protocol, host} = window.location;
+        const socket = io(`${protocol}//${host}`, {
+            path: '/notifications'
+        });
+        socket.on('connect', () => {
+            console.info('Connected ', socket);
+            socket.on(Constants.NOTIFICATION_EVENTS.REQUEST.APPROVE, (data) => approveRequestData(data));
+            socket.on(Constants.NOTIFICATION_EVENTS.REQUEST.CREATE, (data) => createRequestData(data));
+            socket.on(Constants.NOTIFICATION_EVENTS.REQUEST.REJECT, (data) => removeRequestData(data));
+            socket.on(Constants.NOTIFICATION_EVENTS.REQUEST.CANCEL, (data) => removeRequestData(data));
+            socket.on(Constants.NOTIFICATION_EVENTS.REQUEST.READ_APPROVED, (data) => removeRequestData(data));
+        });
+        return socket;
+    }
+
+    /**
      * Required React Component lifecycle method. Invoked once, only on the client (not on the server), immediately after the initial rendering occurs.
      *
      * @protected
      * @override
      */
     componentDidMount() {
-        const {updateRequest} = this.props;
-        const {protocol, host} = window.location;
-        const socket = io(`${protocol}//${host}`, {
-            path: '/notifications'
-        });
-        socket.on('connect', () => {
-            console.info('Connected');
-            socket.on('request', (data) => updateRequest(data));
+        const socket = this._connect();
+        socket.on('disconnect', () => {
+            console.info('Disconnected. Attempt to reconnect in 3 seconds...');
+            socket.disconnect();
+            setTimeout(() => {
+                console.info('Connecting again...');
+                this._connect();
+            }, 3000);
         });
     }
 
@@ -53,7 +78,9 @@ class NotificationsManager extends Component {
 }
 
 NotificationsManager.propTypes = {
-    updateRequest: PropTypes.func.isRequired,
+    approveRequestData: PropTypes.func.isRequired,
+    createRequestData: PropTypes.func.isRequired,
+    removeRequestData: PropTypes.func.isRequired
 };
 
 /**
@@ -74,13 +101,13 @@ const _mapStateToProps = (state) => {
  *
  * @private
  * @param {function} dispatch Redux dispatch function.
- * @param {Object} ownProps The own component props.
  * @returns {Object}
  */
-const _mapDispatchToProps = (dispatch, ownProps) => {
-    console.log('TODO - ', ownProps);
+const _mapDispatchToProps = (dispatch) => {
     return {
-        updateRequest: (requestData) => dispatch(kvAction.updateRequest(requestData))
+        approveRequestData: (requestData) => dispatch(kvAction.approveRequestData(requestData)),
+        createRequestData: (requestData) => dispatch(kvAction.createRequestData(requestData)),
+        removeRequestData: (accessor) => dispatch(kvAction.removeRequestData(accessor))
     };
 };
 

@@ -12,7 +12,9 @@ class KvAction extends _Actions {
      */
     constructor() {
         super('KvAction', {
+            APPROVE_REQUEST_DATA: 'APPROVE_REQUEST_DATA',
             AUTHORIZE_REQUEST: 'AUTHORIZE_REQUEST',
+            CREATE_REQUEST_DATA: 'CREATE_REQUEST_DATA',
             DELETE_REQUEST: 'DELETE_REQUEST',
             DELETE_SECRETS: 'DELETE_SECRETS',
             GET_SECRETS: 'GET_SECRETS',
@@ -21,10 +23,10 @@ class KvAction extends _Actions {
             LIST_SECRETS_AND_CAPABILITIES: 'LIST_SECRETS_AND_CAPABILITIES',
             LIST_REQUESTS: 'LIST_REQUESTS',
             REJECT_REQUEST: 'REJECT_REQUEST',
+            REMOVE_REQUEST_DATA: 'REMOVE_REQUEST_DATA',
             REQUEST_SECRET: 'REQUEST_SECRET',
             SAVE_SECRET: 'SAVE_SECRET',
-            UNWRAP_SECRET: 'UNWRAP_SECRET',
-            UPDATE_REQUEST: 'UPDATE_REQUEST'
+            UNWRAP_SECRET: 'UNWRAP_SECRET'
         });
     }
 
@@ -146,13 +148,33 @@ class KvAction extends _Actions {
     }
 
     /**
-     * Update the request in the client data model.
+     * Removes the request data in the client data model.
+     *
+     * @param {string} accessor The accessor data to remove.
+     * @returns {function} Redux dispatch function.
+     */
+    removeRequestData(accessor) {
+        return this._createResourceData(this.ACTION_TYPES.REMOVE_REQUEST_DATA, undefined, accessor, false);
+    }
+
+    /**
+     * Approve/update the request in the client data model.
      *
      * @param {Object} data The request data to update.
      * @returns {function} Redux dispatch function.
      */
-    updateRequest(data) {
-        return this._createResourceData(this.ACTION_TYPES.UPDATE_REQUEST, undefined, data, false);
+    approveRequestData(data) {
+        return this._createResourceData(this.ACTION_TYPES.APPROVE_REQUEST_DATA, undefined, data, false);
+    }
+
+    /**
+     * Create/update the request in the client data model.
+     *
+     * @param {Object} data The request data to update.
+     * @returns {function} Redux dispatch function.
+     */
+    createRequestData(data) {
+        return this._createResourceData(this.ACTION_TYPES.CREATE_REQUEST_DATA, undefined, data, false);
     }
 
     /**
@@ -163,23 +185,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     unwrapSecret(name, token) {
-        // return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/api/v1/sys/wrapping/unwrap', {
-        //     token
-        // }, null, (responseData) => {
-        //     // Inject the name into the response data.
-        //     const {data, inProgress} = responseData;
-        //     if (data && !inProgress) {
-        //         return {
-        //             ...responseData,
-        //             data: {
-        //                 name,
-        //                 data
-        //             }
-        //         };
-        //     }
-        //     return responseData;
-        // });
-        return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/api/v1/sys/wrapping/unwrap', {
+        return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/control-group/request/unwrap', {
             token
         });
     }

@@ -66,7 +66,7 @@ class SessionAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     validateToken() {
-        return this._dispatchGet(this.ACTION_TYPES.VALIDATE_TOKEN, '/api/v1/auth/token/lookup-self');
+        return this._dispatchGet(this.ACTION_TYPES.VALIDATE_TOKEN, '/rest/session');
     }
 }
 
