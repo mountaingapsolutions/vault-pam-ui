@@ -10,7 +10,7 @@ import {
     Paper,
     Typography
 } from '@material-ui/core';
-import Button from 'app/core/components/common/Button';
+import Button from 'app/core/components/Button';
 import {withStyles} from '@material-ui/core/styles/index';
 
 /**
