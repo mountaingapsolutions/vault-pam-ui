@@ -130,18 +130,17 @@ const router = require('express').Router()
      *     parameters:
      *       - name: path
      *         in: query
-     *         required: true,
-     *         description: The path of the request to delete.
+     *         description: The path of the control group request to delete.
      *         schema:
      *           type: string
      *       - name: entityId
      *         in: query
-     *         description: Optional entity id of the request to delete. If not provided, will default to the session user's entity id.
+     *         description: Entity id of the control group request to delete. If not provided, will default to the session user's entity id.
      *         schema:
      *           type: string
      *       - name: id
-     *         in: body
-     *         description: standard request id to delete
+     *         in: query
+     *         description: Id of the standard request to delete
      *         schema:
      *           type: string
      *     responses:
@@ -232,7 +231,7 @@ const router = require('express').Router()
      *   post:
      *     tags:
      *       - Requests
-     *     summary: Authorizes a Control Group request.
+     *     summary: Authorizes a request.
      *     requestBody:
      *       required: true
      *       content:
