@@ -122,6 +122,13 @@ checkBrowsers(paths.appPath, isInteractive)
                     // DB migrations
                     // const {migrate} = require('services/db/migrate');
                     // migrate('up');
+
+                    try {
+                        require('vault-pam-premium').validate();
+                        console.log(chalk.bold.green('Premium features available.'));
+                    } catch (packageError) {
+                        console.log(chalk.bold.red('Premium features unavailable.'));
+                    }
                 })
                 .catch((error) => {
                     console.error(error);
