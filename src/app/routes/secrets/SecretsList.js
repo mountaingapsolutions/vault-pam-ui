@@ -25,7 +25,6 @@ import ListIcon from '@material-ui/icons/List';
 import LockIcon from '@material-ui/icons/Lock';
 import LockOpenIcon from '@material-ui/icons/LockOpen';
 import {Breadcrumbs} from '@material-ui/lab';
-import {safeWrap, unwrap} from '@mountaingapsolutions/objectutil';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
@@ -33,7 +32,6 @@ import {Link, withRouter} from 'react-router-dom';
 
 import kvAction from 'app/core/actions/kvAction';
 import Button from 'app/core/components/Button';
-import ListModal from 'app/core/components/ListModal';
 import CreateUpdateSecretModal from 'app/core/components/CreateUpdateSecretModal';
 import ConfirmationModal from 'app/core/components/ConfirmationModal';
 import SnackbarContent from 'app/core/components/SnackbarContent';
@@ -62,13 +60,10 @@ class SecretsList extends Component {
             secretModalInitialPath: '',
             secretModalMode: '',
             showConfirmationModal: false,
-            isListModalOpen: false
         };
 
         this._onBack = this._onBack.bind(this);
         this._onCreateUpdateSecretModalClose = this._onCreateUpdateSecretModalClose.bind(this);
-        this._openListModal = this._openListModal.bind(this);
-        this._closeListModal = this._closeListModal.bind(this);
     }
 
     /**
@@ -203,30 +198,6 @@ class SecretsList extends Component {
                     });
                 }
             }
-        });
-    }
-
-    /**
-     * Handle for Notification click is triggered.
-     *
-     * @private
-     * @param {SyntheticMouseEvent} event The event.
-     */
-    _openListModal() {
-        this.setState({
-            isListModalOpen: true
-        });
-    }
-
-    /**
-     * Handle for when list modal close button is triggered.
-     *
-     * @private
-     * @param {SyntheticMouseEvent} event The event.
-     */
-    _closeListModal() {
-        this.setState({
-            isListModalOpen: false
         });
     }
 
@@ -491,14 +462,6 @@ class SecretsList extends Component {
                                     <LockIcon/>
                                 </IconButton>
                             </Tooltip>}
-                            {!isPendingInDatabase && canOpen && <Tooltip aria-label={openLabel} title={openLabel}>
-                                <IconButton aria-label={openLabel} onClick={() => {
-                                    this._openListModal();
-                                    getSecrets(name, this._getVersionFromMount(mount));
-                                }}>
-                                    <LockOpenIcon/>
-                                </IconButton>
-                            </Tooltip>}
                             {isApproved && <Tooltip aria-label={openLabel} title={openLabel}>
                                 <IconButton
                                     aria-label={openLabel}
@@ -534,22 +497,12 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, dismissError, dismissibleError, secrets} = this.props;
-        const {confirmationModalData, isListModalOpen, secretModalMode, secretModalInitialPath, showConfirmationModal} = this.state;
+        const {classes, dismissError, dismissibleError} = this.props;
+        const {confirmationModalData, secretModalMode, secretModalInitialPath, showConfirmationModal} = this.state;
         return <Card className={classes.card}>
             {this._renderBreadcrumbsArea()}
             {dismissibleError && <SnackbarContent message={dismissibleError} variant='error' onClose={dismissError}/>}
             {this._renderSecretsListArea()}
-            <ListModal
-                buttonTitle={'Request Secret'}
-                items={unwrap(safeWrap(secrets).data) || {}}
-                listTitle={'Secrets'}
-                open={isListModalOpen}
-                onClick={() => {
-                    /* eslint-disable no-alert */
-                    window.alert('button clicked!');
-                    /* eslint-enable no-alert */
-                }} onClose={this._closeListModal}/>
             <CreateUpdateSecretModal
                 initialPath={secretModalInitialPath}
                 mode={secretModalMode}
