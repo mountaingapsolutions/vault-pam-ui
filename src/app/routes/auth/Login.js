@@ -9,7 +9,7 @@ import {connect} from 'react-redux';
 import sessionAction from 'app/core/actions/sessionAction';
 import localStorageUtil from 'app/util/localStorageUtil';
 
-import Button from 'app/core/components/common/Button';
+import Button from 'app/core/components/Button';
 
 /**
  * The Vault token validation page.

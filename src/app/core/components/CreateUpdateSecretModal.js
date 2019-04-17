@@ -32,7 +32,7 @@ import React, {Component} from 'react';
 import {connect} from 'react-redux';
 
 import kvAction from 'app/core/actions/kvAction';
-import Button from 'app/core/components/common/Button';
+import Button from 'app/core/components/Button';
 
 import {createInProgressSelector} from 'app/util/actionStatusSelector';
 

@@ -26,7 +26,7 @@ import {safeWrap, unwrap} from '@mountaingapsolutions/objectutil';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import kvAction from 'app/core/actions/kvAction';
-import Button from 'app/core/components/common/Button';
+import Button from 'app/core/components/Button';
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 import {connect} from 'react-redux';
 

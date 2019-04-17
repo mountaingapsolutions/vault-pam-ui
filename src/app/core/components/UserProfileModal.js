@@ -28,7 +28,7 @@ import {connect} from 'react-redux';
 import isEmail from 'validator/lib/isEmail';
 
 import userAction from 'app/core/actions/userAction';
-import Button from 'app/core/components/common/Button';
+import Button from 'app/core/components/Button';
 import SnackbarContent from 'app/core/components/SnackbarContent';
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 
