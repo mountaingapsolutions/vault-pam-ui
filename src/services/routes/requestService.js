@@ -10,6 +10,7 @@ const {
     createOrGetStandardRequest,
     getStandardRequestsByUserType,
     getStandardRequestsByRequester,
+    updateStandardRequestByApprover,
     updateStandardRequestById
 } = require('services/routes/standardRequestService');
 const {checkControlGroupSupport, sendError} = require('services/utils');
@@ -259,7 +260,7 @@ const router = require('express').Router()
                 result = await authorizeControlGroupRequest(req);
             } else if (id) {
                 req.body.status = REQUEST_STATUS.APPROVED;
-                result = await updateStandardRequestById(id, REQUEST_STATUS.APPROVED);
+                result = await updateStandardRequestByApprover(req);
             }
         } catch (err) {
             sendError(req.originalUrl, res, err.message, err.statusCode);

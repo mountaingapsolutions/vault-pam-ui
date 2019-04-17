@@ -156,7 +156,7 @@ class NotificationsModal extends Component {
                                 className={classes.block}
                                 color='textSecondary'
                                 component='span'>
-                                {creationTime}
+                                {new Date(creationTime).toLocaleString()}
                             </Typography>
                         </React.Fragment>
                     }

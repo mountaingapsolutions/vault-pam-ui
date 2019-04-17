@@ -40,7 +40,6 @@ import SnackbarContent from 'app/core/components/SnackbarContent';
 import Constants from 'app/util/Constants';
 
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
-import calendarUtil from 'app/util/CalendarUtil';
 
 /**
  * The secrets list container.
@@ -363,7 +362,7 @@ class SecretsList extends Component {
                         isOwnRequest = currentUserEntityId === requesterEntityId;
                         isPendingInDatabase = isOwnRequest ? status !== Constants.REQUEST_STATUS.APPROVED : true;
                         requestStatus = status;
-                        databaseRequestTime = calendarUtil.dateFormat(createdAt);
+                        databaseRequestTime = new Date(createdAt).toLocaleString();
                         canOpen = !isPendingInDatabase;
                     }
                     const creationTime = isPathInDB ? databaseRequestTime : data.request_info && isWrapped ? new Date(wrapInfo.creation_time) : null;
