@@ -8,9 +8,8 @@ const {
 } = require('services/routes/controlGroupService');
 const {
     createOrGetStandardRequest,
+    getStandardRequestsByUserType,
     getStandardRequestsByRequester,
-    getStandardRequestsByStatus,
-    updateStandardRequestByApprover,
     updateStandardRequestById
 } = require('services/routes/standardRequestService');
 const {checkControlGroupSupport, sendError} = require('services/utils');
@@ -52,7 +51,7 @@ const router = require('express').Router()
         }
         // TODO Check if server supports standard requests
         try {
-            const standardRequests = await getStandardRequestsByStatus(REQUEST_STATUS.PENDING);
+            const standardRequests = await getStandardRequestsByUserType(req);
             requests = requests.concat(standardRequests);
         } catch (err) {
             sendError(req.originalUrl, res, err);

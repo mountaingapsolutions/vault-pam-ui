@@ -203,7 +203,10 @@ class NotificationsModal extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {authorizeRequest, classes, inProgress, onClose, open, rejectRequest, secretsRequests = [], vaultLookupSelf} = this.props;
+        const {authorizeRequest, classes, groupData, inProgress, onClose, open, rejectRequest, secretsRequests = [], vaultLookupSelf} = this.props;
+        const approverEntityIds = groupData && groupData.data && groupData.data.member_entity_ids || [];
+        const currentUserEntityId = vaultLookupSelf.data && vaultLookupSelf.data.data.entity_id;
+        const isApprover = approverEntityIds.includes(currentUserEntityId);
         const {selectedRequestId} = this.state;
         const {entity_id: entityIdSelf} = unwrap(safeWrap(vaultLookupSelf).data.data) || {};
         const selectedRequest = secretsRequests.length > 0 ? secretsRequests.find(request => (request.request_info || {}).request_id === selectedRequestId) : undefined;
@@ -295,14 +298,15 @@ class NotificationsModal extends Component {
                                                         }}>
                                                             Details
                                                         </Button>
-                                                        <Tooltip aria-label='Approve' title='Approve'>
-                                                            <IconButton
-                                                                color='primary'
-                                                                disabled={alreadyAuthorizedBySelf}
-                                                                onClick={() => authorizeRequest(accessor, requestId)}>
-                                                                <CheckIcon/>
-                                                            </IconButton>
-                                                        </Tooltip>
+                                                        {isApprover &&
+                                                            <Tooltip aria-label='Approve' title='Approve'>
+                                                                <IconButton
+                                                                    color='primary'
+                                                                    disabled={alreadyAuthorizedBySelf}
+                                                                    onClick={() => authorizeRequest(accessor, requestId)}>
+                                                                    <CheckIcon/>
+                                                                </IconButton>
+                                                            </Tooltip>}
                                                         <Tooltip aria-label='Reject' title='Reject'>
                                                             <IconButton disabled={alreadyAuthorizedBySelf}
                                                                 onClick={() => {
@@ -358,6 +362,7 @@ NotificationsModal.propTypes = {
     authorizeRequest: PropTypes.func.isRequired,
     classes: PropTypes.object.isRequired,
     errors: PropTypes.string,
+    groupData: PropTypes.object,
     inProgress: PropTypes.bool,
     onClose: PropTypes.func.isRequired,
     open: PropTypes.bool,
@@ -381,6 +386,7 @@ const _mapStateToProps = (state) => {
     return {
         errors: createErrorsSelector(actionsUsed)(state.actionStatusReducer),
         inProgress: createInProgressSelector(actionsUsed)(state.actionStatusReducer),
+        groupData: (state.systemReducer || {}).groupData,
         ...state.kvReducer,
         ...state.sessionReducer
     };

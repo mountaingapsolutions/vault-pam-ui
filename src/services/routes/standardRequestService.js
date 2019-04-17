@@ -3,6 +3,7 @@ const {getUser} = require('services/routes/userService');
 const requestLib = require('request');
 const {initApiRequest, sendEmail, sendError} = require('services/utils');
 const {getRequestEmailContent} = require('services/mail/templates');
+const {REQUEST_STATUS} = require('services/constants');
 /**
  * @swagger
  * definitions:
@@ -182,6 +183,12 @@ const getStandardRequestsByApprover = (req) => {
     });
 };
 
+/**
+ * Get standard requests by status.
+ *
+ * @param {string} status The request status in database.
+ * @returns {Promise}
+ */
 const getStandardRequestsByStatus = (status) => {
     return new Promise( (resolve, reject) => {
         RequestController.findAllByStatus(status).then(requests => {
@@ -189,6 +196,41 @@ const getStandardRequestsByStatus = (status) => {
         }).catch((error) => {
             reject(error);
         });
+    });
+};
+
+/**
+ * Get standard requests by user type.
+ *
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
+const getStandardRequestsByUserType = (req) => {
+    const {entityId} = req.session.user;
+    return new Promise(async (resolve, reject) => {
+        let isApprover = false;
+        try {
+            isApprover = await _isApprover(req, entityId);
+        } catch (err) {
+            reject({message: err});
+        }
+        let result = [];
+        if (isApprover) {
+            try {
+                const data = await getStandardRequestsByStatus(REQUEST_STATUS.PENDING);
+                result = result.concat(data);
+            } catch (err) {
+                reject({message: err});
+            }
+        } else {
+            try {
+                const data = await getStandardRequestsByRequester(req);
+                result = result.concat(data);
+            } catch (err) {
+                reject({message: err});
+            }
+        }
+        resolve(result);
     });
 };
 
@@ -484,6 +526,7 @@ module.exports = {
     getStandardRequests,
     getStandardRequestsByApprover,
     getStandardRequestsByRequester,
+    getStandardRequestsByUserType,
     getStandardRequestsByStatus,
     updateStandardRequestByApprover,
     updateStandardRequestById
