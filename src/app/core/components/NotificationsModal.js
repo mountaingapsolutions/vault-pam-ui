@@ -308,7 +308,7 @@ class NotificationsModal extends Component {
                                                                 onClick={() => {
                                                                     /* eslint-disable no-alert */
                                                                     if (window.confirm(`Are you sure you want to reject ${entityName}'s request to ${requestPath}?`)) {
-                                                                        rejectRequest(requestPath, entityId);
+                                                                        rejectRequest(requestPath, entityId, requestId);
                                                                     }
                                                                     /* eslint-enable no-alert */
                                                                 }}>

@@ -137,8 +137,7 @@ const router = require('express').Router()
      *         description: Request not found.
      */
     .delete('/request', async (req, res) => {
-        const {path} = req.query;
-        const {id} = req.body;
+        const {id, path} = req.query;
         let controlGroupSupported = false;
         let result;
         try {
@@ -150,11 +149,9 @@ const router = require('express').Router()
         try {
             if (controlGroupSupported === true && path) {
                 result = await deleteControlGroupRequest(req);
-
             } else if (id) {
                 req.body.status = REQUEST_STATUS.CANCELED;
-                result = await updateStandardRequestByApprover(req);
-
+                result = await updateStandardRequestById(id, REQUEST_STATUS.CANCELED);
             }
         } catch (err) {
             sendError(req.originalUrl, res, err.message, err.statusCode);

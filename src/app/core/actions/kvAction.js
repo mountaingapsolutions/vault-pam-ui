@@ -49,12 +49,14 @@ class KvAction extends _Actions {
      *
      * @param {string} path Specifies the path of the request to delete.
      * @param {string} [entityId] The user entity id. If not provided, the request will default to the current session user.
+     * @param {string} id The request id in database.
      * @returns {function} Redux dispatch function.
      */
-    deleteRequest(path, entityId = '') {
+    deleteRequest(path, entityId = '', id) {
         return this._dispatchDelete(this.ACTION_TYPES.DELETE_REQUEST, '/rest/requests/request', {
             path,
-            entityId
+            entityId,
+            id
         });
     }
 
