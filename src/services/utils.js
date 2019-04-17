@@ -25,10 +25,12 @@ const getSessionMiddleware = session({
  */
 const SESSION_USER_DATA_MAP = {
     CONTROL_GROUP_PATHS: 'controlGroupPaths',
+    CONTROL_GROUP_SUPPORTED: 'controlGroupSupported',
     DOMAIN: 'domain',
     ENTITY_ID: 'entityId',
-    TOKEN: 'token',
-    GROUPS: 'groups'
+    GROUPS: 'groups',
+    STANDARD_REQUEST_SUPPORTED: 'standardRequestSupported',
+    TOKEN: 'token'
 };
 
 /**
@@ -50,6 +52,31 @@ const checkControlGroupSupport = async (req) => {
             } else {
                 const {data} = body;
                 resolve(data && data.features.includes('Control Groups'));
+            }
+        });
+    });
+};
+
+/**
+ * Check if standard requests are supported
+ *
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
+const checkStandardRequestSupport = async (req) => {
+    const {domain} = req.session.user;
+    const {REACT_APP_API_TOKEN: apiToken} = process.env;
+    const groupName = 'pam-approver';
+    return await new Promise((resolve, reject) => {
+        request({
+            ...initApiRequest(apiToken, `${domain}/v1/identity/group/name/${groupName}`),
+            method: 'GET',
+        }, (error, response, body) => {
+            if (error) {
+                reject(error);
+            } else {
+                const {data} = body;
+                resolve(!!data);
             }
         });
     });
@@ -153,6 +180,7 @@ const sendEmail = (recipients, subject, body) => {
 
 module.exports = {
     checkControlGroupSupport,
+    checkStandardRequestSupport,
     initApiRequest,
     getSessionMiddleware,
     sendEmail,

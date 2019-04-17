@@ -93,7 +93,6 @@ const _isApprover = async (req, entityId) => {
 
         const {domain} = req.session.user;
         const groupName = 'pam-approver';
-
         requestLib(initApiRequest(apiToken, `${domain}/v1/identity/group/name/${groupName}`), (error, response, body) => {
             if (body && body.data) {
                 const {member_entity_ids} = body.data;
@@ -104,6 +103,8 @@ const _isApprover = async (req, entityId) => {
                 } else {
                     reject(error);
                 }
+            } else {
+                reject(`${groupName} group not found.`);
             }
         });
     });
@@ -215,20 +216,11 @@ const getStandardRequestsByUserType = (req) => {
             reject({message: err});
         }
         let result = [];
-        if (isApprover) {
-            try {
-                const data = await getStandardRequestsByStatus(REQUEST_STATUS.PENDING);
-                result = result.concat(data);
-            } catch (err) {
-                reject({message: err});
-            }
-        } else {
-            try {
-                const data = await getStandardRequestsByRequester(req);
-                result = result.concat(data);
-            } catch (err) {
-                reject({message: err});
-            }
+        try {
+            const data = isApprover ? await getStandardRequestsByStatus(REQUEST_STATUS.PENDING) : await getStandardRequestsByRequester(req);
+            result = result.concat(data);
+        } catch (err) {
+            reject({message: err});
         }
         resolve(result);
     });

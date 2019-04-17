@@ -13,12 +13,40 @@ const {
     updateStandardRequestByApprover,
     updateStandardRequestById
 } = require('services/routes/standardRequestService');
-const {checkControlGroupSupport, sendError} = require('services/utils');
+const {checkControlGroupSupport, checkStandardRequestSupport, sendError, setSessionData} = require('services/utils');
 const {REQUEST_STATUS} = require('services/constants');
 
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
+    .use(async (req, res, next) => {
+        const {controlGroupSupported, standardRequestSupported} = req.session.user;
+        if (controlGroupSupported === undefined) {
+            try {
+                let controlGroupSupport = await checkControlGroupSupport(req);
+                setSessionData(req, {
+                    controlGroupSupported: controlGroupSupport
+                });
+                console.log('Setting Control Group support in session user data: ', controlGroupSupport);
+            } catch (err) {
+                sendError(req.originalUrl, res, err);
+                return;
+            }
+        }
+        if (standardRequestSupported === undefined) {
+            try {
+                let standardRequestSupport = await checkStandardRequestSupport(req);
+                setSessionData(req, {
+                    standardRequestSupported: standardRequestSupport
+                });
+                console.log('Setting Standard Request support in session user data: ', standardRequestSupport);
+            } catch (err) {
+                sendError(req.originalUrl, res, err);
+                return;
+            }
+        }
+        next();
+    })
     /**
      * @swagger
      * /rest/requests/requests:
@@ -33,14 +61,8 @@ const router = require('express').Router()
      *         description: Unauthorized.
      */
     .get('/requests', async (req, res) => {
-        let controlGroupSupported = false;
         let requests = [];
-        try {
-            controlGroupSupported = await checkControlGroupSupport(req);
-        } catch (err) {
-            sendError(req.originalUrl, res, err);
-            return;
-        }
+        const {controlGroupSupported, standardRequestSupported} = req.session.user;
         if (controlGroupSupported === true) {
             try {
                 const controlGroupRequests = await getControlGroupRequests(req);
@@ -50,15 +72,15 @@ const router = require('express').Router()
                 return;
             }
         }
-        // TODO Check if server supports standard requests
-        try {
-            const standardRequests = await getStandardRequestsByUserType(req);
-            requests = requests.concat(standardRequests);
-        } catch (err) {
-            sendError(req.originalUrl, res, err);
-            return;
+        if (standardRequestSupported === true) {
+            try {
+                const standardRequests = await getStandardRequestsByUserType(req);
+                requests = requests.concat(standardRequests);
+            } catch (err) {
+                sendError(req.originalUrl, res, err);
+                return;
+            }
         }
-
         res.json(requests);
     })
     /**
@@ -75,14 +97,8 @@ const router = require('express').Router()
      *         description: Unauthorized.
      */
     .get('/self', async (req, res) => {
-        let controlGroupSupported = false;
         let requests = [];
-        try {
-            controlGroupSupported = await checkControlGroupSupport(req);
-        } catch (err) {
-            sendError(req.originalUrl, res, err);
-            return;
-        }
+        const {controlGroupSupported, standardRequestSupported} = req.session.user;
         if (controlGroupSupported === true) {
             try {
                 const controlGroupSelfRequests = await getSelfActiveRequests(req);
@@ -93,15 +109,15 @@ const router = require('express').Router()
             }
         }
 
-        // TODO Check if server supports standard requests
-        try {
-            const standardSelfRequests = await getStandardRequestsByRequester(req);
-            requests = requests.concat(standardSelfRequests);
-        } catch (err) {
-            sendError(req.originalUrl, res, err);
-            return;
+        if (standardRequestSupported === true) {
+            try {
+                const standardSelfRequests = await getStandardRequestsByRequester(req);
+                requests = requests.concat(standardSelfRequests);
+            } catch (err) {
+                sendError(req.originalUrl, res, err);
+                return;
+            }
         }
-
         res.json(requests);
     })
     /**
@@ -138,20 +154,17 @@ const router = require('express').Router()
      */
     .delete('/request', async (req, res) => {
         const {id, path} = req.query;
-        let controlGroupSupported = false;
         let result;
-        try {
-            controlGroupSupported = await checkControlGroupSupport(req);
-        } catch (err) {
-            sendError(req.originalUrl, res, err);
-            return;
-        }
+        const {controlGroupSupported, standardRequestSupported} = req.session.user;
         try {
             if (controlGroupSupported === true && path) {
                 result = await deleteControlGroupRequest(req);
-            } else if (id) {
+            } else if (standardRequestSupported && id) {
                 req.body.status = REQUEST_STATUS.CANCELED;
                 result = await updateStandardRequestById(id, REQUEST_STATUS.CANCELED);
+            } else {
+                sendError(req.originalUrl, res, 'Invalid request', 400);
+                return;
             }
         } catch (err) {
             sendError(req.originalUrl, res, err.message, err.statusCode);
@@ -161,7 +174,7 @@ const router = require('express').Router()
     })
     /**
      * @swagger
-     * /rest/request:
+     * /rest/requests/request:
      *   post:
      *     tags:
      *       - Requests
@@ -195,21 +208,17 @@ const router = require('express').Router()
      */
     .post('/request', async (req, res) => {
         const {path, requestData} = req.body;
-        let controlGroupSupported = false;
         let result;
-        try {
-            controlGroupSupported = await checkControlGroupSupport(req);
-        } catch (err) {
-            sendError(req.originalUrl, res, err);
-            return;
-        }
-
+        const {controlGroupSupported, standardRequestSupported} = req.session.user;
         try {
             if (controlGroupSupported === true && path) {
                 result = await createControlGroupRequest(req);
                 //TODO add engineType checking - engineType
-            } else if (requestData) {
+            } else if (standardRequestSupported && requestData) {
                 result = await createOrGetStandardRequest(req);
+            } else {
+                sendError(req.originalUrl, res, 'Invalid request', 400);
+                return;
             }
         } catch (err) {
             sendError(req.originalUrl, res, err.message, err.statusCode);
@@ -219,7 +228,7 @@ const router = require('express').Router()
     })
     /**
      * @swagger
-     * /rest/request/authorize:
+     * /rest/requests/authorize:
      *   post:
      *     tags:
      *       - Requests
@@ -247,20 +256,17 @@ const router = require('express').Router()
      */
     .post('/request/authorize', async (req, res) => {
         const {accessor, id} = req.body;
-        let controlGroupSupported = false;
         let result;
-        try {
-            controlGroupSupported = await checkControlGroupSupport(req);
-        } catch (err) {
-            sendError(req.originalUrl, res, err);
-            return;
-        }
+        const {controlGroupSupported, standardRequestSupported} = req.session.user;
         try {
             if (controlGroupSupported === true && accessor) {
                 result = await authorizeControlGroupRequest(req);
-            } else if (id) {
+            } else if (standardRequestSupported && id) {
                 req.body.status = REQUEST_STATUS.APPROVED;
                 result = await updateStandardRequestByApprover(req);
+            } else {
+                sendError(req.originalUrl, res, 'Invalid request', 400);
+                return;
             }
         } catch (err) {
             sendError(req.originalUrl, res, err.message, err.statusCode);
