@@ -21,11 +21,13 @@ $ USE_HSTS=false PORT=8080 npm run startprod
 - [React Redux](http://redux.js.org/index.html) - Application state container.
 - [React Router](https://reacttraining.com/react-router) - Declarative routing library for React.
 - [Material UI](https://material-ui.com/) - React components that implement Google's Material Design.
+
 ### Back End
 - [Express.js](https://expressjs.com) - Web application framework. The ubiquitous Node.js web server.
 - [Sequelize](http://docs.sequelizejs.com) - Node.js ORM for PostgreSQL, MySQL, MariaDB, SQLite and Microsoft SQL Server.
 - [Socket.IO](https://socket.io) - Library to enable realtime bi-directional communication between clients and servers.
 - [Vault](https://www.vaultproject.io]) - The secrets engine behind the application.
+
 ### And More...
 - For the exhaustive list of libraries leveraged by the application, refer to the list of `dependencies` in the [package.json](../package.json) manifest file.
 
