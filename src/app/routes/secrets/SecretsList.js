@@ -180,14 +180,15 @@ class SecretsList extends Component {
      *
      * @param {string} mount The mount point.
      * @param {string} name The name of the secret to request.
+     * @param {string} requestType The type of request.
      * @private
      */
-    _openRequestModal(mount, name) {
+    _openRequestModal(mount, name, requestType) {
         this.setState({
             showConfirmationModal: true,
             confirmationModalData: {
                 title: 'Privilege Access Request',
-                content: `The path ${name} has been locked through Control Groups. Request access?`,
+                content: `The path ${name} has been locked through ${requestType}. Request access?`,
                 onClose: (confirm) => {
                     if (confirm) {
                         const {requestSecret} = this.props;
@@ -367,6 +368,7 @@ class SecretsList extends Component {
         const openLabel = 'Open';
         const currentUserEntityId = vaultLookupSelf.data && vaultLookupSelf.data.data.entity_id;
         const approverEntityIds = groupData.data && groupData.data.member_entity_ids || [];
+        const requestTypeLabel = approverEntityIds.length > 0 ? 'Standard Request' : 'Control Groups';
         const isApprover = approverEntityIds.includes(currentUserEntityId);
         if (inProgress) {
             return <Grid container justify='center'>
@@ -397,22 +399,23 @@ class SecretsList extends Component {
                     const authorizations = isWrapped && requestInfo.authorizations;
                     const canDelete = capabilities.includes('delete');
                     const {databaseRequestData} = secret;
+                    const {status} = secret && secret.databaseRequestData || {};
                     const isPathInDB = databaseRequestData && !isApprover || false;
                     let canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped;
                     let isOwnRequest = false;
                     let isPendingInDatabase = false;
                     let requestStatus = null;
                     let databaseRequestTime = null;
-                    if (isPathInDB) {
-                        const {createdAt, requesterEntityId, status} = databaseRequestData;
+                    if (isPathInDB && (status === Constants.REQUEST_STATUS.APPROVED || status === Constants.REQUEST_STATUS.PENDING)) {
+                        const {createdAt, requesterEntityId} = databaseRequestData;
                         isOwnRequest = currentUserEntityId === requesterEntityId;
-                        isPendingInDatabase = isOwnRequest ? status !== Constants.REQUEST_STATUS.APPROVED : true;
+                        isPendingInDatabase = isOwnRequest ? status === Constants.REQUEST_STATUS.PENDING : true;
                         requestStatus = status;
                         databaseRequestTime = new Date(createdAt).toLocaleString();
                         canOpen = !isPendingInDatabase;
                     }
-                    const creationTime = isPathInDB ? databaseRequestTime : data.request_info && isWrapped ? new Date(wrapInfo.creation_time) : null;
-                    const standardRequest = isPathInDB ? `${!isOwnRequest ? Constants.REQUEST_STATUS.LOCKED : requestStatus} Request type: Standard Request` : null;
+                    const creationTime = isPendingInDatabase ? databaseRequestTime : data.request_info && isWrapped ? new Date(wrapInfo.creation_time) : requestStatus === Constants.REQUEST_STATUS.APPROVED ? databaseRequestTime : null;
+                    const standardRequest = isPendingInDatabase ? `${!isOwnRequest ? Constants.REQUEST_STATUS.LOCKED : requestStatus} Request type: Standard Request` : requestStatus === Constants.REQUEST_STATUS.APPROVED ? `${requestStatus} Request type: Standard Request` : null;
                     let secondaryText = !standardRequest ? requiresRequest ? `Request type: ${isWrapped ? 'Control Groups' : 'Default'}` : '' : standardRequest;
                     if (creationTime) {
                         secondaryText += ` (Requested at ${creationTime.toLocaleString()})`;
@@ -435,7 +438,7 @@ class SecretsList extends Component {
                                 if (data.request_info) {
                                     this._openRequestCancellationModal(mount, name);
                                 } else {
-                                    this._openRequestModal(mount, name);
+                                    this._openRequestModal(mount, name, requestTypeLabel);
                                 }
                             }
                         }
@@ -458,7 +461,7 @@ class SecretsList extends Component {
                             <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
                                 <IconButton
                                     aria-label={requestAccessLabel}
-                                    onClick={() => data.request_info ? this._openRequestCancellationModal(mount, name) : this._openRequestModal(mount, name)}>
+                                    onClick={() => data.request_info ? this._openRequestCancellationModal(mount, name) : this._openRequestModal(mount, name, requestTypeLabel)}>
                                     <LockIcon/>
                                 </IconButton>
                             </Tooltip>}

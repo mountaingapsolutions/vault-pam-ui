@@ -31,6 +31,7 @@ import kvAction from 'app/core/actions/kvAction';
 import Button from 'app/core/components/Button';
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 import {connect} from 'react-redux';
+import Constants from 'app/util/Constants';
 
 /**
  * Notifications modal.
@@ -97,9 +98,9 @@ class NotificationsModal extends Component {
      */
     _renderRequestDetails(selectedRequest) {
         const {classes} = this.props;
-        const {data = {}, request_id: requestId} = selectedRequest.request_info;
+        const {data = {}} = selectedRequest.request_info;
         const {accessor, creation_time: creationTime} = selectedRequest.wrap_info || selectedRequest.request_info;
-        const {request_entity: requestEntity, request_path: requestPath} = data;
+        const {approved, request_entity: requestEntity, request_path: requestPath} = data;
         const {id: entityId, name: entityName} = requestEntity || {};
         return <GridList cellHeight={'auto'} className={classes.listContainer} cols={2}>
             <ListItem alignItems='flex-start'>
@@ -134,14 +135,14 @@ class NotificationsModal extends Component {
             </ListItem>
             <ListItem alignItems='flex-start'>
                 <ListItemText
-                    primary={'Request ID:'}
+                    primary={'Status:'}
                     secondary={
                         <React.Fragment>
                             <Typography
                                 className={classes.block}
                                 color='textSecondary'
                                 component='span'>
-                                {requestId}
+                                {approved}
                             </Typography>
                         </React.Fragment>
                     }
@@ -206,7 +207,7 @@ class NotificationsModal extends Component {
         const {authorizeRequest, classes, groupData, inProgress, onClose, open, rejectRequest, secretsRequests = [], vaultLookupSelf} = this.props;
         const approverEntityIds = groupData && groupData.data && groupData.data.member_entity_ids || [];
         const currentUserEntityId = vaultLookupSelf.data && vaultLookupSelf.data.data.entity_id;
-        const isApprover = approverEntityIds.includes(currentUserEntityId);
+        const isApprover = approverEntityIds.length > 0 ? approverEntityIds.includes(currentUserEntityId) : true;
         const {selectedRequestId} = this.state;
         const {entity_id: entityIdSelf} = unwrap(safeWrap(vaultLookupSelf).data.data) || {};
         const selectedRequest = secretsRequests.length > 0 ? secretsRequests.find(request => (request.request_info || {}).request_id === selectedRequestId) : undefined;
@@ -245,10 +246,11 @@ class NotificationsModal extends Component {
                                 secretsRequests.map(requestData => {
                                     const {data = {}, request_id: requestId} = requestData.request_info;
                                     const {accessor, creation_time: creationTime} = requestData.wrap_info || requestData.request_info;
-                                    const {authorizations, request_entity: requestEntity, request_path: requestPath} = data;
+                                    const {approved, authorizations, request_entity: requestEntity, request_path: requestPath} = data;
+                                    const isPending = approved === Constants.REQUEST_STATUS.PENDING;
                                     const {id: entityId, name: entityName} = requestEntity || {};
                                     const requestType = requestData.wrap_info ? 'Control Groups' : 'Standard Request';
-                                    const alreadyAuthorizedBySelf = authorizations && authorizations.some((authorization) => authorization.entity_id === entityIdSelf);
+                                    const alreadyAuthorizedBySelf = requestData.wrap_info ? authorizations && authorizations.some((authorization) => authorization.entity_id === entityIdSelf) : !isPending;
                                     return <React.Fragment key={requestId}>
                                         <ListItem alignItems='flex-start'>
                                             <ListItemAvatar>
@@ -284,9 +286,10 @@ class NotificationsModal extends Component {
                                                         }}>
                                                             Details
                                                         </Button>
+                                                        {isApprover &&
                                                         <IconButton disabled color='primary'>
                                                             <CheckIcon/>
-                                                        </IconButton>
+                                                        </IconButton>}
                                                         <IconButton disabled>
                                                             <ClearIcon/>
                                                         </IconButton>
@@ -308,7 +311,7 @@ class NotificationsModal extends Component {
                                                                 </IconButton>
                                                             </Tooltip>}
                                                         <Tooltip aria-label='Reject' title='Reject'>
-                                                            <IconButton disabled={alreadyAuthorizedBySelf}
+                                                            <IconButton disabled={alreadyAuthorizedBySelf && (isApprover || isPending)}
                                                                 onClick={() => {
                                                                     /* eslint-disable no-alert */
                                                                     if (window.confirm(`Are you sure you want to reject ${entityName}'s request to ${requestPath}?`)) {

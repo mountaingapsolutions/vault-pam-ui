@@ -120,10 +120,16 @@ export default (previousState = {
     }
 };
 
+/**
+ * Helper method to map request from database.
+ *
+ * @param {Array} requests array from database
+ * @returns {Array} remapped request array.
+ */
 const _remapRequest = requests => {
     return requests.map(request => {
         const {createdAt, id, requestData, requesterEntityId, status} = request;
-        const newdata = request.wrap_info ? request : {request_info: {data: {
+        return request.wrap_info ? request : {request_info: {data: {
             approved: status,
             authorizations: null,
             request_entity: {id: requesterEntityId, name: requesterEntityId},
@@ -134,6 +140,5 @@ const _remapRequest = requests => {
         accessor: requesterEntityId,
         request_info: {}
         }};
-        return newdata;
     });
 };

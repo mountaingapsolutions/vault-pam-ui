@@ -8,14 +8,12 @@ module.exports = (sequelize) => {
         },
         requesterEntityId: {
             type: Sequelize.UUID,
-            allowNull: false,
-            unique: 'compositeIndex'
+            allowNull: false
         },
         approverEntityId: Sequelize.UUID,
         requestData: {
             allowNull: true,
-            type: Sequelize.STRING,
-            unique: 'compositeIndex'
+            type: Sequelize.STRING
         },
         type: {
             type: Sequelize.STRING,

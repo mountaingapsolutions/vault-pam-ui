@@ -108,7 +108,6 @@ class KvAction extends _Actions {
      *
      * @param {string} [path] Specifies the path of the secrets to list.
      * @param {number} [version] The KV engine version.
-     * @param {string} [requesterEntityId] Entity ID of requester.
      * @returns {function} Redux dispatch function.
      */
     listSecretsAndCapabilities(path = '', version = 2) {
