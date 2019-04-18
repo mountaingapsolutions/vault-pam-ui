@@ -34,11 +34,13 @@ class KvAction extends _Actions {
      * Authorizes a secrets request.
      *
      * @param {string} accessor The request accessor value.
+     * @param {string} id The request id in database.
      * @returns {function} Redux dispatch function.
      */
-    authorizeRequest(accessor) {
+    authorizeRequest(accessor, id) {
         return this._dispatchPost(this.ACTION_TYPES.AUTHORIZE_REQUEST, '/rest/requests/request/authorize', {
-            accessor
+            accessor,
+            id
         });
     }
 
@@ -47,12 +49,14 @@ class KvAction extends _Actions {
      *
      * @param {string} path Specifies the path of the request to delete.
      * @param {string} [entityId] The user entity id. If not provided, the request will default to the current session user.
+     * @param {string} id The request id in database.
      * @returns {function} Redux dispatch function.
      */
-    deleteRequest(path, entityId = '') {
+    deleteRequest(path, entityId = '', id) {
         return this._dispatchDelete(this.ACTION_TYPES.DELETE_REQUEST, '/rest/requests/request', {
             path,
-            entityId
+            entityId,
+            id
         });
     }
 
@@ -73,7 +77,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     getSecrets(path = '') {
-        return this._dispatchGet(this.ACTION_TYPES.GET_SECRETS, `/api/v1/${this._encodePath(path)}`);
+        return this._dispatchGet(this.ACTION_TYPES.GET_SECRETS, `/rest/secrets/secret/${this._encodePath(path)}`);
     }
 
     /**
@@ -104,11 +108,10 @@ class KvAction extends _Actions {
      *
      * @param {string} [path] Specifies the path of the secrets to list.
      * @param {number} [version] The KV engine version.
-     * @param {string} [requesterEntityId] Entity ID of requester.
      * @returns {function} Redux dispatch function.
      */
     listSecretsAndCapabilities(path = '', version = 2) {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES, `/rest/secrets/${path}`, {
+        return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES, `/rest/secrets/secrets/${path}`, {
             version
         });
     }

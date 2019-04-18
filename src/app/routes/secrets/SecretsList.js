@@ -25,7 +25,6 @@ import ListIcon from '@material-ui/icons/List';
 import LockIcon from '@material-ui/icons/Lock';
 import LockOpenIcon from '@material-ui/icons/LockOpen';
 import {Breadcrumbs} from '@material-ui/lab';
-import {safeWrap, unwrap} from '@mountaingapsolutions/objectutil';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
@@ -33,14 +32,12 @@ import {Link, withRouter} from 'react-router-dom';
 
 import kvAction from 'app/core/actions/kvAction';
 import Button from 'app/core/components/Button';
-import ListModal from 'app/core/components/ListModal';
 import CreateUpdateSecretModal from 'app/core/components/CreateUpdateSecretModal';
 import ConfirmationModal from 'app/core/components/ConfirmationModal';
 import SnackbarContent from 'app/core/components/SnackbarContent';
 import Constants from 'app/util/Constants';
 
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
-import calendarUtil from 'app/util/CalendarUtil';
 
 /**
  * The secrets list container.
@@ -63,13 +60,10 @@ class SecretsList extends Component {
             secretModalInitialPath: '',
             secretModalMode: '',
             showConfirmationModal: false,
-            isListModalOpen: false
         };
 
         this._onBack = this._onBack.bind(this);
         this._onCreateUpdateSecretModalClose = this._onCreateUpdateSecretModalClose.bind(this);
-        this._openListModal = this._openListModal.bind(this);
-        this._closeListModal = this._closeListModal.bind(this);
     }
 
     /**
@@ -186,14 +180,15 @@ class SecretsList extends Component {
      *
      * @param {string} mount The mount point.
      * @param {string} name The name of the secret to request.
+     * @param {string} requestType The type of request.
      * @private
      */
-    _openRequestModal(mount, name) {
+    _openRequestModal(mount, name, requestType) {
         this.setState({
             showConfirmationModal: true,
             confirmationModalData: {
                 title: 'Privilege Access Request',
-                content: `The path ${name} has been locked through Control Groups. Request access?`,
+                content: `The path ${name} has been locked through ${requestType}. Request access?`,
                 onClose: (confirm) => {
                     if (confirm) {
                         const {requestSecret} = this.props;
@@ -204,30 +199,6 @@ class SecretsList extends Component {
                     });
                 }
             }
-        });
-    }
-
-    /**
-     * Handle for Notification click is triggered.
-     *
-     * @private
-     * @param {SyntheticMouseEvent} event The event.
-     */
-    _openListModal() {
-        this.setState({
-            isListModalOpen: true
-        });
-    }
-
-    /**
-     * Handle for when list modal close button is triggered.
-     *
-     * @private
-     * @param {SyntheticMouseEvent} event The event.
-     */
-    _closeListModal() {
-        this.setState({
-            isListModalOpen: false
         });
     }
 
@@ -397,6 +368,7 @@ class SecretsList extends Component {
         const openLabel = 'Open';
         const currentUserEntityId = vaultLookupSelf.data && vaultLookupSelf.data.data.entity_id;
         const approverEntityIds = groupData.data && groupData.data.member_entity_ids || [];
+        const requestTypeLabel = approverEntityIds.length > 0 ? 'Standard Request' : 'Control Groups';
         const isApprover = approverEntityIds.includes(currentUserEntityId);
         if (inProgress) {
             return <Grid container justify='center'>
@@ -420,7 +392,6 @@ class SecretsList extends Component {
                     const mountPath = `${mount}/${currentPath}`;
                     const url = `/secrets/${mountPath}`;
                     const isWrapped = !!wrapInfo;
-                    const canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped;
                     const canUpdate = capabilities.some(capability => capability === 'update' || capability === 'root');
                     const requiresRequest = capabilities.includes('deny') && !name.endsWith('/') || isWrapped;
                     const {request_info: requestInfo = {}} = data;
@@ -428,20 +399,23 @@ class SecretsList extends Component {
                     const authorizations = isWrapped && requestInfo.authorizations;
                     const canDelete = capabilities.includes('delete');
                     const {databaseRequestData} = secret;
+                    const {status} = secret && secret.databaseRequestData || {};
                     const isPathInDB = databaseRequestData && !isApprover || false;
+                    let canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped;
                     let isOwnRequest = false;
                     let isPendingInDatabase = false;
                     let requestStatus = null;
                     let databaseRequestTime = null;
-                    if (isPathInDB) {
-                        const {createdAt, requesterEntityId, status} = databaseRequestData;
+                    if (isPathInDB && (status === Constants.REQUEST_STATUS.APPROVED || status === Constants.REQUEST_STATUS.PENDING)) {
+                        const {createdAt, requesterEntityId} = databaseRequestData;
                         isOwnRequest = currentUserEntityId === requesterEntityId;
-                        isPendingInDatabase = isOwnRequest ? status !== Constants.REQUEST_STATUS.APPROVED : true;
+                        isPendingInDatabase = isOwnRequest ? status === Constants.REQUEST_STATUS.PENDING : true;
                         requestStatus = status;
-                        databaseRequestTime = calendarUtil.dateFormat(createdAt);
+                        databaseRequestTime = new Date(createdAt).toLocaleString();
+                        canOpen = !isPendingInDatabase;
                     }
-                    const creationTime = isPathInDB ? databaseRequestTime : data.request_info && isWrapped ? new Date(wrapInfo.creation_time) : null;
-                    const standardRequest = isPathInDB ? `${!isOwnRequest ? Constants.REQUEST_STATUS.LOCKED : requestStatus} Request type: Standard Request` : null;
+                    const creationTime = isPendingInDatabase ? databaseRequestTime : data.request_info && isWrapped ? new Date(wrapInfo.creation_time) : requestStatus === Constants.REQUEST_STATUS.APPROVED ? databaseRequestTime : null;
+                    const standardRequest = isPendingInDatabase ? `${!isOwnRequest ? Constants.REQUEST_STATUS.LOCKED : requestStatus} Request type: Standard Request` : requestStatus === Constants.REQUEST_STATUS.APPROVED ? `${requestStatus} Request type: Standard Request` : null;
                     let secondaryText = !standardRequest ? requiresRequest ? `Request type: ${isWrapped ? 'Control Groups' : 'Default'}` : '' : standardRequest;
                     if (creationTime) {
                         secondaryText += ` (Requested at ${creationTime.toLocaleString()})`;
@@ -464,7 +438,7 @@ class SecretsList extends Component {
                                 if (data.request_info) {
                                     this._openRequestCancellationModal(mount, name);
                                 } else {
-                                    this._openRequestModal(mount, name);
+                                    this._openRequestModal(mount, name, requestTypeLabel);
                                 }
                             }
                         }
@@ -487,16 +461,8 @@ class SecretsList extends Component {
                             <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
                                 <IconButton
                                     aria-label={requestAccessLabel}
-                                    onClick={() => data.request_info ? this._openRequestCancellationModal(mount, name) : this._openRequestModal(mount, name)}>
+                                    onClick={() => data.request_info ? this._openRequestCancellationModal(mount, name) : this._openRequestModal(mount, name, requestTypeLabel)}>
                                     <LockIcon/>
-                                </IconButton>
-                            </Tooltip>}
-                            {!isPendingInDatabase && canOpen && <Tooltip aria-label={openLabel} title={openLabel}>
-                                <IconButton aria-label={openLabel} onClick={() => {
-                                    this._openListModal();
-                                    getSecrets(name, this._getVersionFromMount(mount));
-                                }}>
-                                    <LockOpenIcon/>
                                 </IconButton>
                             </Tooltip>}
                             {isApproved && <Tooltip aria-label={openLabel} title={openLabel}>
@@ -534,22 +500,12 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, dismissError, dismissibleError, secrets} = this.props;
-        const {confirmationModalData, isListModalOpen, secretModalMode, secretModalInitialPath, showConfirmationModal} = this.state;
+        const {classes, dismissError, dismissibleError} = this.props;
+        const {confirmationModalData, secretModalMode, secretModalInitialPath, showConfirmationModal} = this.state;
         return <Card className={classes.card}>
             {this._renderBreadcrumbsArea()}
             {dismissibleError && <SnackbarContent message={dismissibleError} variant='error' onClose={dismissError}/>}
             {this._renderSecretsListArea()}
-            <ListModal
-                buttonTitle={'Request Secret'}
-                items={unwrap(safeWrap(secrets).data) || {}}
-                listTitle={'Secrets'}
-                open={isListModalOpen}
-                onClick={() => {
-                    /* eslint-disable no-alert */
-                    window.alert('button clicked!');
-                    /* eslint-enable no-alert */
-                }} onClose={this._closeListModal}/>
             <CreateUpdateSecretModal
                 initialPath={secretModalInitialPath}
                 mode={secretModalMode}
