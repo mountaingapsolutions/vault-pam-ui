@@ -159,8 +159,8 @@ const router = require('express').Router()
             if (controlGroupSupported === true && path) {
                 result = await deleteControlGroupRequest(req);
             } else if (standardRequestSupported && id) {
-                req.body.status = REQUEST_STATUS.CANCELED;
-                result = await updateStandardRequestById(id, REQUEST_STATUS.CANCELED);
+                req.body = {id, status: REQUEST_STATUS.CANCELED};
+                result = await updateStandardRequestById(req);
             } else {
                 sendError(req.originalUrl, res, 'Invalid request', 400);
                 return;
