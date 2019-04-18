@@ -4,6 +4,7 @@ const session = require('express-session');
 const nodemailer = require('nodemailer');
 const request = require('request');
 const {filter} = require('@mountaingapsolutions/objectutil');
+const {getUpdateRequestStatusEmailContent} = require('services/mail/templates');
 
 const getSessionMiddleware = session({
     secret: process.env.SESSION_SECRET || 'correct horse battery staple',
@@ -147,6 +148,30 @@ const setSessionData = (req, sessionUserData) => {
 };
 
 /**
+ * Setup email notification for requests.
+ *
+ * @param {Object} data Requests data.
+ */
+const sendNotificationEmail = data => {
+    const {approvers, userSession, requestData, requesterData} = data;
+    const {data: requester} = requesterData.body;
+    const {engineType, requestData: secret, status, type} = requestData;
+    const {domain, entityId} = userSession;
+    const emailData = {
+        domain,
+        requester,
+        secret,
+        type,
+        status,
+        engineType,
+        approver: entityId
+    };
+    const emailContents = getUpdateRequestStatusEmailContent(emailData);
+    const recipients = [...approvers, requester.metadata.email];
+    sendEmail(recipients, emailContents.subject, emailContents.body);
+};
+
+/**
  * Sends email.
  *
  * @param {Array} recipients The email recipients.
@@ -183,7 +208,7 @@ module.exports = {
     checkStandardRequestSupport,
     initApiRequest,
     getSessionMiddleware,
-    sendEmail,
     sendError,
+    sendNotificationEmail,
     setSessionData
 };

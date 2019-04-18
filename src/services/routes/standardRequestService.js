@@ -1,8 +1,7 @@
 const RequestController = require('services/controllers/Request');
 const {getUser} = require('services/routes/userService');
 const requestLib = require('request');
-const {initApiRequest, sendEmail, sendError} = require('services/utils');
-const {getRequestEmailContent, getUpdateRequestStatusEmailContent} = require('services/mail/templates');
+const {initApiRequest, sendError, sendNotificationEmail} = require('services/utils');
 const {REQUEST_STATUS} = require('services/constants');
 /**
  * @swagger
@@ -136,27 +135,20 @@ const createStandardRequest = (req) => {
  */
 const createOrGetStandardRequest = (req) => {
     const {requestData, type, status, engineType} = req.body;
-    const {domain, entityId: requesterEntityId} = req.session.user;
+    const {entityId: requesterEntityId} = req.session.user;
     return new Promise((resolve, reject) => {
         RequestController.findOrCreate(requesterEntityId, requestData, type, status, engineType).then(request => {
             // if a new request, send email to approvers
             if (request._options.isNewRecord === true) {
-                _getApproverGroupMemberEmails(req).then((approvers) => {
+                _getApproverGroupMemberEmails(req).then(approvers => {
                     getUser(req, requesterEntityId, 'admin').then(requesterData => {
                         if (requesterData && requesterData.body && requesterData.body.data) {
-                            const {data: requester} = requesterData.body;
-                            const emailData = {
-                                domain,
-                                requester,
-                                requestData,
-                                type,
-                                status,
-                                engineType,
-                                approvers
-                            };
-                            const emailContents = getRequestEmailContent(emailData);
-                            const recipients = [...approvers, requester.metadata.email];
-                            sendEmail(recipients, emailContents.subject, emailContents.body);
+                            sendNotificationEmail({
+                                approvers,
+                                requestData: request,
+                                requesterData,
+                                userSession: req.session.user
+                            });
                         }
                     });
                 });
@@ -255,28 +247,18 @@ const getStandardRequestsByRequester = (req) => {
 };
 
 const updateStandardRequestById = async req => {
-    const {domain, entityId: approverEntityId} = req.session.user;
     const {id, status} = req.body;
     return new Promise( (resolve, reject) => {
         RequestController.updateStatus(id, status).then(request => {
-            const {engineType, requestData, requesterEntityId, status: newStatus, type} = request[1];
+            const {requesterEntityId} = request[1];
             _getApproverGroupMemberEmails(req).then((approvers) => {
                 getUser(req, requesterEntityId, 'admin').then(requesterData => {
                     if (requesterData && requesterData.body && requesterData.body.data) {
-                        const {data: requester} = requesterData.body;
-                        const emailData = {
-                            approver: approverEntityId,
-                            domain,
-                            engineType,
-                            requester,
-                            requestData,
-                            status: newStatus,
-                            type,
-                            approvers
-                        };
-                        const emailContents = getUpdateRequestStatusEmailContent(emailData);
-                        const recipients = [...approvers, requester.metadata.email];
-                        sendEmail(recipients, emailContents.subject, emailContents.body);
+                        sendNotificationEmail({
+                            approvers,
+                            requestData: request[1],
+                            requesterData,
+                            userSession: req.session.user});
                     }
                 });
             });
@@ -295,7 +277,7 @@ const updateStandardRequestById = async req => {
  */
 const updateStandardRequestByApprover = async (req) => {
     const {id, status} = req.body;
-    const {domain, entityId: approverEntityId} = req.session.user;
+    const {entityId: approverEntityId} = req.session.user;
     return await new Promise( async (resolve, reject) => {
         let isApprover = false;
         try {
@@ -305,24 +287,16 @@ const updateStandardRequestByApprover = async (req) => {
         }
         if (isApprover) {
             RequestController.updateStatusByApprover(id, approverEntityId, status).then(request => {
-                const {engineType, requestData, requesterEntityId, status: newStatus, type} = request[1];
+                const {requesterEntityId} = request[1];
                 _getApproverGroupMemberEmails(req).then((approvers) => {
                     getUser(req, requesterEntityId, 'admin').then(requesterData => {
                         if (requesterData && requesterData.body && requesterData.body.data) {
-                            const {data: requester} = requesterData.body;
-                            const emailData = {
-                                approver: approverEntityId,
-                                domain,
-                                engineType,
-                                requester,
-                                requestData,
-                                status: newStatus,
-                                type,
-                                approvers
-                            };
-                            const emailContents = getUpdateRequestStatusEmailContent(emailData);
-                            const recipients = [...approvers, requester.metadata.email];
-                            sendEmail(recipients, emailContents.subject, emailContents.body);
+                            sendNotificationEmail({
+                                approvers,
+                                requestData: request[1],
+                                requesterData,
+                                userSession: req.session.user
+                            });
                         }
                     });
                 });
