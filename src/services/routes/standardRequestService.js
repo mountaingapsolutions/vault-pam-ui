@@ -1,7 +1,7 @@
 const RequestController = require('services/controllers/Request');
 const {getUser, getUserIds} = require('services/routes/userService');
 const requestLib = require('request');
-const {initApiRequest, sendEmail, sendError} = require('services/utils');
+const {initApiRequest, getDomain, sendEmail, sendError} = require('services/utils');
 const {getRequestEmailContent} = require('services/mail/templates');
 const {REQUEST_STATUS} = require('services/constants');
 /**
@@ -33,16 +33,15 @@ const {REQUEST_STATUS} = require('services/constants');
  */
 const _getApproverGroupMemberEmails = async (req) => {
     const result = await new Promise( (resolve, reject) => {
-        const {REACT_APP_API_TOKEN: apiToken} = process.env;
+        const {VAULT_API_TOKEN: apiToken} = process.env;
         if (!apiToken) {
             reject('No API token configured.');
             return;
         }
-        const {domain} = req.session.user;
         const groupName = 'pam-approver';
         let groupMembersEmail = [];
 
-        requestLib(initApiRequest(apiToken, `${domain}/v1/identity/group/name/${groupName}`), (error, response, body) => {
+        requestLib(initApiRequest(apiToken, `${getDomain()}/v1/identity/group/name/${groupName}`), (error, response, body) => {
             if (body && body.data) {
                 const member_entity_ids = body.data.member_entity_ids;
                 const {type: userType} = body.data.metadata;
@@ -85,15 +84,14 @@ const _getApproverGroupMemberEmails = async (req) => {
  */
 const _isApprover = async (req, entityId) => {
     return await new Promise( (resolve, reject) => {
-        const {REACT_APP_API_TOKEN: apiToken} = process.env;
+        const {VAULT_API_TOKEN: apiToken} = process.env;
 
         if (!apiToken) {
             reject('No API token configured.');
         }
 
-        const {domain} = req.session.user;
         const groupName = 'pam-approver';
-        requestLib(initApiRequest(apiToken, `${domain}/v1/identity/group/name/${groupName}`), (error, response, body) => {
+        requestLib(initApiRequest(apiToken, `${getDomain()}/v1/identity/group/name/${groupName}`), (error, response, body) => {
             if (body && body.data) {
                 const {member_entity_ids} = body.data;
                 const {type} = body.data.metadata;
@@ -136,7 +134,7 @@ const createStandardRequest = (req) => {
  */
 const createOrGetStandardRequest = (req) => {
     const {requestData, type, status, engineType} = req.body;
-    const {domain, entityId: requesterEntityId} = req.session.user;
+    const {entityId: requesterEntityId} = req.session.user;
     return new Promise((resolve, reject) => {
         RequestController.findOrCreate(requesterEntityId, requestData, type, status, engineType).then(request => {
             // if a new request, send email to approvers
@@ -146,7 +144,7 @@ const createOrGetStandardRequest = (req) => {
                         if (requesterData && requesterData.body && requesterData.body.data) {
                             const {data: requester} = requesterData.body;
                             const emailData = {
-                                domain,
+                                domain: getDomain(),
                                 requester,
                                 requestData,
                                 type,
@@ -202,7 +200,7 @@ const getStandardRequestsByStatus = async (req, status) => {
                 reject(error);
             });
         });
-        const getUserIdsPromise = getUserIds(req);
+        const getUserIdsPromise = getUserIds();
 
         Promise.all([standardRequestsPromise, getUserIdsPromise]).then((results) => {
             const standardRequests = (Array.isArray(results) && results[0] ? results[0] : []).map(standardRequest => {
@@ -271,7 +269,7 @@ const getStandardRequestsByRequester = async (req) => {
                 reject(error);
             });
         });
-        const getUserIdsPromise = getUserIds(req);
+        const getUserIdsPromise = getUserIds();
 
         Promise.all([standardRequestsPromise, getUserIdsPromise]).then((results) => {
             const standardRequests = (Array.isArray(results) && results[0] ? results[0] : []).map(standardRequest => {

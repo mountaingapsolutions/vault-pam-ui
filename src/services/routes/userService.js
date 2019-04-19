@@ -1,5 +1,5 @@
 const request = require('request');
-const {initApiRequest, sendError} = require('services/utils');
+const {initApiRequest, getDomain, sendError} = require('services/utils');
 
 /**
  * @swagger
@@ -63,8 +63,7 @@ const _initializeEntity = async (req, username, password) => {
  */
 const _login = async (req, username, password) => {
     return new Promise((resolve, reject) => {
-        const {domain} = req.session.user;
-        const apiUrl = `${domain}/v1/auth/userpass/login/${username}`;
+        const apiUrl = `${getDomain()}/v1/auth/userpass/login/${username}`;
         request({
             uri: apiUrl,
             method: 'POST',
@@ -93,8 +92,9 @@ const _login = async (req, username, password) => {
  */
 const getUser = async (req, id, userType = null) => {
     return await new Promise((resolve, reject) => {
-        const {REACT_APP_API_TOKEN: apiToken} = process.env;
-        const {domain, entityId: sessionUserEntityId, token: sessionUserToken} = req.session.user;
+        const {VAULT_API_TOKEN: apiToken} = process.env;
+        const domain = getDomain();
+        const {entityId: sessionUserEntityId, token: sessionUserToken} = req.session.user;
         let apiRequest;
         if (userType === 'admin' && id) {
             apiRequest = initApiRequest(apiToken, `${domain}/v1/identity/entity/id/${id}`);
@@ -122,11 +122,10 @@ const getUser = async (req, id, userType = null) => {
  * @param {Object} req The HTTP request object.
  * @returns {Promise}
  */
-const getUserIds = (req) => {
+const getUserIds = () => {
     return new Promise((resolve, reject) => {
-        const {REACT_APP_API_TOKEN: apiToken} = process.env;
-        const {domain} = req.session.user;
-        request(initApiRequest(apiToken, `${domain}/v1/identity/entity/id?list=true`), (error, response) => {
+        const {VAULT_API_TOKEN: apiToken} = process.env;
+        request(initApiRequest(apiToken, `${getDomain()}/v1/identity/entity/id?list=true`), (error, response) => {
             if (error) {
                 reject(error);
             } else {
@@ -145,8 +144,8 @@ const getUserIds = (req) => {
  */
 const getUserByName = async (req, name) => {
     return await new Promise((resolve, reject) => {
-        const {domain, token} = req.session.user;
-        request(initApiRequest(token, `${domain}/v1/identity/entity/name/${name}`), (error, response) => {
+        const {token} = req.session.user;
+        request(initApiRequest(token, `${getDomain()}/v1/identity/entity/name/${name}`), (error, response) => {
             if (error) {
                 reject(error);
             } else {
@@ -222,12 +221,12 @@ const updateUser = async (req, userData) => {
  */
 const saveUser = async (req, userData) => {
     return await new Promise((resolve, reject) => {
-        const {REACT_APP_API_TOKEN: apiToken} = process.env;
-        const {domain, entityId: id, token} = req.session.user;
+        const {VAULT_API_TOKEN: apiToken} = process.env;
+        const {entityId: id, token} = req.session.user;
         const isSelf = id === userData.id;
         // Use the API token if saving/updating self.
         request({
-            ...initApiRequest(isSelf ? apiToken : token, `${domain}/v1/identity/entity`),
+            ...initApiRequest(isSelf ? apiToken : token, `${getDomain()}/v1/identity/entity`),
             method: 'POST',
             json: userData
         }, (error, response) => {
@@ -249,8 +248,8 @@ const saveUser = async (req, userData) => {
  */
 const getUserpass = async (req, name) => {
     return await new Promise((resolve, reject) => {
-        const {domain, token} = req.session.user;
-        request(initApiRequest(token, `${domain}/v1/auth/userpass/users/${name}`), (error, response) => {
+        const {token} = req.session.user;
+        request(initApiRequest(token, `${getDomain()}/v1/auth/userpass/users/${name}`), (error, response) => {
             if (error) {
                 reject(error);
             } else {
@@ -269,8 +268,8 @@ const getUserpass = async (req, name) => {
  */
 const deleteUserpass = async (req, name) => {
     return await new Promise((resolve, reject) => {
-        const {domain, token} = req.session.user;
-        const apiUrl = `${domain}/v1/auth/userpass/users/${name}`;
+        const {token} = req.session.user;
+        const apiUrl = `${getDomain()}/v1/auth/userpass/users/${name}`;
         request({
             ...initApiRequest(token, apiUrl),
             method: 'DELETE'
@@ -296,8 +295,8 @@ const deleteUserpass = async (req, name) => {
  */
 const saveUserpass = async (req, userData) => {
     return await new Promise((resolve, reject) => {
-        const {REACT_APP_API_TOKEN: apiToken} = process.env;
-        const {domain, entityId: id, token} = req.session.user;
+        const {VAULT_API_TOKEN: apiToken} = process.env;
+        const {entityId: id, token} = req.session.user;
         const isSelf = id === userData.id;
         const {name, password, policies} = userData;
         const postData = {
@@ -309,7 +308,7 @@ const saveUserpass = async (req, userData) => {
             postData.policies = policies.join(',');
         }
         request({
-            ...initApiRequest(isSelf ? apiToken : token, `${domain}/v1/auth/userpass/users/${name}`),
+            ...initApiRequest(isSelf ? apiToken : token, `${getDomain()}/v1/auth/userpass/users/${name}`),
             method: 'POST',
             json: postData
         }, (error, response) => {
@@ -331,8 +330,8 @@ const saveUserpass = async (req, userData) => {
  */
 const deleteUser = async (req, id) => {
     return await new Promise((resolve, reject) => {
-        const {domain, token} = req.session.user;
-        const apiUrl = `${domain}/v1/identity/entity/id/${id}`;
+        const {token} = req.session.user;
+        const apiUrl = `${getDomain()}/v1/identity/entity/id/${id}`;
         request({
             ...initApiRequest(token, apiUrl),
             method: 'DELETE'

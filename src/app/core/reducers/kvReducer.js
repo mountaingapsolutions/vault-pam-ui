@@ -83,12 +83,6 @@ export default (previousState = {
                 ...previousState,
                 secretsRequests: updateOrAppend(previousState.secretsRequests, action.data, 'accessor')
             };
-        // Deprecated?
-        case kvAction.ACTION_TYPES.LIST_SECRETS:
-            return {
-                ...previousState,
-                secretsPaths: (action.data || {}).data || {}
-            };
         case kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES:
             return {
                 ...previousState,

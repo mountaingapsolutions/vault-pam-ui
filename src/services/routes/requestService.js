@@ -23,7 +23,7 @@ const router = require('express').Router()
         const {controlGroupSupported, standardRequestSupported} = req.session.user;
         if (controlGroupSupported === undefined) {
             try {
-                let controlGroupSupport = await checkControlGroupSupport(req);
+                let controlGroupSupport = await checkControlGroupSupport();
                 setSessionData(req, {
                     controlGroupSupported: controlGroupSupport
                 });
@@ -35,7 +35,7 @@ const router = require('express').Router()
         }
         if (standardRequestSupported === undefined) {
             try {
-                let standardRequestSupport = await checkStandardRequestSupport(req);
+                let standardRequestSupport = await checkStandardRequestSupport();
                 setSessionData(req, {
                     standardRequestSupported: standardRequestSupport
                 });

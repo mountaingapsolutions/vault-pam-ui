@@ -359,7 +359,6 @@ Main.propTypes = {
     secretsMounts: PropTypes.object,
     secretsRequests: PropTypes.array,
     user: PropTypes.object,
-    vaultDomain: PropTypes.object.isRequired,
     vaultLookupSelf: PropTypes.object.isRequired
 };
 
