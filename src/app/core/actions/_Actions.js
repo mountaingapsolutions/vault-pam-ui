@@ -35,11 +35,10 @@ export default class _Actions {
      * @param {string} url The XHR url.
      * @param {Object} [data] The data to query by.
      * @param {Object} [headers] custom headers.
-     * @param {function} [thunk] Optional thunk method.
      * @returns {function} Redux dispatch function.
      */
-    _dispatchGet(type, url, data, headers, thunk) {
-        return this._orchestrateRequest('GET', type, url, data, headers, thunk);
+    _dispatchGet(type, url, data, headers) {
+        return this._orchestrateRequest('GET', type, url, data, headers);
     }
 
     /**
@@ -50,11 +49,10 @@ export default class _Actions {
      * @param {string} url The XHR url.
      * @param {Object} [data] The data to post.
      * @param {Object} [headers] custom headers.
-     * @param {function} [thunk] Optional thunk method.
      * @returns {function} Redux dispatch function.
      */
-    _dispatchPost(type, url, data, headers, thunk) {
-        return this._orchestrateRequest('POST', type, url, data, headers, thunk);
+    _dispatchPost(type, url, data, headers) {
+        return this._orchestrateRequest('POST', type, url, data, headers);
     }
 
     /**
@@ -65,11 +63,10 @@ export default class _Actions {
      * @param {string} url The XHR url.
      * @param {Object} [data] The data to post.
      * @param {Object} [headers] custom headers.
-     * @param {function} [thunk] Optional thunk method.
      * @returns {function} Redux dispatch function.
      */
-    _dispatchPut(type, url, data, headers, thunk) {
-        return this._orchestrateRequest('PUT', type, url, data, headers, thunk);
+    _dispatchPut(type, url, data, headers) {
+        return this._orchestrateRequest('PUT', type, url, data, headers);
     }
 
     /**
@@ -80,11 +77,10 @@ export default class _Actions {
      * @param {string} url The XHR url.
      * @param {Object} [data] The data to query by.
      * @param {Object} [headers] custom headers.
-     * @param {function} [thunk] Optional thunk method.
      * @returns {function} Redux dispatch function.
      */
-    _dispatchDelete(type, url, data, headers, thunk) {
-        return this._orchestrateRequest('DELETE', type, url, data, headers, thunk);
+    _dispatchDelete(type, url, data, headers) {
+        return this._orchestrateRequest('DELETE', type, url, data, headers);
     }
 
     /**
@@ -96,21 +92,20 @@ export default class _Actions {
      * @param {string} url The XHR url.
      * @param {Object} data The data to post or query by.
      * @param {Object} [headers] Custom headers.
-     * @param {function} [thunk] Optional thunk method.
      * @returns {function} Redux dispatch function.
      */
-    _orchestrateRequest(method, type, url, data, headers, thunk) {
+    _orchestrateRequest(method, type, url, data, headers) {
         return dispatch => {
             // Kickoff the initial inProgress dispatch.
-            dispatch(this._createResourceData(type, undefined, undefined, true, thunk));
+            dispatch(this._createResourceData(type, undefined, undefined, true));
 
             return new Promise((resolve, reject) => {
                 this._fetch(method, url, data, headers).then(res => {
-                    const responseData = this._createResourceData(type, undefined, res, false, thunk);
+                    const responseData = this._createResourceData(type, undefined, res, false);
                     dispatch(responseData);
                     resolve(responseData);
                 }).catch(err => {
-                    const errorData = this._createResourceData(type, err.errors || [err], undefined, false, thunk);
+                    const errorData = this._createResourceData(type, err.errors || [err], undefined, false);
                     dispatch(errorData);
                     reject(errorData);
                 });
@@ -148,11 +143,7 @@ export default class _Actions {
                     };
                 }
             }
-            // Must pass the Vault domain and token if in local storage data.
-            const vaultDomain = localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_DOMAIN);
-            if (vaultDomain) {
-                initData.headers['X-Vault-Domain'] = vaultDomain;
-            }
+            // Must pass the Vault token if in local storage data.
             const vaultToken = window.app.store.getState().sessionReducer.vaultToken.data || localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
             if (headers && headers['X-Vault-Token']) {
                 initData.headers['X-Vault-Token'] = headers['X-Vault-Token'];
@@ -163,7 +154,8 @@ export default class _Actions {
             /* global fetch */
             fetch(url, initData).then(res => {
                 ok = res.ok;
-                return res.headers.get('content-type').includes('application/json') && res.status !== 204 ? res.json() : res.text();
+                const contentType = res.headers.get('content-type');
+                return contentType && contentType.includes('application/json') && res.status !== 204 ? res.json() : res.text();
             }).then(response => {
                 // If response data is already an object, resolve with the data object. Otherwise, wrap it in an object with "response" as the key.
                 const responseData = typeof response === 'object' ? response : {response};
@@ -181,16 +173,14 @@ export default class _Actions {
      * @param {Array} errors The error data field of the REST call returned with an array of errors.
      * @param {Object} data The response data field if the REST call was successful.
      * @param {boolean} inProgress Indicator if the REST call is in-flight.
-     * @param {function} [thunk] Optional thunk method used to manipulate the final response.
      * @returns {Object} Resource data.
      */
-    _createResourceData(type, errors, data, inProgress, thunk) {
-        const resourceData = {
+    _createResourceData(type, errors, data, inProgress) {
+        return {
             type,
             errors,
             data,
             inProgress
         };
-        return thunk ? thunk(resourceData) : resourceData;
     }
 }

@@ -3,12 +3,12 @@ const chalk = require('chalk');
 const request = require('request');
 const swaggerUi = require('swagger-ui-express');
 const {options, swaggerDoc} = require('services/Swagger');
-const User = require('services/controllers/User');
-const {router: controlGroupServiceRouter} = require('services/routes/controlGroupService');
+const {router: controlGroupServiceRouter, getGroupsByUser} = require('services/routes/controlGroupService');
 const {router: secretsServiceRouter} = require('services/routes/secretsService');
-const userService = require('services/routes/userService');
-const requestService = require('services/routes/requestService');
-const {initApiRequest, sendError, setSessionData} = require('services/utils');
+const {router: userServiceRouter} = require('services/routes/userService');
+const {router: requestServiceRouter} = require('services/routes/requestService');
+const {router: standardRequestServiceRouter} = require('services/routes/standardRequestService');
+const {initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
 
 /**
  * Pass-through to the designated Vault server API endpoint.
@@ -18,24 +18,33 @@ const {initApiRequest, sendError, setSessionData} = require('services/utils');
  */
 const api = (req, res) => {
     _disableCache(res);
-    const {'x-vault-domain': domain, 'x-vault-token': token} = req.headers;
-    // Check if the domain has been provided.
-    if (!domain) {
-        res.status(400).json({errors: ['No Vault server domain provided.']});
-    } else {
-        const apiUrl = `${domain.endsWith('/') ? domain.slice(0, -1) : domain}${req.url}`;
-        console.log(`Proxy the request from ${_yellowBold(req.originalUrl)} to ${_yellowBold(apiUrl)}.`);
-        req.pipe(request(initApiRequest(token, apiUrl), (err) => {
-            if (err) {
-                res.status(500).json({errors: [err]});
-            }
-        }))
-        // .on('response', response => {
-        //     // Do interstitial logic here such as setting cookies. E.g.
-        //     // response.headers['set-cookie'] = response.headers['set-cookie'].map(value => value.replace(/secure(;)?/, '').replace(/HttpOnly(;)?/, ''));
-        // })
-            .pipe(res);
-    }
+    const {'x-vault-token': token} = req.headers;
+    const apiUrl = `${getDomain()}${req.url}`;
+    console.log(`Proxy the request from ${_yellowBold(req.originalUrl)} to ${_yellowBold(apiUrl)}.`);
+    req.pipe(request(initApiRequest(token, apiUrl), (err) => {
+        if (err) {
+            res.status(500).json({errors: [err]});
+        }
+    }))
+    // .on('response', response => {
+    //     // Do interstitial logic here such as setting cookies. E.g.
+    //     // response.headers['set-cookie'] = response.headers['set-cookie'].map(value => value.replace(/secure(;)?/, '').replace(/HttpOnly(;)?/, ''));
+    // })
+        .pipe(res);
+};
+
+/**
+ * Returns the current Vault server information.
+ *
+ * @param {Object} req The HTTP request object.
+ * @param {Object} res The HTTP response object.
+ */
+const config = (req, res) => {
+    _disableCache(res);
+    res.json({
+        domain: process.env.VAULT_DOMAIN,
+        features: [] // TODO - Fill in available features.
+    });
 };
 
 /**
@@ -46,20 +55,14 @@ const api = (req, res) => {
  */
 const login = (req, res) => {
     _disableCache(res);
-    const {'x-vault-domain': domain = ''} = req.headers;
     const {authType = 'userpass', token, username, password} = req.body;
-    // Check if the domain has been provided.
-    const parsedDomain = domain.endsWith('/') ? domain.slice(0, -1) : domain;
-    if (!parsedDomain) {
-        res.status(400).json({errors: ['No Vault server domain provided.']});
-    }
     // Method 1: authentication through token.
-    else if (token) {
-        _sendTokenValidationResponse(parsedDomain, token, req, res);
+    if (token) {
+        _sendTokenValidationResponse(token, req, res);
     }
     // Method 2: authentication through username and password. Upon success, it will still validate the token from method 1.
     else if (username && password) {
-        const apiUrl = `${parsedDomain}/v1/auth/${authType}/login/${username}`;
+        const apiUrl = `${getDomain()}/v1/auth/${authType}/login/${username}`;
         request({
             uri: apiUrl,
             method: 'POST',
@@ -78,7 +81,7 @@ const login = (req, res) => {
                 }
 
                 const {client_token: clientToken} = body.auth || {};
-                _sendTokenValidationResponse(parsedDomain, clientToken, req, res);
+                _sendTokenValidationResponse(clientToken, req, res);
             } catch (err) {
                 sendError(apiUrl, res, err);
             }
@@ -108,41 +111,6 @@ const logout = (req, res) => {
 };
 
 /**
- * Validates the Vault domain.
- *
- * @param {Object} req The HTTP request object.
- * @param {Object} res The HTTP response object.
- */
-const validate = (req, res) => {
-    _disableCache(res);
-    const domain = req.query.domain;
-    if (!domain) {
-        res.status(400).json({errors: ['No domain provided.']});
-    } else {
-        const url = `${domain.endsWith('/') ? domain.slice(0, -1) : domain}/v1/sys/seal-status`;
-        console.log(`Validating ${_yellowBold(url)}.`);
-        request({
-            url,
-            json: true
-        }, (error, response, body) => {
-            if (error) {
-                console.log(`Received error from ${url}:`);
-                console.error(error);
-                _sendVaultDomainError(url, res, error);
-                return;
-            }
-            const responseKeys = Object.keys(body);
-            // Validation approach to checking for a proper Vault server is to check that the response contains the required sealed, version, and cluster_name keys.
-            if (responseKeys.includes('sealed') && responseKeys.includes('version') && responseKeys.includes('cluster_name')) {
-                res.json(body);
-            } else {
-                _sendVaultDomainError(url, res, body);
-            }
-        });
-    }
-};
-
-/**
  * All the remaining authenticated routes.
  */
 /* eslint-disable new-cap */
@@ -152,23 +120,17 @@ const authenticatedRoutes = require('express').Router()
     .get('/api', swaggerUi.setup(swaggerDoc, options))
     .use((req, res, next) => {
         _disableCache(res);
-        const {'x-vault-domain': domain, 'x-vault-token': token} = req.headers;
-        // Check if the domain and token has been provided.
-        if (!domain || !token) {
+        const {'x-vault-token': token} = req.headers;
+        // Check if the token has been provided.
+        if (!token) {
             res.status(401).json({errors: ['Unauthorized.']});
         } else {
             const {token: sessionToken} = req.session.user || {};
 
-            // Always make sure the domain is normalized.
-            const apiDomain = domain.endsWith('/') ? domain.slice(0, -1) : domain;
-            setSessionData(req, {
-                domain: apiDomain
-            });
-
             // Token mismatch, so need to verify through Vault again.
             if (token !== sessionToken) {
                 console.log(`Token mismatch for the API call ${_yellowBold(req.originalUrl)} between header and stored session. Re-verifying through Vault.`);
-                const apiUrl = `${apiDomain}/v1/auth/token/lookup-self`;
+                const apiUrl = `${getDomain()}/v1/auth/token/lookup-self`;
                 request(initApiRequest(token, apiUrl), (error, response, body) => {
                     if (error) {
                         sendError(req.originalUrl, res, error);
@@ -183,7 +145,15 @@ const authenticatedRoutes = require('express').Router()
                         token: clientToken,
                         entityId
                     });
-                    next();
+                    res.cookie('entity_id', entityId, {
+                        httpOnly: true
+                    });
+                    getGroupsByUser(req).then(groups => {
+                        setSessionData(req, {
+                            groups: groups.map(group => group.data.name)
+                        });
+                        next();
+                    });
                 });
             } else {
                 console.info('Move along. Nothing to see here.');
@@ -191,10 +161,15 @@ const authenticatedRoutes = require('express').Router()
             }
         }
     })
-    .use('/user', userService)
-    .use('/request', requestService)
+    .use('/user', userServiceRouter)
+    .use('/requests', requestServiceRouter)
+    .use('/request', standardRequestServiceRouter)
     .use('/control-group', controlGroupServiceRouter)
     .use('/secrets', secretsServiceRouter)
+    .get('/session', (req, res) => {
+        const {'x-vault-token': token} = req.headers;
+        _sendTokenValidationResponse(token, req, res);
+    })
     .use((req, res) => {
         res.status(400).json({
             errors: ['These are\'t the droids you\'re looking for.']
@@ -232,32 +207,32 @@ const _disableCache = (res) => {
  * Helper method to validate a Vault token. Important note: do *not* attempt to operate on the provided res object after this method is invoked.
  *
  * @private
- * @param {string} domain The valid Vault domain.
  * @param {string} token The token to validate.
  * @param {Object} req The HTTP request object.
  * @param {Object} res The HTTP response object.
  */
-const _sendTokenValidationResponse = (domain, token, req, res) => {
-    const apiUrl = `${domain}/v1/auth/token/lookup-self`;
+const _sendTokenValidationResponse = (token, req, res) => {
+    const apiUrl = `${getDomain()}/v1/auth/token/lookup-self`;
     request(initApiRequest(token, apiUrl), (error, response, body) => {
         if (error) {
             sendError(apiUrl, res, error);
             return;
         }
         try {
-            const {display_name, entity_id: entityId, path} = body.data || {};
-            if (entityId) {
-                const engineType = path.split('/')[1];
-                User.findOrCreate(entityId, display_name, engineType).then(user => {
-                    console.log(`Entity ID logged in: ${user.entityId}`);
-                });
-            }
+            const {entity_id: entityId} = body.data || {};
             setSessionData(req, {
-                domain,
                 token,
                 entityId
             });
-            res.status(response.statusCode).json(body);
+            res.cookie('entity_id', entityId, {
+                httpOnly: true
+            });
+            getGroupsByUser(req).then(groups => {
+                setSessionData(req, {
+                    groups: groups.map(group => group.data.name)
+                });
+                res.status(response.statusCode).json(body);
+            });
         } catch (err) {
             _sendVaultDomainError(apiUrl, res, err);
         }
@@ -277,8 +252,8 @@ const _yellowBold = (value) => {
 
 module.exports = {
     api,
+    config,
     login,
     logout,
-    validate,
     authenticatedRoutes
 };

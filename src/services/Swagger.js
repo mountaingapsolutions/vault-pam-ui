@@ -43,11 +43,6 @@ const options = {
                         name: 'x-vault-token',
                         schema: {type: 'apiKey', in: 'header', name: 'x-vault-token'},
                         value: localStorage.getItem('vault-token')
-                    },
-                    'x-vault-domain': {
-                        name: 'x-vault-domain',
-                        schema: {type: 'apiKey', in: 'header', name: 'x-vault-domain'},
-                        value: localStorage.getItem('vault-domain')
                     }
                 });
             }
@@ -67,18 +62,12 @@ const swaggerJsDocOptions = {
                     type: 'apiKey',
                     name: 'x-vault-token',
                     in: 'header'
-                },
-                'x-vault-domain': {
-                    type: 'apiKey',
-                    name: 'x-vault-domain',
-                    in: 'header'
                 }
             }
         },
         security: [
             {
-                'x-vault-token': [],
-                'x-vault-domain': []
+                'x-vault-token': []
             }
         ]
     },

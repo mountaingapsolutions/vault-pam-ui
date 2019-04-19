@@ -5,7 +5,6 @@ import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import {Redirect, Route, Switch, withRouter} from 'react-router-dom';
 
-import Server from 'app/routes/auth/Server';
 import Login from 'app/routes/auth/Login';
 import Constants from 'app/util/Constants';
 
@@ -22,11 +21,7 @@ class Auth extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, history, location, vaultDomain} = this.props;
-        // If attempting to go to the login page with no domain set, go back to the initial set domain page.
-        if (location.pathname === '/auth/login' && !vaultDomain.data) {
-            history.push('/auth/server');
-        }
+        const {classes} = this.props;
         return <div>
             <AppBar position='static'>
                 <Toolbar>
@@ -39,10 +34,9 @@ class Auth extends Component {
             <Grid container className='mt-1' justify='center'>
                 <Card className={classes.card}>
                     <Switch>
-                        <Redirect exact from='/' to='/auth/server'/>
-                        <Route exact component={Server} path='/auth/server'/>
+                        <Redirect exact from='/' to='/auth/login'/>
                         <Route exact component={Login} path='/auth/login'/>
-                        <Redirect to='/auth/server'/>
+                        <Redirect to='/auth/login'/>
                     </Switch>
                 </Card>
             </Grid>
@@ -53,8 +47,7 @@ class Auth extends Component {
 Auth.propTypes = {
     classes: PropTypes.object.isRequired,
     history: PropTypes.object.isRequired,
-    location: PropTypes.object.isRequired,
-    vaultDomain: PropTypes.object.isRequired
+    location: PropTypes.object.isRequired
 };
 
 /**

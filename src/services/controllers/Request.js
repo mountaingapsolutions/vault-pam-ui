@@ -74,6 +74,20 @@ const findAllByApprover = (entityId) => {
 };
 
 /**
+ * Find all requests by status.
+ *
+ * @param {string} status The request status.
+ * @returns {Object}
+ */
+const findAllByStatus = (status) => {
+    return Request.findAll({
+        where: {status}
+    }).then(requests => {
+        return requests;
+    });
+};
+
+/**
  * Update a Request Status by Request Id.
  *
  * @param {string} id The request id.
@@ -129,8 +143,9 @@ const findOrCreate = (requesterEntityId, requestData, type, status, engineType) 
 module.exports = {
     create,
     findAll,
-    findAllByRequester,
     findAllByApprover,
+    findAllByRequester,
+    findAllByStatus,
     findById,
     findOrCreate,
     updateStatus,

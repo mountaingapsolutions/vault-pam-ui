@@ -1,95 +1,10 @@
 /* eslint-disable no-console */
+const {toObject} = require('@mountaingapsolutions/objectutil');
 const chalk = require('chalk');
 const request = require('request');
-const {checkControlGroupRequestStatus, getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
-const {initApiRequest, sendError, setSessionData} = require('services/utils');
-
-/**
- * Retrieves the active Control Group requests from group metadata.
- *
- * @param {Object} req The HTTP request object.
- * @param {string} entityId The entity id.
- * @returns {Promise}
- */
-const _getActiveRequestsByEntityId = async (req, entityId) => {
-    const result = await new Promise((resolve, reject) => {
-        const {REACT_APP_API_TOKEN: apiToken} = process.env;
-        if (!apiToken) {
-            reject('No API token configured.');
-            return;
-        }
-        const {domain} = req.session.user;
-        let metadataMap = {};
-        let activeRequests = {};
-        let invalidRequests = {};
-        const groups = [];
-        request(initApiRequest(apiToken, `${domain}/v1/identity/group/id?list=true`), (error, response, body) => {
-            Promise.all((((body || {}).data || {}).keys || []).map(key => {
-                return new Promise((groupResolve) => {
-                    request(initApiRequest(apiToken, `${domain}/v1/identity/group/id/${key}`), (groupError, groupResponse, groupBody) => {
-                        if (groupBody && groupBody.data) {
-                            const {metadata = {}} = groupBody.data;
-                            metadataMap = {
-                                ...metadataMap,
-                                ...metadata
-                            };
-                            groups.push(groupBody.data);
-                        }
-                        groupResolve();
-                    });
-                });
-            })).then(() => {
-                const promises = Object.keys(metadataMap).filter(key => key.startsWith(`entity=${entityId}`)).map((key) => {
-                    return new Promise((requestCheck) => {
-                        const path = key.split('==path=')[1].replace(/_/g, '/');
-                        // Validate that the request accessor is still active. If the accessor is no longer available, it typically means that the request has expired.
-                        const wrapInfo = JSON.parse(metadataMap[key]);
-                        checkControlGroupRequestStatus(req, wrapInfo.accessor)
-                            .then((requestData) => {
-                                if (requestData.errors) {
-                                    invalidRequests[key] = requestData;
-                                } else {
-                                    activeRequests[path] = {
-                                        request_info: requestData.data,
-                                        wrap_info: wrapInfo
-                                    };
-                                }
-                                requestCheck();
-                            })
-                            .catch((err) => {
-                                invalidRequests[key] = err;
-                                requestCheck();
-                            });
-                    });
-                });
-                Promise.all(promises).then(() => {
-                    // Execute non-blocking call to clean up any expired requests.
-                    const invalidRequestKeys = Object.keys(invalidRequests);
-                    if (invalidRequestKeys.length > 0) {
-                        groups.forEach(group => {
-                            const {id, metadata = {}} = group;
-                            const updatedMetadata = Object.keys(metadata).filter(key => !invalidRequestKeys.includes(key)).reduce((dataMap, k) => {
-                                dataMap[k] = metadata[k];
-                                return dataMap;
-                            }, {});
-                            request({
-                                ...initApiRequest(apiToken, `${domain}/v1/identity/group/id/${id}`),
-                                method: 'POST',
-                                json: {
-                                    metadata: updatedMetadata
-                                }
-                            });
-                        });
-                    }
-                    resolve(activeRequests);
-                });
-            });
-        });
-    });
-    return result;
-};
-
-
+const {getSelfActiveRequests, getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
+const {initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
+const RequestController = require('services/controllers/Request');
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
@@ -123,9 +38,9 @@ const router = require('express').Router()
  *       404:
  *         description: Not found.
  */
-    .get('/*', async (req, res) => {
+    .get('/secrets/*', async (req, res) => {
         // Check for Control Group policies.
-        const {controlGroupPaths, entityId} = req.session.user;
+        const {controlGroupPaths} = req.session.user;
         if (!controlGroupPaths) {
             let paths = {};
             try {
@@ -145,13 +60,16 @@ const router = require('express').Router()
         if (isV2) {
             listUrlParts.splice(1, 0, 'metadata');
         }
-        const {domain, token} = req.session.user;
+        const domain = getDomain();
+        const {token} = req.session.user;
         const apiUrl = `${domain}/v1/${listUrlParts.join('/')}?list=true`;
 
-        // Get active Control Group requests.
-        const activeRequests = await _getActiveRequestsByEntityId(req, entityId);
+        // Get current user's active Control Group requests.
+        const activeRequests = await getSelfActiveRequests(req);
 
         console.log(`Listing secrets from ${chalk.yellow.bold(apiUrl)}.`);
+        // Get Secret Requests from Database
+        const databaseRequestMap = toObject(await RequestController.findAll(), 'requestData');
         request(initApiRequest(token, apiUrl), (error, response, body) => {
             if (error) {
                 sendError(url, res, error);
@@ -163,23 +81,22 @@ const router = require('express').Router()
                     res.status(statusCode).json(body);
                     return;
                 }
+                // Maintain the list of paths as a key/value map as well for easier access later.
+                const pathsMap = {};
                 const paths = (((body || {}).data || {}).keys || []).map(key => {
                     const getUrlParts = [...urlParts];
                     if (isV2) {
                         getUrlParts.splice(1, 0, key.endsWith('/') ? 'metadata' : 'data');
                     }
-                    return `${getUrlParts.join('/')}/${key}`;
+                    const path = `${getUrlParts.join('/')}/${key}`;
+                    pathsMap[path] = path;
+                    return path;
                 });
 
                 // Make sure to include listing path.
                 const listingPath = listUrlParts.join('/');
                 paths.push(listingPath);
-
-                // Convert the list of paths to a key/value map for easier access later.
-                const pathsMap = paths.reduce((accumulatedPaths, currentPath) => {
-                    accumulatedPaths[currentPath] = currentPath;
-                    return accumulatedPaths;
-                }, {});
+                pathsMap[listingPath] = listingPath;
 
                 const capabilitiesUrl = `${domain}/v1/sys/capabilities-self`;
                 console.log(`Checking capabilities with paths ${chalk.yellow.bold(JSON.stringify(paths))}.`);
@@ -202,9 +119,9 @@ const router = require('express').Router()
                             const lastPath = keySplit[keySplit.length - 1];
                             const secret = {
                                 name: lastPath === '' ? `${keySplit[keySplit.length - 2]}/` : lastPath,
-                                capabilities: capabilities[key] || []
+                                capabilities: capabilities[key] || [],
+                                databaseRequestData: databaseRequestMap[key]
                             };
-
                             const canRead = (capabilities[key] || []).includes('read');
                             if (canRead && !key.endsWith('/')) {
                                 promises.push(new Promise((secretResolve) => {
@@ -244,6 +161,24 @@ const router = require('express').Router()
             } catch (err) {
                 sendError(url, res, err);
             }
+        });
+    })
+    .get('/secret/*', async (req, res) => {
+        const {VAULT_API_TOKEN: apiToken} = process.env;
+        const {params = {}, query} = req;
+        const urlParts = (params[0] || '').split('/').filter(path => !!path);
+        const listUrlParts = [...urlParts];
+        const isV2 = String(query.version) === '2';
+        if (isV2) {
+            listUrlParts.splice(1, 0, 'metadata');
+        }
+        const apiUrl = `${getDomain()}/v1/${listUrlParts.join('/')}`;
+        request(initApiRequest(apiToken, apiUrl), (error, response, body) => {
+            if (error) {
+                sendError(error, response, body);
+                return;
+            }
+            res.json({...body});
         });
     });
 

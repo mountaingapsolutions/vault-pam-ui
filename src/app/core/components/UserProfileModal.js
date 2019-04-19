@@ -1,30 +1,60 @@
-import PropTypes from 'prop-types';
-import React, {Component} from 'react';
-import {connect} from 'react-redux';
-import userAction from 'app/core/actions/userAction';
 import {
+    CircularProgress,
     Dialog,
     DialogActions,
     DialogContent,
     DialogTitle,
     Grid,
+    IconButton,
+    InputAdornment,
+    List,
+    ListItem,
+    ListItemText,
     Paper,
-    TextField,
-    Typography
+    TextField
 } from '@material-ui/core';
 import {
     AccountCircle,
     Email,
-    VpnKey
+    Lock,
+    Visibility,
+    VisibilityOff
 } from '@material-ui/icons';
 import {withStyles} from '@material-ui/core/styles/index';
-import {COLORS} from 'app/core/assets/Styles';
-import Button from 'app/core/components/common/Button';
+import md5 from 'md5';
+import PropTypes from 'prop-types';
+import React, {Component} from 'react';
+import {connect} from 'react-redux';
+import isEmail from 'validator/lib/isEmail';
+
+import userAction from 'app/core/actions/userAction';
+import Button from 'app/core/components/Button';
+import SnackbarContent from 'app/core/components/SnackbarContent';
+import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 
 /**
  * Settings with Change Password Modal component.
  */
 class UserProfileModal extends Component {
+
+    _defaultState = {
+        errors: {},
+        loaded: false,
+        password: {
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: '',
+            showCurrentPassword: false,
+            showNewPassword: false,
+            showConfirmPassword: false
+        },
+        user: {
+            firstName: '',
+            lastName: '',
+            email: ''
+        },
+        useDefaultImage: false
+    };
 
     /**
      * The constructor method. Executed upon class instantiation.
@@ -34,56 +64,109 @@ class UserProfileModal extends Component {
      */
     constructor(props) {
         super(props);
+
         this.state = {
-            email: null,
-            engine: null,
-            firstName: null,
-            isUpdatePending: false,
-            lastName: null
+            ...this._defaultState
         };
+
+        this._mapPropsToState = this._mapPropsToState.bind(this);
+        this._handleChange = this._handleChange.bind(this);
+        this._handleChangePassword = this._handleChangePassword.bind(this);
+        this._resetState = this._resetState.bind(this);
+        this._togglePasswordVisibility = this._togglePasswordVisibility.bind(this);
         this._updateProfile = this._updateProfile.bind(this);
     }
 
     /**
-     * Required React Component lifecycle method. Invoked when a component did update. This method is not called for the initial render.
-     *
-     * @protected
-     * @override
-     * @param {Object} prevProps - previous set of props.
-     */
-    componentDidUpdate(prevProps) {
-        const {entityId, getUser, user} = this.props;
-        const isUserProfileUpdated = user && (user.email !== prevProps.user.email || user.firstName !== prevProps.user.firstName || user.lastName !== prevProps.user.lastName);
-        entityId !== prevProps.entityId && getUser(entityId);
-        isUserProfileUpdated && this.setState({isUpdatePending: false});
-        user && this.state.engine !== user.engine && this._mapPropsToState();
-    }
-
-    /**
-     * Handle for when back button is pressed.
-     *
-     * @private
-     * @param {Event} prop The event.
-     * @returns {Object}
-     */
-    _handleChange = prop => event => {
-        const {isUpdatePending} = this.state;
-        !isUpdatePending && this.setState({isUpdatePending: true});
-        this.setState({[prop]: event.target.value});
-    };
-
-    /**
-     * Helper method to map app state to component state.
+     * Maps user metadata from props to state.
      *
      * @private
      */
     _mapPropsToState() {
-        const {email, engine, firstName, lastName} = this.props.user;
+        const {userMetadata} = this.props;
+        const {user} = this.state;
         this.setState({
-            email,
-            engine,
-            firstName,
-            lastName
+            user: {
+                ...user,
+                ...userMetadata
+            }
+        });
+    }
+
+    /**
+     * Handle for user field updates.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _handleChange(event) {
+        const {name, value} = event.target;
+        const {errors, user} = this.state;
+        this.setState({
+            errors: {
+                ...errors,
+                [name]: ''
+            },
+            user: {
+                ...user,
+                [name]: value
+            }
+        });
+    }
+
+    /**
+     * Handle for password field updates.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _handleChangePassword(event) {
+        const {name, value} = event.target;
+        const {errors, password} = this.state;
+        const updatedErrors = {
+            ...errors,
+            [name]: ''
+        };
+        if (name === 'newPassword' || name === 'confirmPassword') {
+            updatedErrors.newPassword = updatedErrors.confirmPassword = '';
+        } else {
+            updatedErrors.currentPassword = '';
+        }
+        this.setState({
+            errors: updatedErrors,
+            password: {
+                ...password,
+                [name]: value
+            }
+        });
+    }
+
+    /**
+     * Resets the internal state.
+     *
+     * @private
+     */
+    _resetState() {
+        this.setState({
+            ...this._defaultState
+        });
+    }
+
+    /**
+     * Handle for toggling the password masking.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _togglePasswordVisibility(event) {
+        event.stopPropagation();
+        const {name} = event.currentTarget;
+        const ariaLabel = event.currentTarget.getAttribute('aria-label');
+        this.setState({
+            password: {
+                ...this.state.password,
+                [name]: ariaLabel.startsWith('Show')
+            }
         });
     }
 
@@ -91,17 +174,49 @@ class UserProfileModal extends Component {
      * Handle for when save button is pressed.
      *
      * @private
+     * @param {SyntheticMouseEvent} event The event.
      */
-    _updateProfile() {
-        const {email, firstName, lastName} = this.state;
-        const {entityId, updateUser} = this.props;
-        const data = {
-            entityId,
-            email,
-            firstName,
-            lastName
-        };
-        updateUser(data);
+    _updateProfile(event) {
+        event.preventDefault();
+
+        const {onClose, updateUser} = this.props;
+        const {password, user} = this.state;
+        const {email, firstName, lastName} = user;
+        const {currentPassword, newPassword, confirmPassword} = password;
+        const errors = {};
+        // Validate required fields.
+        ['email', 'firstName', 'lastName'].forEach((field) => {
+            if (!user[field]) {
+                errors[field] = 'Please fill out this field.';
+            }
+        });
+        // Validate email.
+        if (email && !isEmail(email)) {
+            errors.email = `${email} does not appear to be a valid email.`;
+        }
+        // Validate password.
+        if (currentPassword) {
+            ['newPassword', 'confirmPassword'].forEach((field) => {
+                if (!password[field]) {
+                    errors[field] = 'Please fill out this field.';
+                }
+            });
+            if (newPassword !== confirmPassword) {
+                errors.newPassword = errors.confirmPassword = 'Your new password and confirmation password do not match.';
+            }
+        }
+        this.setState({
+            errors
+        });
+        if (Object.values(errors).every((error) => !error)) {
+            updateUser({
+                firstName,
+                lastName,
+                email,
+                password: currentPassword,
+                newPassword
+            }).then(onClose);
+        }
     }
 
     /**
@@ -111,66 +226,185 @@ class UserProfileModal extends Component {
      * @returns {React.ReactElement}
      */
     _renderProfileDetails() {
-        const {classes} = this.props;
-        const {email, engine, firstName, lastName} = this.state;
+        const {classes, message} = this.props;
+        const {errors, password, user} = this.state;
+        const {email, firstName, lastName} = user;
+        const {currentPassword, newPassword, confirmPassword, showCurrentPassword, showNewPassword, showConfirmPassword} = password;
         return (
-            <Paper className={classes.paperChangePassword}>
-                <Grid container>
-                    <Grid container>
-                        <Grid item className={classes.gridIconItem} xs={1}>
-                            <AccountCircle
-                                color='primary'
-                                fontSize='large'/>
-                        </Grid>
-                        <Grid item className={classes.gridTextFieldItem} xs={11}>
+            <Paper>
+                {message && <SnackbarContent message={message} variant='info'/>}
+                <List>
+                    <ListItem dense>
+                        {this._renderProfileIcon()}
+                        <ListItemText primary={<React.Fragment>
                             <TextField
+                                autoFocus
+                                required
+                                className={`${classes.inlineNameFields} ${classes.paddingRight}`}
+                                error={!!errors.firstName}
+                                helperText={errors.firstName}
                                 label='First Name'
                                 margin='normal'
-                                style={{marginRight: 10}}
+                                name='firstName'
                                 value={firstName}
                                 variant='outlined'
-                                onChange={this._handleChange('firstName')}/>
+                                onChange={this._handleChange}/>
                             <TextField
+                                required
+                                className={classes.inlineNameFields}
+                                error={!!errors.lastName}
+                                helperText={errors.lastName}
                                 label='Last Name'
                                 margin='normal'
+                                name='lastName'
                                 value={lastName}
                                 variant='outlined'
-                                onChange={this._handleChange('lastName')}/>
-                        </Grid>
-                    </Grid>
-                    <Grid container>
-                        <Grid item className={classes.gridIconItem} xs={1}>
-                            <Email
-                                color='primary'
-                                fontSize='large'/>
-                        </Grid>
-                        <Grid item className={classes.gridTextFieldItem} xs={11}>
+                                onChange={this._handleChange}/>
+                        </React.Fragment>}/>
+                    </ListItem>
+                    <ListItem dense>
+                        <Email color='primary' fontSize='large'/>
+                        <ListItemText primary={
                             <TextField
                                 fullWidth
+                                required
+                                error={!!errors.email}
+                                helperText={errors.email}
                                 label='Email'
+                                name='email'
                                 value={email}
                                 variant='outlined'
-                                onChange={this._handleChange('email')}/>
-                        </Grid>
-                    </Grid>
-                    <Grid container>
-                        <Grid item className={classes.gridIconItem} xs={1}>
-                            <VpnKey
-                                color='primary'
-                                fontSize='large'/>
-                        </Grid>
-                        <Grid item className={classes.gridTextFieldItem} xs={11}>
-                            <TextField
-                                disabled
-                                fullWidth
-                                label='Engine'
-                                value={engine}
-                                variant='outlined'/>
-                        </Grid>
-                    </Grid>
-                </Grid>
+                                onChange={this._handleChange}/>}/>
+                    </ListItem>
+                    <ListItem dense className={classes.passwordItem}>
+                        <Lock className={classes.passwordIcon} color='primary' fontSize='large'/>
+                        <ListItemText primary={
+                            <React.Fragment>
+                                <TextField
+                                    fullWidth
+                                    autoComplete='current-password'
+                                    className={classes.passwordPadding}
+                                    error={!!errors.currentPassword}
+                                    helperText={errors.currentPassword}
+                                    InputProps={{
+                                        endAdornment: <InputAdornment position='end'>
+                                            <IconButton
+                                                aria-label={`${showCurrentPassword ? 'Hide' : 'Show'} current password`}
+                                                className={classes.iconButton}
+                                                name='showCurrentPassword'
+                                                onClickCapture={this._togglePasswordVisibility}>
+                                                {showCurrentPassword ? <VisibilityOff/> : <Visibility/>}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    }}
+                                    label='Current password'
+                                    name='currentPassword'
+                                    type={showCurrentPassword ? 'text' : 'password'}
+                                    value={currentPassword}
+                                    variant='outlined'
+                                    onChange={this._handleChangePassword}/>
+                                <TextField
+                                    fullWidth
+                                    autoComplete='new-password'
+                                    className={classes.passwordPadding}
+                                    disabled={!password.currentPassword}
+                                    error={!!errors.newPassword}
+                                    helperText={errors.newPassword}
+                                    InputProps={{
+                                        endAdornment: <InputAdornment position='end'>
+                                            <IconButton
+                                                aria-label={`${showNewPassword ? 'Hide' : 'Show'} new password`}
+                                                className={classes.iconButton}
+                                                disabled={!password.currentPassword}
+                                                name='showNewPassword'
+                                                onClickCapture={this._togglePasswordVisibility}>
+                                                {showNewPassword ? <VisibilityOff/> : <Visibility/>}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    }}
+                                    label='New password'
+                                    name='newPassword'
+                                    type={showNewPassword ? 'text' : 'password'}
+                                    value={newPassword}
+                                    variant='outlined'
+                                    onChange={this._handleChangePassword}/>
+                                <TextField
+                                    fullWidth
+                                    autoComplete='new-password'
+                                    className={classes.passwordPadding}
+                                    disabled={!password.currentPassword}
+                                    error={!!errors.confirmPassword}
+                                    helperText={errors.confirmPassword}
+                                    InputProps={{
+                                        endAdornment: <InputAdornment position='end'>
+                                            <IconButton
+                                                aria-label={`${showConfirmPassword ? 'Hide' : 'Show'} confirm password`}
+                                                className={classes.iconButton}
+                                                disabled={!password.currentPassword}
+                                                name='showConfirmPassword'
+                                                onClickCapture={this._togglePasswordVisibility}>
+                                                {showConfirmPassword ? <VisibilityOff/> : <Visibility/>}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    }}
+                                    label='Confirm new password'
+                                    name='confirmPassword'
+                                    type={showConfirmPassword ? 'text' : 'password'}
+                                    value={confirmPassword}
+                                    variant='outlined'
+                                    onChange={this._handleChangePassword}/>
+                            </React.Fragment>}/>
+                    </ListItem>
+                </List>
             </Paper>
         );
+    }
+
+    /**
+     * Renders the profile image element.
+     *
+     * @private
+     * @returns {Element}
+     */
+    _renderProfileIcon() {
+        const {useDefaultImage} = this.state;
+        const {userMetadata = {}} = this.props;
+        const {email} = userMetadata;
+        let element;
+        if (useDefaultImage || !email) {
+            element = <AccountCircle color='primary' fontSize='large'/>;
+        } else {
+            element = <img alt='profile' src={`//www.gravatar.com/avatar/${md5(email.trim().toLowerCase())}?s=35&d=404`} onError={() => {
+                this.setState({
+                    useDefaultImage: true
+                });
+            }}/>;
+        }
+        return <a href='https://en.gravatar.com/emails' rel='noopener noreferrer' style={{marginTop: '8px'}} target='_blank' title='Change your Gravatar'>{element}</a>;
+    }
+
+    /**
+     * Required React Component lifecycle method. Invoked right before calling the render method, both on the initial mount and on subsequent updates.
+     *
+     * @protected
+     * @override
+     * @param {Object} props - Next set of updated props.
+     * @param {Object} state - The current state.
+     * @returns {Object}
+     */
+    static getDerivedStateFromProps(props, state) {
+        const {dismissUpdateUserError, updateUserError} = props;
+        if (updateUserError && updateUserError.indexOf('password') > 0) {
+            // Can immediately clear out the error in props since it will get set in state.
+            dismissUpdateUserError();
+            return {
+                errors: {
+                    ...state.errors,
+                    currentPassword: updateUserError
+                }
+            };
+        }
+        return null;
     }
 
     /**
@@ -181,79 +415,91 @@ class UserProfileModal extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {isUpdatePending} = this.state;
-        const {classes, onClose, open} = this.props;
-        return (
-            <Dialog
-                disableBackdropClick
-                disableEscapeKeyDown
-                fullWidth
-                classes={{paper: classes.dialogPaper}}
-                maxWidth={'sm'}
-                open={open}>
-                <DialogTitle disableTypography className={classes.title}>
-                    <Typography color='textSecondary'>
-                        USER PROFILE
-                    </Typography>
+        const {classes, closeable, inProgress, onClose, open} = this.props;
+        return <Dialog
+            fullWidth
+            aria-labelledby='modal-title'
+            classes={{paper: classes.dialogPaper}}
+            maxWidth={'sm'}
+            open={open}
+            onClose={closeable ? onClose : null}
+            onEnter={this._mapPropsToState}
+            onExit={this._resetState}>
+            <form onSubmit={this._updateProfile}>
+                <DialogTitle id='modal-title'>
+                    Edit User Profile
                 </DialogTitle>
                 <DialogContent>
-                    {this._renderProfileDetails()}
+                    {inProgress ?
+                        <Grid container justify='center'>
+                            <Grid item>
+                                <CircularProgress className={classes.loader}/>
+                            </Grid>
+                        </Grid>
+                        :
+                        this._renderProfileDetails()
+                    }
                 </DialogContent>
                 <DialogActions>
-                    <Button
-                        variant='text'
-                        onClick={onClose}>
-                        CLOSE
-                    </Button>
-                    <Button
-                        disabled={!isUpdatePending}
-                        onClick={this._updateProfile}>
-                        SAVE
+                    {closeable && <Button variant='text' onClick={onClose}>
+                        Close
+                    </Button>}
+                    <Button disabled={inProgress} type='submit' onClick={this._updateProfile}>
+                        Save
                     </Button>
                 </DialogActions>
-            </Dialog>
-        );
+            </form>
+        </Dialog>;
     }
 }
 
 UserProfileModal.defaultProps = {
-    entityId: ''
+    closeable: true
 };
 
 UserProfileModal.propTypes = {
     classes: PropTypes.object.isRequired,
-    entityId: PropTypes.string.isRequired,
-    getUser: PropTypes.func.isRequired,
+    closeable: PropTypes.bool,
+    dismissUpdateUserError: PropTypes.func.isRequired,
+    inProgress: PropTypes.bool,
+    message: PropTypes.string,
     onClose: PropTypes.func.isRequired,
     open: PropTypes.bool.isRequired,
     updateUser: PropTypes.func.isRequired,
-    user: PropTypes.object,
+    updateUserError: PropTypes.string,
+    userMetadata: PropTypes.object,
 };
 
 /**
  * Returns custom style overrides.
  *
  * @private
+ * @param {Object} theme The theme object.
  * @returns {Object}
  */
-const _styles = () => ({
-    dialogPaper: {
-        minWidth: 400,
-        maxWidth: 610
+const _styles = (theme) => ({
+    inlineNameFields: {
+        boxSizing: 'border-box',
+        width: '50%'
     },
-    gridIconItem: {
-        alignSelf: 'center',
-        textAlign: 'center'
+    loader: {
+        margin: 50
     },
-    gridTextFieldItem: {
-        padding: 10
+    paddingRight: {
+        paddingRight: theme.spacing.unit
     },
     paperChangePassword: {
         marginTop: 10,
         padding: 20
     },
-    title: {
-        backgroundColor: COLORS.LIGHT_GREY
+    passwordItem: {
+        alignItems: 'inherit'
+    },
+    passwordIcon: {
+        paddingTop: theme.spacing.unit
+    },
+    passwordPadding: {
+        paddingBottom: theme.spacing.unit * 2
     }
 });
 
@@ -267,8 +513,35 @@ const _styles = () => ({
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        getUser: entityId => dispatch(userAction.getUser(entityId)),
-        updateUser: data => dispatch(userAction.updateUser(data))
+        dismissUpdateUserError: () => {
+            return new Promise((resolve) => {
+                dispatch({
+                    type: userAction.ACTION_TYPES.UPDATE_USER
+                });
+                resolve();
+            });
+        },
+        updateUser: (userData) => {
+            return new Promise((resolve, reject) => {
+                const {firstName, lastName, email, test, password, newPassword} = userData;
+                dispatch(userAction.updateUser({
+                    password,
+                    newPassword,
+                    metadata: {
+                        firstName,
+                        lastName,
+                        email,
+                        test
+                    }
+                }))
+                    .then(() => {
+                        dispatch(userAction.getUser())
+                            .then(resolve)
+                            .catch(reject);
+                    })
+                    .catch(reject);
+            });
+        }
     };
 };
 
@@ -280,10 +553,17 @@ const _mapDispatchToProps = (dispatch) => {
  * @returns {Object}
  */
 const _mapStateToProps = (state) => {
-    const {data} = state.sessionReducer.vaultLookupSelf;
     return {
-        user: state.userReducer && state.userReducer.user,
-        entityId: data && data.data.entity_id
+        userMetadata: {
+            ...((state.userReducer.user || {}).data || {}).metadata || {}
+        },
+        updateUserError: createErrorsSelector([
+            userAction.ACTION_TYPES.UPDATE_USER
+        ])(state.actionStatusReducer),
+        inProgress: createInProgressSelector([
+            userAction.ACTION_TYPES.GET_USER,
+            userAction.ACTION_TYPES.UPDATE_USER
+        ])(state.actionStatusReducer),
     };
 };
 

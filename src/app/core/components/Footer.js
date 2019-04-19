@@ -1,13 +1,11 @@
-import PropTypes from 'prop-types';
-import React, {Component} from 'react';
-import {connect} from 'react-redux';
-import {Link} from 'react-router-dom';
-
-import localStorageAction from 'app/core/actions/localStorageAction';
-
 import {AppBar, Typography} from '@material-ui/core';
 import {COLORS} from 'app/core/assets/Styles';
 import {withStyles} from '@material-ui/core/styles/index';
+import PropTypes from 'prop-types';
+import React, {Component} from 'react';
+import {connect} from 'react-redux';
+
+import systemAction from 'app/core/actions/systemAction';
 
 /**
  * Generic app bar as footer displaying active domain and version.
@@ -21,8 +19,8 @@ class Footer extends Component {
      * @override
      */
     componentDidMount() {
-        const {getActiveVaultDomain} = this.props;
-        getActiveVaultDomain();
+        const {getConfig} = this.props;
+        getConfig();
     }
 
     /**
@@ -38,11 +36,9 @@ class Footer extends Component {
             <div className={classes.footerRootContainer}>
                 <AppBar className={classes.footer} position='fixed'>
                     <div className={classes.footerTextContainer}>
-                        <Link to={'/rest/api'}>
-                            <Typography inline className={classes.text} variant='caption'>
-                                API
-                            </Typography>
-                        </Link>
+                        <Typography inline className={classes.text} component={(props) => <a href='/rest/api' {...props}>API</a>} variant='caption'>
+                            API
+                        </Typography>
                         <Typography inline className={classes.textSeparator} variant='caption'>
                             |
                         </Typography>
@@ -70,7 +66,7 @@ Footer.defaultProps = {
 Footer.propTypes = {
     activeVaultDomain: PropTypes.string.isRequired,
     classes: PropTypes.object.isRequired,
-    getActiveVaultDomain: PropTypes.func.isRequired,
+    getConfig: PropTypes.func.isRequired,
     vaultVersion: PropTypes.string.isRequired
 };
 
@@ -83,7 +79,7 @@ Footer.propTypes = {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        getActiveVaultDomain: () => dispatch(localStorageAction.getActiveVaultDomain())
+        getConfig: () => dispatch(systemAction.getConfig())
     };
 };
 
@@ -95,10 +91,10 @@ const _mapDispatchToProps = (dispatch) => {
  * @returns {Object}
  */
 const _mapStateToProps = (state) => {
-    const {localStorageReducer, systemReducer} = state;
+    const {systemReducer} = state;
     return {
-        activeVaultDomain: localStorageReducer && localStorageReducer.activeVaultDomain,
-        vaultVersion: systemReducer && systemReducer.sealStatus && systemReducer.sealStatus.version
+        activeVaultDomain: systemReducer.config && systemReducer.config.domain,
+        vaultVersion: systemReducer.sealStatus && systemReducer.sealStatus.version
     };
 };
 

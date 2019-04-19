@@ -1,3 +1,4 @@
+import {clone, safeWrap, unwrap, updateIn, updateOrAppend} from '@mountaingapsolutions/objectutil';
 import kvAction from 'app/core/actions/kvAction';
 
 /**
@@ -14,11 +15,13 @@ import kvAction from 'app/core/actions/kvAction';
  * @returns {Object} The updated state.
  */
 export default (previousState = {
+    requestListFromDatabase: [],
     secrets: {},
     secretsMounts: {},
     secretsPaths: {},
     secretsRequests: []
 }, action) => {
+    let secretsPaths;
     switch (action.type) {
         case kvAction.ACTION_TYPES.GET_SECRETS:
         case kvAction.ACTION_TYPES.UNWRAP_SECRET:
@@ -38,15 +41,47 @@ export default (previousState = {
                 }).filter(mount => mount.type !== 'identity' && mount.type !== 'system')}// Filter out the identity and system mounts.
             };
         case kvAction.ACTION_TYPES.LIST_REQUESTS:
+            const requests = action.data && _remapRequest(action.data);
             return {
                 ...previousState,
-                secretsRequests: action.data || []
+                secretsRequests: requests || []
             };
-        // Deprecated?
-        case kvAction.ACTION_TYPES.LIST_SECRETS:
+        case kvAction.ACTION_TYPES.REMOVE_REQUEST_DATA:
+            secretsPaths = clone(previousState.secretsPaths);
+            // Remove from secretPaths (requester's perspective).
+            if (secretsPaths.secrets) {
+                secretsPaths.secrets.forEach(secret => {
+                    if (unwrap(safeWrap(secret).data.wrap_info.accessor) === action.data) {
+                        delete secret.data.request_info;
+                    }
+                });
+            }
+            // Remove from secretsRequests (approver's perspective).
+            const secretsRequests = clone(previousState.secretsRequests).filter(request => request.accessor !== action.data);
             return {
                 ...previousState,
-                secretsPaths: (action.data || {}).data || {}
+                secretsPaths,
+                secretsRequests
+            };
+        case kvAction.ACTION_TYPES.APPROVE_REQUEST_DATA:
+            secretsPaths = clone(previousState.secretsPaths);
+            // Update secretPaths (requester's perspective).
+            if (secretsPaths.secrets) {
+                secretsPaths.secrets.forEach(secret => {
+                    if (unwrap(safeWrap(secret).data.wrap_info.accessor) === action.data.accessor) {
+                        secret.data.request_info = action.data.request_info.data;
+                    }
+                });
+            }
+            return {
+                ...previousState,
+                secretsPaths,
+                secretsRequests: updateIn(previousState.secretsRequests, action.data, 'accessor')
+            };
+        case kvAction.ACTION_TYPES.CREATE_REQUEST_DATA:
+            return {
+                ...previousState,
+                secretsRequests: updateOrAppend(previousState.secretsRequests, action.data, 'accessor')
             };
         case kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES:
             return {
@@ -77,4 +112,26 @@ export default (previousState = {
         default:
             return {...previousState};
     }
+};
+
+/**
+ * Helper method to map request from database.
+ *
+ * @param {Array} requests array from database
+ * @returns {Array} remapped request array.
+ */
+const _remapRequest = requests => {
+    return requests.map(request => {
+        const {createdAt, id, requestData, requesterEntityId, requesterName, status} = request;
+        return request.wrap_info ? request : {request_info: {data: {
+            approved: status,
+            authorizations: null,
+            request_entity: {id: requesterEntityId, name: requesterName},
+            request_path: requestData
+        },
+        request_id: id,
+        creation_time: createdAt,
+        accessor: requesterEntityId
+        }};
+    });
 };
