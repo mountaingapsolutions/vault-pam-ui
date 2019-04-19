@@ -117,6 +117,26 @@ const getUser = async (req, id, userType = null) => {
 };
 
 /**
+ * Gets available user entity ids
+ *
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
+const getUserIds = (req) => {
+    return new Promise((resolve, reject) => {
+        const {REACT_APP_API_TOKEN: apiToken} = process.env;
+        const {domain} = req.session.user;
+        request(initApiRequest(apiToken, `${domain}/v1/identity/entity/id?list=true`), (error, response) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(response);
+            }
+        });
+    });
+};
+
+/**
  * Gets a user by name.
  *
  * @param {Object} req The HTTP request object.
@@ -567,5 +587,6 @@ const router = require('express').Router()
 
 module.exports = {
     router,
-    getUser
+    getUser,
+    getUserIds
 };
