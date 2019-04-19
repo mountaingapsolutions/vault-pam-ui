@@ -1,176 +1,183 @@
-const RequestController = require('services/controllers/Request');
-
-/**
- * @swagger
- * definitions:
- *   request:
- *     type: object
- *     properties:
- *       requesterEntityId:
- *         type: string
- *       approverEntityId:
- *         type: string
- *       requestData:
- *         type: string
- *       type:
- *         type: string
- *       status:
- *         type: string
- *       engineType:
- *         type: string
- *     required:
- *       - requesterEntityId
- *       - approverEntityId
- *       - requestData
- *       - type
- *       - status
- *       - engineType
- */
+/* eslint-disable no-console */
+const {
+    authorizeControlGroupRequest,
+    createControlGroupRequest,
+    deleteControlGroupRequest,
+    getControlGroupRequests,
+    getSelfActiveRequests
+} = require('services/routes/controlGroupService');
+const {
+    createOrGetStandardRequest,
+    getStandardRequestsByUserType,
+    getStandardRequestsByRequester,
+    updateStandardRequestByApprover,
+    updateStandardRequestById
+} = require('services/routes/standardRequestService');
+const {checkControlGroupSupport, checkStandardRequestSupport, sendError, setSessionData} = require('services/utils');
+const {REQUEST_STATUS} = require('services/constants');
 
 /* eslint-disable new-cap */
-module.exports = require('express').Router()
+const router = require('express').Router()
 /* eslint-enable new-cap */
-    .use((req, res, next) => {
-        console.log('Request service was called: ', Date.now());
+    .use(async (req, res, next) => {
+        const {controlGroupSupported, standardRequestSupported} = req.session.user;
+        if (controlGroupSupported === undefined) {
+            try {
+                let controlGroupSupport = await checkControlGroupSupport(req);
+                setSessionData(req, {
+                    controlGroupSupported: controlGroupSupport
+                });
+                console.log('Setting Control Group support in session user data: ', controlGroupSupport);
+            } catch (err) {
+                sendError(req.originalUrl, res, err);
+                return;
+            }
+        }
+        if (standardRequestSupported === undefined) {
+            try {
+                let standardRequestSupport = await checkStandardRequestSupport(req);
+                setSessionData(req, {
+                    standardRequestSupported: standardRequestSupport
+                });
+                console.log('Setting Standard Request support in session user data: ', standardRequestSupport);
+            } catch (err) {
+                sendError(req.originalUrl, res, err);
+                return;
+            }
+        }
         next();
     })
     /**
      * @swagger
-     * /rest/request/id/{id}:
+     * /rest/requests/requests:
      *   get:
      *     tags:
-     *       - Request
-     *     name: Get request by id
-     *     summary: Get request by id
+     *       - Requests
+     *     summary: Retrieves active requests
+     *     responses:
+     *       200:
+     *         description: Success.
+     *       403:
+     *         description: Unauthorized.
+     */
+    .get('/requests', async (req, res) => {
+        let requests = [];
+        const {controlGroupSupported, standardRequestSupported} = req.session.user;
+        if (controlGroupSupported === true) {
+            try {
+                const controlGroupRequests = await getControlGroupRequests(req);
+                requests = requests.concat(controlGroupRequests);
+            } catch (err) {
+                sendError(req.originalUrl, res, err);
+                return;
+            }
+        }
+        if (standardRequestSupported === true) {
+            try {
+                const standardRequests = await getStandardRequestsByUserType(req);
+                requests = requests.concat(standardRequests);
+            } catch (err) {
+                sendError(req.originalUrl, res, err);
+                return;
+            }
+        }
+        res.json(requests);
+    })
+    /**
+     * @swagger
+     * /rest/requests/self:
+     *   get:
+     *     tags:
+     *       - Requests
+     *     summary: Retrieves user's active requests
+     *     responses:
+     *       200:
+     *         description: Success.
+     *       403:
+     *         description: Unauthorized.
+     */
+    .get('/self', async (req, res) => {
+        let requests = [];
+        const {controlGroupSupported, standardRequestSupported} = req.session.user;
+        if (controlGroupSupported === true) {
+            try {
+                const controlGroupSelfRequests = await getSelfActiveRequests(req);
+                requests = requests.concat(controlGroupSelfRequests);
+            } catch (err) {
+                sendError(req.originalUrl, res, err);
+                return;
+            }
+        }
+
+        if (standardRequestSupported === true) {
+            try {
+                const standardSelfRequests = await getStandardRequestsByRequester(req);
+                requests = requests.concat(standardSelfRequests);
+            } catch (err) {
+                sendError(req.originalUrl, res, err);
+                return;
+            }
+        }
+        res.json(requests);
+    })
+    /**
+     * @swagger
+     * /rest/requests/request:
+     *   delete:
+     *     tags:
+     *       - Requests
+     *     summary: Deletes the specified request
      *     parameters:
+     *       - name: path
+     *         in: query
+     *         description: The path of the control group request to delete.
+     *         schema:
+     *           type: string
+     *       - name: entityId
+     *         in: query
+     *         description: Entity id of the control group request to delete. If not provided, will default to the session user's entity id.
+     *         schema:
+     *           type: string
      *       - name: id
-     *         in: path
-     *         schema:
-     *           type: number
-     *         required:
-     *           - id
-     *     responses:
-     *       200:
-     *         description: Request found
-     *       404:
-     *         description: Request not found
-     */
-    .get('/id/:id', (req, res) => {
-        const id = req.params.id;
-        RequestController.findById(id).then(request => {
-            res.json(request);
-        });
-    })
-    /**
-     * @swagger
-     * /rest/request/requester/{entityId}:
-     *   get:
-     *     tags:
-     *       - Request
-     *     name: Get all requests by requester entityId
-     *     summary: Get all requests by requester entityId
-     *     parameters:
-     *       - name: entityId
-     *         in: path
+     *         in: query
+     *         description: Id of the standard request to delete
      *         schema:
      *           type: string
-     *         required:
-     *           - entityId
      *     responses:
      *       200:
-     *         description: Requests found
+     *         description: Success.
+     *       403:
+     *         description: Unauthorized.
      *       404:
-     *         description: Requests not found
+     *         description: Request not found.
      */
-    .get('/requester/:entityId', (req, res) => {
-        const entityId = req.params.entityId;
-        RequestController.findAllByRequester(entityId).then(requests => {
-            res.json(requests);
-        });
+    .delete('/request', async (req, res) => {
+        const {id, path} = req.query;
+        let result;
+        const {controlGroupSupported, standardRequestSupported} = req.session.user;
+        try {
+            if (controlGroupSupported === true && path) {
+                result = await deleteControlGroupRequest(req);
+            } else if (standardRequestSupported && id) {
+                req.body.status = REQUEST_STATUS.CANCELED;
+                result = await updateStandardRequestById(id, REQUEST_STATUS.CANCELED);
+            } else {
+                sendError(req.originalUrl, res, 'Invalid request', 400);
+                return;
+            }
+        } catch (err) {
+            sendError(req.originalUrl, res, err.message, err.statusCode);
+            return;
+        }
+        res.json(result);
     })
     /**
      * @swagger
-     * /rest/request/approver/{entityId}:
-     *   get:
-     *     tags:
-     *       - Request
-     *     name: Get all requests by approver entityId
-     *     summary: Get all requests by approver entityId
-     *     parameters:
-     *       - name: entityId
-     *         in: path
-     *         schema:
-     *           type: string
-     *         required:
-     *           - entityId
-     *     responses:
-     *       200:
-     *         description: Requests found
-     *       404:
-     *         description: Requests not found
-     */
-    .get('/approver/:entityId', (req, res) => {
-        const entityId = req.params.entityId;
-        RequestController.findAllByApprover(entityId).then(requests => {
-            res.json(requests);
-        });
-    })
-    /**
-     * @swagger
-     * /rest/request/create:
+     * /rest/requests/request:
      *   post:
      *     tags:
-     *       - Request
-     *     name: Create Request
-     *     summary: Create Request
-     *     requestBody:
-     *       required: true
-     *       content:
-     *         application/json:
-     *           schema:
-     *             $ref: '#/definitions/request'
-     *     responses:
-     *       200:
-     *         description: Request created
-     */
-    .post('/create', (req, res) => {
-        const {requesterEntityId, requestData, type, status, engineType} = req.body;
-        RequestController.create(requesterEntityId, requestData, type, status, engineType).then(request => {
-            res.json(request);
-        });
-    })
-    /**
-     * @swagger
-     * /rest/request/findOrCreate:
-     *   post:
-     *     tags:
-     *       - Request
-     *     name: Create Request
-     *     summary: Create Request
-     *     requestBody:
-     *       required: true
-     *       content:
-     *         application/json:
-     *           schema:
-     *             $ref: '#/definitions/request'
-     *     responses:
-     *       200:
-     *         description: Request created
-     */
-    .post('/findOrCreate', (req, res) => {
-        const {requesterEntityId, requestData, type, status, engineType} = req.body;
-        RequestController.findOrCreate(requesterEntityId, requestData, type, status, engineType).then(request => {
-            res.json(request);
-        });
-    })
-    /**
-     * @swagger
-     * /rest/request/update:
-     *   put:
-     *     tags:
-     *       - Request
-     *     name: Update request by approver
-     *     summary: Update request by approver
+     *       - Requests
+     *     summary: Initiates a request for a particular secret path.
      *     requestBody:
      *       required: true
      *       content:
@@ -178,33 +185,53 @@ module.exports = require('express').Router()
      *           schema:
      *             type: object
      *             properties:
-     *               id:
+     *               path:
      *                 type: string
-     *               approverEntityId:
+     *               requestData:
+     *                 type: string
+     *               type:
      *                 type: string
      *               status:
      *                 type: string
-     *             required:
-     *               - id
-     *               - status
+     *               engineType:
+     *                 type: string
      *     responses:
      *       200:
-     *         description: User updated
+     *         description: Success.
+     *       400:
+     *         description: Required path input was not provided.
+     *       403:
+     *         description: No API token was set.
+     *       500:
+     *         description: No approval group has been configured.
      */
-    .put('/updateByApprover', (req, res) => {
-        const {id, approverEntityId, status} = req.body;
-        RequestController.updateStatusByApprover(id, approverEntityId, status).then(request => {
-            res.json(request);
-        });
+    .post('/request', async (req, res) => {
+        const {path, requestData} = req.body;
+        let result;
+        const {controlGroupSupported, standardRequestSupported} = req.session.user;
+        try {
+            if (controlGroupSupported === true && path) {
+                result = await createControlGroupRequest(req);
+                //TODO add engineType checking - engineType
+            } else if (standardRequestSupported && requestData) {
+                result = await createOrGetStandardRequest(req);
+            } else {
+                sendError(req.originalUrl, res, 'Invalid request', 400);
+                return;
+            }
+        } catch (err) {
+            sendError(req.originalUrl, res, err.message, err.statusCode);
+            return;
+        }
+        res.json(result);
     })
     /**
      * @swagger
-     * /rest/request/update:
-     *   put:
+     * /rest/requests/authorize:
+     *   post:
      *     tags:
-     *       - Request
-     *     name: Update request
-     *     summary: Update request
+     *       - Requests
+     *     summary: Authorizes a request.
      *     requestBody:
      *       required: true
      *       content:
@@ -212,20 +239,41 @@ module.exports = require('express').Router()
      *           schema:
      *             type: object
      *             properties:
+     *               accessor:
+     *                 type: string
      *               id:
      *                 type: string
-     *               status:
-     *                 type: string
-     *             required:
-     *               - id
-     *               - status
      *     responses:
      *       200:
-     *         description: User updated
+     *         description: Success.
+     *       400:
+     *         description: Invalid accessor.
+     *       403:
+     *         description: Unauthorized.
+     *       500:
+     *         description: No approval group has been configured.
      */
-    .put('/update', (req, res) => {
-        const {id, status} = req.body;
-        RequestController.updateStatus(id, status).then(request => {
-            res.json(request);
-        });
+    .post('/request/authorize', async (req, res) => {
+        const {accessor, id} = req.body;
+        let result;
+        const {controlGroupSupported, standardRequestSupported} = req.session.user;
+        try {
+            if (controlGroupSupported === true && accessor) {
+                result = await authorizeControlGroupRequest(req);
+            } else if (standardRequestSupported && id) {
+                req.body.status = REQUEST_STATUS.APPROVED;
+                result = await updateStandardRequestByApprover(req);
+            } else {
+                sendError(req.originalUrl, res, 'Invalid request', 400);
+                return;
+            }
+        } catch (err) {
+            sendError(req.originalUrl, res, err.message, err.statusCode);
+            return;
+        }
+        res.json(result);
     });
+
+module.exports = {
+    router
+};

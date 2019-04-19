@@ -1,26 +1,34 @@
 {
   "name": "vault-pam-ui",
   "description": "Vault Privileged Access Management: a custom enhanced Vault client.",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
+  "private": false,
   "dependencies": {
+    "@mountaingapsolutions/objectutil": "^1.1.0",
     "app-module-path": "^2.2.0",
+    "base64id": "^1.0.0",
     "body-parser": "^1.18.3",
     "chalk": "^2.4.2",
+    "child_process": "^1.0.2",
     "compression": "^1.7.3",
     "cookie-parser": "^1.4.4",
+    "dateformat": "^3.0.3",
     "dotenv": "^6.0.0",
     "dotenv-expand": "4.2.0",
     "express": "^4.16.4",
     "express-session": "^1.15.6",
     "hcl-to-json": "^0.1.1",
     "hsts": "^2.2.0",
+    "md5": "^2.2.1",
+    "nodemailer": "^6.1.0",
     "pg": "^7.9.0",
     "pg-hstore": "^2.3.2",
     "request": "^2.88.0",
     "sequelize": "^5.1.1",
+    "socket.io": "^2.2.0",
     "swagger-jsdoc": "^3.2.8",
-    "swagger-ui-express": "^4.0.2"
+    "swagger-ui-express": "^4.0.2",
+    "umzug": "^2.2.0"
   },
   "devDependencies": {
     "@babel/core": "7.2.2",
@@ -72,13 +80,18 @@
     "request": "^2.88.0",
     "resolve": "1.10.0",
     "sass-loader": "7.1.0",
+    "socket.io-client": "^2.2.0",
     "style-loader": "0.23.1",
     "terser-webpack-plugin": "1.2.2",
     "url-loader": "1.1.2",
+    "validator": "^10.11.0",
     "webpack": "4.28.3",
     "webpack-dev-server": "3.1.14",
     "webpack-manifest-plugin": "2.0.4",
     "workbox-webpack-plugin": "3.6.3"
+  },
+  "config": {
+    "premium": "bitbucket:mountaingapsolutions/vault-pam-premium"
   },
   "scripts": {
     "start": "node scripts/start.js",
@@ -88,7 +101,8 @@
     "postbuild": "mkdir dist && mv build dist/build && npm run copyappfiles && node scripts/dist.js",
     "copyappfiles": "cp .env dist/ || : && cp package.json dist/ && cp robots.txt dist/ && cp src/productionServer.js dist/ && cp -R src/services dist",
     "lint": "eslint --ext .js,.jsx --format table .",
-    "test": "node scripts/test.js"
+    "test": "node scripts/test.js",
+    "postinstall": "echo Attempting to install $npm_package_config_premium... && npm install $npm_package_config_premium --no-save && Successfully installed $npm_package_config_premium || echo Failed to install $npm_package_config_premium. Premium features will not be available."
   },
   "eslintConfig": {
     "extends": "react-app"

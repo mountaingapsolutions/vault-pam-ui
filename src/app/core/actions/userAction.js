@@ -15,52 +15,29 @@ class UserAction extends _Actions {
             DELETE_USER: 'DELETE_USER',
             GET_USER: 'GET_USER',
             LOGOUT: 'LOGOUT',
-            UPDATE_USER_DETAILS: 'UPDATE_USER_DETAILS',
-            UPDATE_USER_PASSWORD: 'UPDATE_USER_PASSWORD',
+            UPDATE_USER: 'UPDATE_USER',
             UPDATE_USER_POLICIES: 'UPDATE_USER_POLICIES'
         });
     }
 
     /**
-     * Gets the properties of an existing username.
+     * Gets the properties of an existing user. If no entity id is provided, will default to the current session user.
      *
-     * @param {string} entityId The entityId for the user.
+     * @param {string} [entityId] The entityId for the user.
      * @returns {function} Redux dispatch function.
      */
-    getUser(entityId) {
-        return this._dispatchGet(this.ACTION_TYPES.GET_USER, `/rest/user/entityId/${entityId}`);
+    getUser(entityId = '') {
+        return this._dispatchGet(this.ACTION_TYPES.GET_USER, `/rest/user/${entityId}`);
     }
 
     /**
-     * Update the properties of an existing username.
+     * Updates the user data of the current session user.
      *
-     * @param {Object} data The new user data.
+     * @param {Object} userData The updated user data.
      * @returns {function} Redux dispatch function.
      */
-    updateUser(data) {
-        return this._dispatchPut(this.ACTION_TYPES.UPDATE_USER_DETAILS, '/rest/user/update', data);
-    }
-    /**
-     * Deletes the specified user.
-     *
-     * @param {string} username The username for the user.
-     * @returns {function} Redux dispatch function.
-     */
-    deleteUser(username) {
-        return this._dispatchDelete(this.ACTION_TYPES.DELETE_USER, `/api/v1/auth/userpass/users/${username}`);
-    }
-
-    /**
-     * Update password for an existing user.
-     *
-     * @param {string} username The username for the user.
-     * @param {string} password New password.
-     * @returns {function} Redux dispatch function.
-     */
-    updateUserPassword(username, password) {
-        return this._dispatchPost(this.ACTION_TYPES.UPDATE_USER_PASSWORD, `/api/v1/auth/userpass/users/${username}/password`, {
-            password
-        });
+    updateUser(userData) {
+        return this._dispatchPut(this.ACTION_TYPES.UPDATE_USER, '/rest/user', userData);
     }
 
     /**

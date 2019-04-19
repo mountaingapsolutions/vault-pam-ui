@@ -3,7 +3,7 @@ import {withStyles} from '@material-ui/core/styles';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 
-import Button from 'app/core/components/common/Button';
+import Button from 'app/core/components/Button';
 
 /**
  * Generic confirmation modal.
@@ -18,12 +18,13 @@ class ConfirmationModal extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {cancelButtonLabel, confirmButtonLabel, content, onClose, open, title} = this.props;
+        const {cancelButtonLabel, confirmButtonLabel, content, onClose, onExited, open, title} = this.props;
         return <Dialog
             aria-describedby='confirmation-dialog-description'
             aria-labelledby='confirmation-dialog-title'
             open={open}
-            onClose={() => onClose(false)}>
+            onClose={() => onClose(false)}
+            onExited={onExited}>
             {title && <DialogTitle id='confirmation-dialog-title'>{title}</DialogTitle>}
             <DialogContent>
                 <DialogContentText id='confirmation-dialog-description'>
@@ -46,7 +47,9 @@ ConfirmationModal.defaultProps = {
     cancelButtonLabel: 'Cancel',
     confirmButtonLabel: 'Confirm',
     content: 'Are you sure?',
-    open: false
+    open: false,
+    onClose: () => {},
+    onExited: () => {}
 };
 
 ConfirmationModal.propTypes = {
@@ -54,7 +57,8 @@ ConfirmationModal.propTypes = {
     classes: PropTypes.object.isRequired,
     confirmButtonLabel: PropTypes.string,
     content: PropTypes.string,
-    onClose: PropTypes.func.isRequired,
+    onClose: PropTypes.func,
+    onExited: PropTypes.func,
     open: PropTypes.bool,
     title: PropTypes.string
 };

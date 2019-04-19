@@ -12,7 +12,9 @@ class KvAction extends _Actions {
      */
     constructor() {
         super('KvAction', {
+            APPROVE_REQUEST_DATA: 'APPROVE_REQUEST_DATA',
             AUTHORIZE_REQUEST: 'AUTHORIZE_REQUEST',
+            CREATE_REQUEST_DATA: 'CREATE_REQUEST_DATA',
             DELETE_REQUEST: 'DELETE_REQUEST',
             DELETE_SECRETS: 'DELETE_SECRETS',
             GET_SECRETS: 'GET_SECRETS',
@@ -21,6 +23,7 @@ class KvAction extends _Actions {
             LIST_SECRETS_AND_CAPABILITIES: 'LIST_SECRETS_AND_CAPABILITIES',
             LIST_REQUESTS: 'LIST_REQUESTS',
             REJECT_REQUEST: 'REJECT_REQUEST',
+            REMOVE_REQUEST_DATA: 'REMOVE_REQUEST_DATA',
             REQUEST_SECRET: 'REQUEST_SECRET',
             SAVE_SECRET: 'SAVE_SECRET',
             UNWRAP_SECRET: 'UNWRAP_SECRET'
@@ -31,11 +34,13 @@ class KvAction extends _Actions {
      * Authorizes a secrets request.
      *
      * @param {string} accessor The request accessor value.
+     * @param {string} id The request id in database.
      * @returns {function} Redux dispatch function.
      */
-    authorizeRequest(accessor) {
-        return this._dispatchPost(this.ACTION_TYPES.AUTHORIZE_REQUEST, '/rest/control-group/request/authorize', {
-            accessor
+    authorizeRequest(accessor, id) {
+        return this._dispatchPost(this.ACTION_TYPES.AUTHORIZE_REQUEST, '/rest/requests/request/authorize', {
+            accessor,
+            id
         });
     }
 
@@ -44,12 +49,14 @@ class KvAction extends _Actions {
      *
      * @param {string} path Specifies the path of the request to delete.
      * @param {string} [entityId] The user entity id. If not provided, the request will default to the current session user.
+     * @param {string} id The request id in database.
      * @returns {function} Redux dispatch function.
      */
-    deleteRequest(path, entityId = '') {
-        return this._dispatchDelete(this.ACTION_TYPES.DELETE_REQUEST, '/rest/control-group/request', {
+    deleteRequest(path, entityId = '', id) {
+        return this._dispatchDelete(this.ACTION_TYPES.DELETE_REQUEST, '/rest/requests/request', {
             path,
-            entityId
+            entityId,
+            id
         });
     }
 
@@ -70,7 +77,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     getSecrets(path = '') {
-        return this._dispatchGet(this.ACTION_TYPES.GET_SECRETS, `/api/v1/${this._encodePath(path)}`);
+        return this._dispatchGet(this.ACTION_TYPES.GET_SECRETS, `/rest/secrets/secret/${this._encodePath(path)}`);
     }
 
     /**
@@ -104,7 +111,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     listSecretsAndCapabilities(path = '', version = 2) {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES, `/rest/secrets/${path}`, {
+        return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES, `/rest/secrets/secrets/${path}`, {
             version
         });
     }
@@ -112,20 +119,13 @@ class KvAction extends _Actions {
     /**
      * Requests access to a secret.
      *
-     * @param {Object} requestData Specifies the path of the secrets to request(enterprise) or (standard).
-     * @param {boolean} isEnterprise The enterprise flag.
+     * @param {Object} requestData Specifies the path of the secrets to request
      * @returns {function} Redux dispatch function.
      */
-    requestSecret(requestData, isEnterprise) {
-        if (isEnterprise) {
-            return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/control-group/request', {
-                path: requestData.path
-            });
-        } else {
-            return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/request/findOrCreate', {
-                ...requestData
-            });
-        }
+    requestSecret(requestData) {
+        return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/requests/request', {
+            ...requestData
+        });
     }
 
     /**
@@ -145,7 +145,37 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     listRequests() {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_REQUESTS, '/rest/control-group/requests');
+        return this._dispatchGet(this.ACTION_TYPES.LIST_REQUESTS, '/rest/requests/requests');
+    }
+
+    /**
+     * Removes the request data in the client data model.
+     *
+     * @param {string} accessor The accessor data to remove.
+     * @returns {function} Redux dispatch function.
+     */
+    removeRequestData(accessor) {
+        return this._createResourceData(this.ACTION_TYPES.REMOVE_REQUEST_DATA, undefined, accessor, false);
+    }
+
+    /**
+     * Approve/update the request in the client data model.
+     *
+     * @param {Object} data The request data to update.
+     * @returns {function} Redux dispatch function.
+     */
+    approveRequestData(data) {
+        return this._createResourceData(this.ACTION_TYPES.APPROVE_REQUEST_DATA, undefined, data, false);
+    }
+
+    /**
+     * Create/update the request in the client data model.
+     *
+     * @param {Object} data The request data to update.
+     * @returns {function} Redux dispatch function.
+     */
+    createRequestData(data) {
+        return this._createResourceData(this.ACTION_TYPES.CREATE_REQUEST_DATA, undefined, data, false);
     }
 
     /**
@@ -156,23 +186,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     unwrapSecret(name, token) {
-        // return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/api/v1/sys/wrapping/unwrap', {
-        //     token
-        // }, null, (responseData) => {
-        //     // Inject the name into the response data.
-        //     const {data, inProgress} = responseData;
-        //     if (data && !inProgress) {
-        //         return {
-        //             ...responseData,
-        //             data: {
-        //                 name,
-        //                 data
-        //             }
-        //         };
-        //     }
-        //     return responseData;
-        // });
-        return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/api/v1/sys/wrapping/unwrap', {
+        return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/control-group/request/unwrap', {
             token
         });
     }

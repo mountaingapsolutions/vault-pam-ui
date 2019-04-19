@@ -14,8 +14,9 @@ process.on('unhandledRejection', err => {
 
 // Add the root project directory to the app module search path:
 const path = require('path');
-require('app-module-path').addPath(path.join(__dirname, '..'));
-require('app-module-path').addPath(path.join(__dirname, '..', 'src'));
+const appModulePath = require('app-module-path');
+appModulePath.addPath(path.join(__dirname, '..'));
+appModulePath.addPath(path.join(__dirname, '..', 'src'));
 
 // Ensure environment variables are read.
 require('config/env');
@@ -101,6 +102,8 @@ checkBrowsers(paths.appPath, isInteractive)
             urls.lanUrlForConfig
         );
         const devServer = new WebpackDevServer(compiler, serverConfig);
+        require('services/notificationsManager').start(devServer.listeningApp);
+
         // Launch WebpackDevServer.
         devServer.listen(port, HOST, err => {
             if (err) {
@@ -116,6 +119,16 @@ checkBrowsers(paths.appPath, isInteractive)
             connection.start()
                 .then(() => {
                     console.info('DB connection successful. ᕕ( ᐛ )ᕗ\r\n');
+                    // DB migrations
+                    // const {migrate} = require('services/db/migrate');
+                    // migrate('up');
+
+                    try {
+                        require('vault-pam-premium').validate();
+                        console.log(chalk.bold.green('Premium features available.'));
+                    } catch (packageError) {
+                        console.log(chalk.bold.red('Premium features unavailable.'));
+                    }
                 })
                 .catch((error) => {
                     console.error(error);
@@ -125,8 +138,8 @@ checkBrowsers(paths.appPath, isInteractive)
             return null;
         });
 
-        ['SIGINT', 'SIGTERM'].forEach(function (sig) {
-            process.on(sig, function () {
+        ['SIGINT', 'SIGTERM'].forEach((sig) => {
+            process.on(sig, () => {
                 devServer.close();
                 process.exit();
             });

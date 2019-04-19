@@ -14,8 +14,7 @@ class SystemAction extends _Actions {
         super('SystemAction', {
             GET_GROUP_DATA: 'GET_GROUP_DATA',
             GET_SELF_CAPABILITIES: 'GET_SELF_CAPABILITIES',
-            GET_SEAL_STATUS: 'GET_SEAL_STATUS',
-            GET_SERVER_LICENSE: 'GET_SERVER_LICENSE'
+            GET_SEAL_STATUS: 'GET_SEAL_STATUS'
         });
     }
 
@@ -38,15 +37,6 @@ class SystemAction extends _Actions {
      */
     getSealStatus() {
         return this._dispatchGet(this.ACTION_TYPES.GET_SEAL_STATUS, '/api/v1/sys/seal-status');
-    }
-
-    /**
-     * Returns the current Vault server license.
-     *
-     * @returns {function} Redux dispatch function.
-     */
-    getServerLicense() {
-        return this._dispatchGet(this.ACTION_TYPES.GET_SERVER_LICENSE, '/api/v1/sys/license', null, {'X-Vault-Token': process.env.REACT_APP_API_TOKEN});
     }
 
     /**

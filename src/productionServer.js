@@ -7,7 +7,6 @@ const chalk = require('chalk');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const express = require('express');
-const session = require('express-session');
 const path = require('path');
 const hsts = require('hsts');
 
@@ -18,6 +17,7 @@ require('dotenv').config();
 require('app-module-path').addPath(path.join(__dirname));
 
 const {api, validate, login, logout, authenticatedRoutes} = require('services/routes');
+const {getSessionMiddleware} = require('services/utils');
 
 // Overcome the DEPTH_ZERO_SELF_SIGNED_CERT error.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -26,7 +26,7 @@ const useHsts = process.env.USE_HSTS !== null && process.env.USE_HSTS !== undefi
 console.log(`Starting server on port ${chalk.yellow(port)}...`);
 
 const noCacheUrls = ['/'];
-express().use(compression())
+const server = express().use(compression())
     .disable('x-powered-by')
     .use((req, res, next) => {
         // Debugging snippet to figure out exactly what the proxy request header contains.
@@ -50,15 +50,7 @@ express().use(compression())
         preload: true
     }))
     .use(cookieParser())
-    .use(session({
-        key: 'entity_id',
-        secret: process.env.SESSION_SECRET || 'correct horse battery staple',
-        resave: false,
-        saveUninitialized: false,
-        cookie: {
-            maxAge: 600000
-        }
-    }))
+    .use(getSessionMiddleware)
     .use('/', (req, res, next) => {
         if (noCacheUrls.includes(req.originalUrl)) {
             res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -84,11 +76,24 @@ express().use(compression())
             console.warn(`The environment variable ${chalk.yellow.bold('SESSION_SECRET')} was not set. Defaulting to the classic xkcd password...`);
         }
 
+        // Notification manager startup.
+        require('services/notificationsManager').start(server);
+
         // Database startup.
-        const connection = require('./services/db/connection');
+        const connection = require('services/db/connection');
         connection.start()
             .then(() => {
                 console.info('DB connection successful. ᕕ( ᐛ )ᕗ\r\n');
+                // DB migrations
+                // const {migrate} = require('services/db/migrate');
+                // migrate('up');
+
+                try {
+                    require('vault-pam-premium').validate();
+                    console.log(chalk.bold.green('Premium features available.'));
+                } catch (packageError) {
+                    console.log(chalk.bold.red('Premium features unavailable.'));
+                }
             })
             .catch((error) => {
                 console.error(error);

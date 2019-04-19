@@ -3,11 +3,11 @@ const chalk = require('chalk');
 const request = require('request');
 const swaggerUi = require('swagger-ui-express');
 const {options, swaggerDoc} = require('services/Swagger');
-const User = require('services/controllers/User');
-const {router: controlGroupServiceRouter} = require('services/routes/controlGroupService');
+const {router: controlGroupServiceRouter, getGroupsByUser} = require('services/routes/controlGroupService');
 const {router: secretsServiceRouter} = require('services/routes/secretsService');
-const userService = require('services/routes/userService');
-const requestService = require('services/routes/requestService');
+const {router: userServiceRouter} = require('services/routes/userService');
+const {router: requestServiceRouter} = require('services/routes/requestService');
+const {router: standardRequestServiceRouter} = require('services/routes/standardRequestService');
 const {initApiRequest, sendError, setSessionData} = require('services/utils');
 
 /**
@@ -183,7 +183,15 @@ const authenticatedRoutes = require('express').Router()
                         token: clientToken,
                         entityId
                     });
-                    next();
+                    res.cookie('entity_id', entityId, {
+                        httpOnly: true
+                    });
+                    getGroupsByUser(req).then(groups => {
+                        setSessionData(req, {
+                            groups: groups.map(group => group.data.name)
+                        });
+                        next();
+                    });
                 });
             } else {
                 console.info('Move along. Nothing to see here.');
@@ -191,10 +199,15 @@ const authenticatedRoutes = require('express').Router()
             }
         }
     })
-    .use('/user', userService)
-    .use('/request', requestService)
+    .use('/user', userServiceRouter)
+    .use('/requests', requestServiceRouter)
+    .use('/request', standardRequestServiceRouter)
     .use('/control-group', controlGroupServiceRouter)
     .use('/secrets', secretsServiceRouter)
+    .get('/session', (req, res) => {
+        const {'x-vault-domain': domain, 'x-vault-token': token} = req.headers;
+        _sendTokenValidationResponse(domain, token, req, res);
+    })
     .use((req, res) => {
         res.status(400).json({
             errors: ['These are\'t the droids you\'re looking for.']
@@ -245,19 +258,21 @@ const _sendTokenValidationResponse = (domain, token, req, res) => {
             return;
         }
         try {
-            const {display_name, entity_id: entityId, path} = body.data || {};
-            if (entityId) {
-                const engineType = path.split('/')[1];
-                User.findOrCreate(entityId, display_name, engineType).then(user => {
-                    console.log(`Entity ID logged in: ${user.entityId}`);
-                });
-            }
+            const {entity_id: entityId} = body.data || {};
             setSessionData(req, {
                 domain,
                 token,
                 entityId
             });
-            res.status(response.statusCode).json(body);
+            res.cookie('entity_id', entityId, {
+                httpOnly: true
+            });
+            getGroupsByUser(req).then(groups => {
+                setSessionData(req, {
+                    groups: groups.map(group => group.data.name)
+                });
+                res.status(response.statusCode).json(body);
+            });
         } catch (err) {
             _sendVaultDomainError(apiUrl, res, err);
         }

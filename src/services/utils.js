@@ -1,5 +1,18 @@
 /* eslint-disable no-console */
 const chalk = require('chalk');
+const session = require('express-session');
+const nodemailer = require('nodemailer');
+const request = require('request');
+const {filter} = require('@mountaingapsolutions/objectutil');
+
+const getSessionMiddleware = session({
+    secret: process.env.SESSION_SECRET || 'correct horse battery staple',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        maxAge: 600000
+    }
+});
 
 /**
  * Just a collection of service utility methods.
@@ -12,9 +25,61 @@ const chalk = require('chalk');
  */
 const SESSION_USER_DATA_MAP = {
     CONTROL_GROUP_PATHS: 'controlGroupPaths',
+    CONTROL_GROUP_SUPPORTED: 'controlGroupSupported',
     DOMAIN: 'domain',
     ENTITY_ID: 'entityId',
+    GROUPS: 'groups',
+    STANDARD_REQUEST_SUPPORTED: 'standardRequestSupported',
     TOKEN: 'token'
+};
+
+/**
+ * Check if control groups are supported
+ *
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
+const checkControlGroupSupport = async (req) => {
+    const {domain} = req.session.user;
+    const {REACT_APP_API_TOKEN: apiToken} = process.env;
+    return await new Promise((resolve, reject) => {
+        request({
+            ...initApiRequest(apiToken, `${domain}/v1/sys/license`),
+            method: 'GET',
+        }, (error, response, body) => {
+            if (error) {
+                reject(error);
+            } else {
+                const {data} = body;
+                resolve(data && data.features.includes('Control Groups'));
+            }
+        });
+    });
+};
+
+/**
+ * Check if standard requests are supported
+ *
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
+const checkStandardRequestSupport = async (req) => {
+    const {domain} = req.session.user;
+    const {REACT_APP_API_TOKEN: apiToken} = process.env;
+    const groupName = 'pam-approver';
+    return await new Promise((resolve, reject) => {
+        request({
+            ...initApiRequest(apiToken, `${domain}/v1/identity/group/name/${groupName}`),
+            method: 'GET',
+        }, (error, response, body) => {
+            if (error) {
+                reject(error);
+            } else {
+                const {data} = body;
+                resolve(!!data);
+            }
+        });
+    });
 };
 
 /**
@@ -67,16 +132,13 @@ const setSessionData = (req, sessionUserData) => {
     const validValues = Object.values(SESSION_USER_DATA_MAP);
 
     // Filter out any invalid properties.
-    const filteredSessionUserData = Object.keys(sessionUserData).filter(key => {
+    const filteredSessionUserData = filter(sessionUserData, key => {
         const isValid = validValues.includes(key);
         if (!isValid) {
             console.warn(`Ignored property ${chalk.bold.yellow(key)}. If this property is intended to be stored, update utils.SESSION_USER_DATA_MAP.`);
         }
         return isValid;
-    }).reduce((dataMap, key) => {
-        dataMap[key] = sessionUserData[key];
-        return dataMap;
-    }, {});
+    });
 
     req.session.user = {
         ...req.session.user,
@@ -84,8 +146,44 @@ const setSessionData = (req, sessionUserData) => {
     };
 };
 
+/**
+ * Sends email.
+ *
+ * @param {Array} recipients The email recipients.
+ * @param {string} subject The email subject.
+ * @param {string} body The email message.
+ */
+const sendEmail = (recipients, subject, body) => {
+    const {PAM_MAIL_SMTP_PORT, PAM_MAIL_SMTP_HOST, PAM_MAIL_SERVICE, PAM_MAIL_USER, PAM_MAIL_PASS} = process.env;
+    const smtpTransport = nodemailer.createTransport({
+        service: PAM_MAIL_SERVICE,
+        port: PAM_MAIL_SMTP_PORT,
+        host: PAM_MAIL_SMTP_HOST,
+        secure: true,
+        auth: {
+            user: PAM_MAIL_USER,
+            pass: PAM_MAIL_PASS,
+        },
+        debug: true
+    });
+    const mailOptions = {
+        to: recipients,
+        subject: subject,
+        html: body
+    };
+    smtpTransport.sendMail(mailOptions).then((info) => {
+        console.log('Email sent.', info);
+    }).catch((err) => {
+        console.error(err);
+    });
+};
+
 module.exports = {
+    checkControlGroupSupport,
+    checkStandardRequestSupport,
     initApiRequest,
+    getSessionMiddleware,
+    sendEmail,
     sendError,
     setSessionData
 };
