@@ -126,11 +126,10 @@ const getPathFromEncodedMetaKey = (encodedMetaKey) => {
  * @returns {Promise}
  */
 const checkControlGroupRequestStatus = async (req, accessor) => {
-    const domain = getDomain();
     const {token} = req.session.user;
     const result = await new Promise((resolve, reject) => {
         request({
-            ...initApiRequest(token, `${domain}/v1/sys/control-group/request`),
+            ...initApiRequest(token, `${getDomain()}/v1/sys/control-group/request`),
             method: 'POST',
             json: {
                 accessor
