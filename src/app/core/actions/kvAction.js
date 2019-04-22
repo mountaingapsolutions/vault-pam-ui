@@ -76,7 +76,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     getSecrets(path = '') {
-        return this._dispatchGet(this.ACTION_TYPES.GET_SECRETS, `/rest/secrets/secret/${this._encodePath(path)}`);
+        return this._dispatchGet(this.ACTION_TYPES.GET_SECRETS, `/rest/secrets/get/${this._encodePath(path)}`);
     }
 
     /**
@@ -96,7 +96,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     listSecretsAndCapabilities(path = '', version = 2) {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES, `/rest/secrets/secrets/${path}`, {
+        return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES, `/rest/secrets/list/${path}`, {
             version
         });
     }
@@ -130,7 +130,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     listRequests() {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_REQUESTS, '/rest/requests/requests');
+        return this._dispatchGet(this.ACTION_TYPES.LIST_REQUESTS, '/rest/requests/list');
     }
 
     /**

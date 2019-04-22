@@ -49,7 +49,7 @@ const router = require('express').Router()
     })
     /**
      * @swagger
-     * /rest/requests/requests:
+     * /rest/requests/list:
      *   get:
      *     tags:
      *       - Requests
@@ -60,7 +60,7 @@ const router = require('express').Router()
      *       403:
      *         description: Unauthorized.
      */
-    .get('/requests', async (req, res) => {
+    .get('/list', async (req, res) => {
         let requests = [];
         const {controlGroupSupported, standardRequestSupported} = req.session.user;
         if (controlGroupSupported === true) {

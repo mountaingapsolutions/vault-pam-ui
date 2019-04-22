@@ -10,7 +10,7 @@ const router = require('express').Router()
 /* eslint-enable new-cap */
 /**
  * @swagger
- * /rest/secrets/{path}:
+ * /rest/secrets/list/{path}:
  *   get:
  *     tags:
  *       - Secrets
@@ -38,7 +38,7 @@ const router = require('express').Router()
  *       404:
  *         description: Not found.
  */
-    .get('/secrets/*', async (req, res) => {
+    .get('/list/*', async (req, res) => {
         // Check for Control Group policies.
         const {controlGroupPaths} = req.session.user;
         if (!controlGroupPaths) {
@@ -163,7 +163,37 @@ const router = require('express').Router()
             }
         });
     })
-    .get('/secret/*', async (req, res) => {
+    /**
+     * @swagger
+     * /rest/secrets/get/{path}:
+     *   get:
+     *     tags:
+     *       - Secrets
+     *     name: List secret values.
+     *     summary: Retrieves the list of secret values by path.
+     *     parameters:
+     *       - name: path
+     *         in: path
+     *         description: The Vault secrets path.
+     *         schema:
+     *           type: string
+     *         required: true
+     *       - name: version
+     *         in: query
+     *         description: The version of the Vault KV secrets engine.
+     *         schema:
+     *           type: integer
+     *           minimum: 1
+     *           maximum: 2
+     *           default: 2
+     *         required: true
+     *     responses:
+     *       200:
+     *         description: Success.
+     *       404:
+     *         description: Not found.
+     */
+    .get('/get/*', async (req, res) => {
         const {VAULT_API_TOKEN: apiToken} = process.env;
         const {params = {}, query} = req;
         const urlParts = (params[0] || '').split('/').filter(path => !!path);
