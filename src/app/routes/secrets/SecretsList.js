@@ -180,15 +180,15 @@ class SecretsList extends Component {
      *
      * @param {string} mount The mount point.
      * @param {string} name The name of the secret to request.
-     * @param {string} requestType The type of request.
+     * @param {boolean} isWrapped if request contains wrap token
      * @private
      */
-    _openRequestModal(mount, name, requestType) {
+    _openRequestModal(mount, name, isWrapped) {
         this.setState({
             showConfirmationModal: true,
             confirmationModalData: {
                 title: 'Privilege Access Request',
-                content: `The path ${name} has been locked through ${requestType}. Request access?`,
+                content: `The path ${name} has been locked through ${isWrapped ? 'Control Groups' : 'Standard Request'}. Request access?`,
                 onClose: (confirm) => {
                     if (confirm) {
                         const {requestSecret} = this.props;
@@ -368,7 +368,6 @@ class SecretsList extends Component {
         const openLabel = 'Open';
         const currentUserEntityId = vaultLookupSelf.data && vaultLookupSelf.data.data.entity_id;
         const approverEntityIds = groupData.data && groupData.data.member_entity_ids || [];
-        const requestTypeLabel = approverEntityIds.length > 0 ? 'Standard Request' : 'Control Groups';
         const isApprover = approverEntityIds.includes(currentUserEntityId);
         if (inProgress) {
             return <Grid container justify='center'>
@@ -438,7 +437,7 @@ class SecretsList extends Component {
                                 if (data.request_info) {
                                     this._openRequestCancellationModal(mount, name);
                                 } else {
-                                    this._openRequestModal(mount, name, requestTypeLabel);
+                                    this._openRequestModal(mount, name, isWrapped);
                                 }
                             }
                         }
@@ -461,7 +460,7 @@ class SecretsList extends Component {
                             <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
                                 <IconButton
                                     aria-label={requestAccessLabel}
-                                    onClick={() => data.request_info ? this._openRequestCancellationModal(mount, name) : this._openRequestModal(mount, name, requestTypeLabel)}>
+                                    onClick={() => data.request_info ? this._openRequestCancellationModal(mount, name) : this._openRequestModal(mount, name, isWrapped)}>
                                     <LockIcon/>
                                 </IconButton>
                             </Tooltip>}
