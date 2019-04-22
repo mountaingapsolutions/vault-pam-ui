@@ -4,7 +4,9 @@ const chalk = require('chalk');
 const hcltojson = require('hcl-to-json');
 const request = require('request');
 const notificationsManager = require('services/notificationsManager');
-const {initApiRequest, sendError} = require('services/utils');
+const {initApiRequest, sendError, sendNotificationEmail} = require('services/utils');
+const {getUser} = require('services/routes/userService');
+const {REQUEST_STATUS} = require('services/constants');
 
 const KEY_REPLACEMENT_MAP = {
     COMMA: '===',
@@ -272,8 +274,9 @@ const getGroupsByMetadata = async (req, metadataKey) => {
  * @returns {Promise}
  */
 const authorizeControlGroupRequest = async (req) => {
+    let emailRecipients = [];
     return new Promise(async (finalResolve, reject) => {
-        const {domain, groups, token} = req.session.user;
+        const {domain, entityId, groups, token} = req.session.user;
         const {accessor} = req.body;
 
         // Authorize the accessor.
@@ -305,6 +308,39 @@ const authorizeControlGroupRequest = async (req) => {
                     request_info: status
                 };
                 console.warn('Emit approve-request data ', requestInfo, ' to ', requester, ' and the following groups: ', groups.join(', '));
+                const promises = groups.map((groupName) => {
+                    return new Promise(resolve => {
+                        const apiGroupUrl = `${domain}/v1/identity/group/name/${groupName}`;
+                        request(initApiRequest(token, apiGroupUrl), async (error, response, body) => {
+                            if (error) {
+                                console.log(`Error fetching ${apiGroupUrl}: `, error);
+                                resolve();
+                            } else if (response.statusCode !== 200) {
+                                console.log(`Received ${response.statusCode} in attempting to fetch ${apiGroupUrl}.`);
+                                resolve();
+                            } else {
+                                await Promise.all((((body || {}).data || {}).member_entity_ids || []).map(async approverEntityId => {
+                                    await getUser(req, approverEntityId, 'admin').then(userData => {
+                                        const email = ((((userData || {}).body || {}).data || {}).metadata || {}).email;
+                                        email && !emailRecipients.includes(email) && emailRecipients.push(email);
+                                    });
+                                })).then(resolve);
+                            }
+                        });
+                    });
+                });
+                Promise.all(promises).then(async () => {
+                    const requesterData = await getUser(req, requester, 'admin').then(userData => {
+                        return userData;
+                    });
+                    sendNotificationEmail({
+                        approvers: emailRecipients,
+                        requestData: {requestData: requestInfo.request_info.data.request_path, status: REQUEST_STATUS.APPROVED},
+                        requesterData,
+                        userSession: {domain, entityId}
+                    });
+                });
+
                 notificationsManager.getInstance().to(requester).emit('approve-request', requestInfo);
                 groups.forEach((groupName) => {
                     notificationsManager.getInstance().to(groupName).emit('approve-request', requestInfo);
@@ -331,6 +367,7 @@ const authorizeControlGroupRequest = async (req) => {
  */
 const createControlGroupRequest = async (req) => {
     const {REACT_APP_API_TOKEN: apiToken} = process.env;
+    let emailRecipients = [];
     return new Promise(async (finalResolve, reject) => {
         if (!apiToken) {
             reject({message: 'no API token was set.', statusCode: 403});
@@ -376,7 +413,7 @@ const createControlGroupRequest = async (req) => {
             // Persist the request data as meta data of the corresponding group.
             return new Promise((resolve) => {
                 const apiGroupUrl = `${domain}/v1/identity/group/name/${groupName}`;
-                request(initApiRequest(apiToken, apiGroupUrl), (error, response, body) => {
+                request(initApiRequest(apiToken, apiGroupUrl), async (error, response, body) => {
                     if (error) {
                         console.log(`Error fetching ${apiGroupUrl}: `, error);
                         resolve();
@@ -393,6 +430,12 @@ const createControlGroupRequest = async (req) => {
                             wrap_info: wrapInfo
                         };
                         console.warn('Emit create-request data ', requestNotification, ' to ', groupName);
+                        await Promise.all((((body || {}).data || {}).member_entity_ids || []).map(async approverEntityId => {
+                            await getUser(req, approverEntityId, 'admin').then(userData => {
+                                const email = ((((userData || {}).body || {}).data || {}).metadata || {}).email;
+                                email && !emailRecipients.includes(email) && emailRecipients.push(email);
+                            });
+                        }));
                         notificationsManager.getInstance().in(groupName).emit('create-request', requestNotification);
                         console.log(`Persisting to ${apiGroupUrl} with the key/value pair: ${chalk.bold.yellow(metaKey)} / ${chalk.bold.yellow(metaValue)}`);
                         request({
@@ -416,7 +459,16 @@ const createControlGroupRequest = async (req) => {
                 });
             });
         });
-        Promise.all(promises).then(() => {
+        Promise.all(promises).then(async () => {
+            const requesterData = await getUser(req, entityId, 'admin').then(userData => {
+                return userData;
+            });
+            sendNotificationEmail({
+                approvers: emailRecipients,
+                requestData: {requestData: secretRequest.wrap_info.creation_path, status: REQUEST_STATUS.PENDING},
+                requesterData,
+                userSession: {domain, entityId}
+            });
             finalResolve({
                 status: 'ok'
             });
@@ -432,6 +484,7 @@ const createControlGroupRequest = async (req) => {
  */
 const deleteControlGroupRequest = async (req) => {
     const {REACT_APP_API_TOKEN: apiToken} = process.env;
+    let emailRecipients = [];
     return new Promise(async (finalResolve, reject) => {
         const {entityId, path} = req.query;
         if (!path) {
@@ -459,7 +512,7 @@ const deleteControlGroupRequest = async (req) => {
                 }
             }
             await new Promise(resolve => {
-                Promise.all(groups.map(group => new Promise((groupResolve) => {
+                Promise.all(groups.map(group => new Promise(async (groupResolve) => {
                     const {id, metadata = {}} = group.data || {};
                     const updatedMetadata = filter(metadata, (metadataKey) => key !== metadataKey);
                     // Update the group metadata with the removed request.
@@ -470,6 +523,12 @@ const deleteControlGroupRequest = async (req) => {
                             metadata: updatedMetadata
                         }
                     }, groupResolve);
+                    await Promise.all((((group || {}).data || {}).member_entity_ids || []).map(async approverEntityId => {
+                        await getUser(req, approverEntityId, 'admin').then(userData => {
+                            const email = ((((userData || {}).body || {}).data || {}).metadata || {}).email;
+                            email && !emailRecipients.includes(email) && emailRecipients.push(email);
+                        });
+                    }));
                 }))).then(resolve).catch(resolve);
             });
             const {accessor} = JSON.parse(groups[0].data.metadata[key]);
@@ -491,6 +550,15 @@ const deleteControlGroupRequest = async (req) => {
                 notificationsManager.getInstance().to(group.data.name).emit(requestType, accessor);
             });
 
+            const requesterData = await getUser(req, entityId || entityIdSelf, 'admin').then(userData => {
+                return userData;
+            });
+            sendNotificationEmail({
+                approvers: emailRecipients,
+                requestData: {requestData: decodedPath, status: REQUEST_STATUS.CANCELED},
+                requesterData,
+                userSession: {domain, entityId: entityIdSelf}
+            });
             finalResolve({
                 status: 'ok'
             });
