@@ -4,7 +4,8 @@ A web client to connect to an existing Vault server.
 ## Quick start guide
 1. Install [Node.js](https://nodejs.org).
 2. Run `npm install`.
-3. Run `npm start`.
+3. Run `cp .env.TEMPLATE .env` (You will need the actual values from a fellow developer).
+4. Run `npm start`.
 
 ## Running the built application
 To run the client with built code locally, execute the following:
