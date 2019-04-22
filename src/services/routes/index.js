@@ -43,7 +43,7 @@ const config = (req, res) => {
     _disableCache(res);
     res.json({
         domain: process.env.VAULT_DOMAIN,
-        features: [] // TODO - Fill in available features.
+        features: req.app.locals.features || {}
     });
 };
 

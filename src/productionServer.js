@@ -51,7 +51,8 @@ const _startServer = () => {
     console.log(`Starting server on port ${chalk.yellow(port)}...`);
 
     const noCacheUrls = ['/'];
-    const server = express().use(compression())
+    const app = express();
+    const server = app.use(compression())
         .disable('x-powered-by')
         .use((req, res, next) => {
             // Debugging snippet to figure out exactly what the proxy request header contains.
@@ -125,4 +126,17 @@ const _startServer = () => {
                     process.exit(1);
                 });
         });
+
+    try {
+        const {validate} = require('vault-pam-premium');
+        console.log(chalk.bold.green('Premium features available.'));
+        validate().then((results) => {
+            app.locals.features = {
+                ...results
+            };
+        });
+    } catch (packageError) {
+        console.log(chalk.bold.red('Premium features unavailable.'));
+    }
+    console.warn('SERVER: ', server.locals);
 };
