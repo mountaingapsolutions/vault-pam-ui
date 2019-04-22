@@ -1,8 +1,7 @@
 const RequestController = require('services/controllers/Request');
 const {getUser, getUserIds} = require('services/routes/userService');
 const requestLib = require('request');
-const {initApiRequest, getDomain, sendEmail, sendError} = require('services/utils');
-const {getRequestEmailContent} = require('services/mail/templates');
+const {initApiRequest, getDomain, sendNotificationEmail, sendError} = require('services/utils');
 const {REQUEST_STATUS} = require('services/constants');
 /**
  * @swagger
@@ -139,21 +138,15 @@ const createOrGetStandardRequest = (req) => {
         RequestController.findOrCreate(requesterEntityId, requestData, type, status, engineType).then(request => {
             // if a new request, send email to approvers
             if (request._options.isNewRecord === true) {
-                _getApproverGroupMemberEmails(req).then((approvers) => {
+                _getApproverGroupMemberEmails(req).then(approvers => {
                     getUser(req, requesterEntityId, 'admin').then(requesterData => {
                         if (requesterData && requesterData.body && requesterData.body.data) {
-                            const {data: requester} = requesterData.body;
-                            const emailData = {
-                                domain: getDomain(),
-                                requester,
-                                requestData,
-                                type,
-                                status,
-                                engineType,
-                                approvers
-                            };
-                            const emailContents = getRequestEmailContent(emailData);
-                            sendEmail(approvers, emailContents.subject, emailContents.body);
+                            sendNotificationEmail({
+                                approvers,
+                                requestData: request,
+                                requesterData,
+                                userSession: req.session.user
+                            });
                         }
                     });
                 });
@@ -285,10 +278,23 @@ const getStandardRequestsByRequester = async (req) => {
     });
 };
 
-const updateStandardRequestById = async (id, status) => {
+const updateStandardRequestById = async req => {
+    const {id, status} = req.body;
     return new Promise( (resolve, reject) => {
-        RequestController.updateStatus(id, status).then(requests => {
-            resolve(requests);
+        RequestController.updateStatus(id, status).then(request => {
+            const {requesterEntityId} = request[1];
+            _getApproverGroupMemberEmails(req).then((approvers) => {
+                getUser(req, requesterEntityId, 'admin').then(requesterData => {
+                    if (requesterData && requesterData.body && requesterData.body.data) {
+                        sendNotificationEmail({
+                            approvers,
+                            requestData: request[1],
+                            requesterData,
+                            userSession: req.session.user});
+                    }
+                });
+            });
+            resolve(request);
         }).catch((error) => {
             reject(error);
         });
@@ -311,9 +317,21 @@ const updateStandardRequestByApprover = async (req) => {
         } catch (err) {
             reject({message: err});
         }
-
         if (isApprover) {
             RequestController.updateStatusByApprover(id, approverEntityId, status).then(request => {
+                const {requesterEntityId} = request[1];
+                _getApproverGroupMemberEmails(req).then((approvers) => {
+                    getUser(req, requesterEntityId, 'admin').then(requesterData => {
+                        if (requesterData && requesterData.body && requesterData.body.data) {
+                            sendNotificationEmail({
+                                approvers,
+                                requestData: request[1],
+                                requesterData,
+                                userSession: req.session.user
+                            });
+                        }
+                    });
+                });
                 resolve(request);
             });
         } else {

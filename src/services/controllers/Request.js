@@ -96,7 +96,11 @@ const findAllByStatus = (status) => {
  */
 const updateStatus = (id, status) => {
     return Request.update({status},
-        {where: {id}}
+        {
+            where: {id},
+            returning: true,
+            plain: true
+        }
     ).then((request) => {
         return request;
     });
@@ -112,7 +116,11 @@ const updateStatus = (id, status) => {
  */
 const updateStatusByApprover = (id, approverEntityId, status) => {
     return Request.update({approverEntityId, status},
-        {where: {id}}
+        {
+            where: {id},
+            returning: true,
+            plain: true
+        }
     ).then((request) => {
         return request;
     });
