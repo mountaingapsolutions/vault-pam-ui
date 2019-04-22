@@ -102,7 +102,7 @@
     "copyappfiles": "cp .env dist/ || : && cp package.json dist/ && cp robots.txt dist/ && cp src/productionServer.js dist/ && cp -R src/services dist",
     "lint": "eslint --ext .js,.jsx --format table .",
     "test": "node scripts/test.js",
-    "postinstall": "echo Attempting to install $npm_package_config_premium... && npm install $npm_package_config_premium --no-save && Successfully installed $npm_package_config_premium || echo Failed to install $npm_package_config_premium. Premium features will not be available."
+    "postinstall": "echo Attempting to install $npm_package_config_premium... && npm install $npm_package_config_premium --no-save && echo Successfully installed $npm_package_config_premium || echo Failed to install $npm_package_config_premium. Premium features will not be available."
   },
   "eslintConfig": {
     "extends": "react-app"
