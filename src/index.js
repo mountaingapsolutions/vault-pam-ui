@@ -31,10 +31,8 @@ class Index {
      * @public
      */
     constructor() {
-        const hasDomain = localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_DOMAIN);
         const hasToken = localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
-        const requiresAuthentication = !hasDomain || !hasToken;
-        if (requiresAuthentication) {
+        if (!hasToken) {
             const Auth = loadable(() => import('app/routes/Auth'));
             import('app/core/stores/configureAuthStore').then(store => {
                 window.app = {

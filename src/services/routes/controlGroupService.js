@@ -4,7 +4,7 @@ const chalk = require('chalk');
 const hcltojson = require('hcl-to-json');
 const request = require('request');
 const notificationsManager = require('services/notificationsManager');
-const {initApiRequest, sendError, sendNotificationEmail} = require('services/utils');
+const {getDomain, initApiRequest, sendError, sendNotificationEmail} = require('services/utils');
 const {getUser} = require('services/routes/userService');
 const {REQUEST_STATUS} = require('services/constants');
 
@@ -35,12 +35,12 @@ const _encodeMetaKey = (entityId, path) => {
 const getSelfActiveRequests = async (req) => {
     const {entityId} = req.session.user;
     const result = await new Promise((resolve, reject) => {
-        const {REACT_APP_API_TOKEN: apiToken} = process.env;
+        const {VAULT_API_TOKEN: apiToken} = process.env;
         if (!apiToken) {
             reject('No API token configured.');
             return;
         }
-        const {domain} = req.session.user;
+        const domain = getDomain();
         let metadataMap = {};
         let activeRequests = {};
         let invalidRequests = {};
@@ -128,10 +128,10 @@ const getPathFromEncodedMetaKey = (encodedMetaKey) => {
  * @returns {Promise}
  */
 const checkControlGroupRequestStatus = async (req, accessor) => {
-    const {domain, token} = req.session.user;
+    const {token} = req.session.user;
     const result = await new Promise((resolve, reject) => {
         request({
-            ...initApiRequest(token, `${domain}/v1/sys/control-group/request`),
+            ...initApiRequest(token, `${getDomain()}/v1/sys/control-group/request`),
             method: 'POST',
             json: {
                 accessor
@@ -155,12 +155,13 @@ const checkControlGroupRequestStatus = async (req, accessor) => {
  */
 const getControlGroupPaths = async (req) => {
     const result = await new Promise((resolve, reject) => {
-        const {REACT_APP_API_TOKEN: apiToken} = process.env;
+        const {VAULT_API_TOKEN: apiToken} = process.env;
         if (!apiToken) {
             reject('No API token configured.');
             return;
         }
-        const {domain, token} = req.session.user;
+        const domain = getDomain();
+        const {token} = req.session.user;
         const apiUrl = `${domain}/v1/auth/token/lookup-self`;
         const controlGroupPolicies = {};
         request(initApiRequest(token, apiUrl), (error, response, body) => {
@@ -203,8 +204,9 @@ const getControlGroupPaths = async (req) => {
  * @returns {Promise}
  */
 const getGroupsByUser = async (req) => {
-    const {REACT_APP_API_TOKEN: apiToken} = process.env;
-    const {domain, entityId} = req.session.user;
+    const {VAULT_API_TOKEN: apiToken} = process.env;
+    const domain = getDomain();
+    const {entityId} = req.session.user;
     const result = await new Promise((resolve, reject) => {
         const groups = [];
         request(initApiRequest(apiToken, `${domain}/v1/identity/group/id?list=true`), (error, response, body) => {
@@ -240,8 +242,8 @@ const getGroupsByUser = async (req) => {
  * @returns {Promise}
  */
 const getGroupsByMetadata = async (req, metadataKey) => {
-    const {REACT_APP_API_TOKEN: apiToken} = process.env;
-    const {domain} = req.session.user;
+    const {VAULT_API_TOKEN: apiToken} = process.env;
+    const domain = getDomain();
     const result = await new Promise((resolve, reject) => {
         const groups = [];
         request(initApiRequest(apiToken, `${domain}/v1/identity/group/id?list=true`), (error, response, body) => {
@@ -276,7 +278,8 @@ const getGroupsByMetadata = async (req, metadataKey) => {
 const authorizeControlGroupRequest = async (req) => {
     let emailRecipients = [];
     return new Promise(async (finalResolve, reject) => {
-        const {domain, entityId, groups, token} = req.session.user;
+        const domain = getDomain();
+        const {entityId, groups, token} = req.session.user;
         const {accessor} = req.body;
 
         // Authorize the accessor.
@@ -292,8 +295,9 @@ const authorizeControlGroupRequest = async (req) => {
                     reject({message: error});
                 } else if (body.errors) {
                     reject({message: body.errors, statusCode: response.statusCode});
+                } else {
+                    resolve(body);
                 }
-                resolve(body);
             });
         });
 
@@ -366,15 +370,16 @@ const authorizeControlGroupRequest = async (req) => {
  * @returns {Promise}
  */
 const createControlGroupRequest = async (req) => {
-    const {REACT_APP_API_TOKEN: apiToken} = process.env;
     let emailRecipients = [];
+    const {VAULT_API_TOKEN: apiToken} = process.env;
     return new Promise(async (finalResolve, reject) => {
         if (!apiToken) {
             reject({message: 'no API token was set.', statusCode: 403});
             return;
         }
 
-        const {controlGroupPaths, domain, entityId, token} = req.session.user;
+        const domain = getDomain();
+        const {controlGroupPaths, entityId, token} = req.session.user;
         if (!controlGroupPaths) {
             reject({message: 'No approval group has been configured.', statusCode: 500});
             return;
@@ -483,8 +488,8 @@ const createControlGroupRequest = async (req) => {
  * @returns {Promise}
  */
 const deleteControlGroupRequest = async (req) => {
-    const {REACT_APP_API_TOKEN: apiToken} = process.env;
     let emailRecipients = [];
+    const {VAULT_API_TOKEN: apiToken} = process.env;
     return new Promise(async (finalResolve, reject) => {
         const {entityId, path} = req.query;
         if (!path) {
@@ -492,7 +497,8 @@ const deleteControlGroupRequest = async (req) => {
             return;
         }
         const decodedPath = decodeURIComponent(path);
-        const {domain, entityId: entityIdSelf} = req.session.user;
+        const domain = getDomain();
+        const {entityId: entityIdSelf} = req.session.user;
         try {
             const key = _encodeMetaKey(entityId || entityIdSelf, decodedPath);
             const groups = await getGroupsByMetadata(req, key);
@@ -617,7 +623,8 @@ const getControlGroupRequests = async (req) => {
  * @returns {Promise}
  */
 const unwrapControlGroupRequest = async (req) => {
-    const {domain, token} = req.session.user;
+    const domain = getDomain();
+    const {token} = req.session.user;
     const {token: requestToken} = req.body;
     const result = await new Promise((resolve, reject) => {
         request({
@@ -630,7 +637,7 @@ const unwrapControlGroupRequest = async (req) => {
             if (error) {
                 reject(error);
             } else {
-                const {REACT_APP_API_TOKEN: apiToken} = process.env;
+                const {VAULT_API_TOKEN: apiToken} = process.env;
                 // Update metadata in the groups by removing the unwrapped request in the meta.
                 request(initApiRequest(apiToken, `${domain}/v1/identity/group/id?list=true`), (groupsError, groupsResponse, groupsBody) => {
                     const keys = unwrap(safeWrap(groupsBody).data.keys) || [];
@@ -685,11 +692,10 @@ const unwrapControlGroupRequest = async (req) => {
  * @returns {Promise}
  */
 const revokeAccessor = async (req, accessor) => {
-    const {domain} = req.session.user;
-    const {REACT_APP_API_TOKEN: apiToken} = process.env;
+    const {VAULT_API_TOKEN: apiToken} = process.env;
     const result = await new Promise((resolve, reject) => {
         request({
-            ...initApiRequest(apiToken, `${domain}/v1/auth/token/revoke-accessor`),
+            ...initApiRequest(apiToken, `${getDomain()}/v1/auth/token/revoke-accessor`),
             method: 'POST',
             json: {
                 accessor
@@ -916,7 +922,8 @@ const router = require('express').Router()
      *         description: Unauthorized.
      */
     .delete('/requests', async (req, res) => {
-        const {domain, token} = req.session.user;
+        const domain = getDomain();
+        const {token} = req.session.user;
 
         try {
             await new Promise((resolve, reject) => {

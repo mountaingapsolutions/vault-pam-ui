@@ -14,17 +14,12 @@ import sessionAction from 'app/core/actions/sessionAction';
  * @returns {Object} The updated state.
  */
 export default (previousState = {
-    vaultDomain: {},
     vaultLookupSelf: {},
     sealStatus: {},
     vaultToken: {}
 }, action) => {
     switch (action.type) {
-        case sessionAction.ACTION_TYPES.SET_DOMAIN:
-            return {...previousState, vaultDomain: action};
         case sessionAction.ACTION_TYPES.SET_TOKEN:
-            return {...previousState, vaultToken: action};
-        case sessionAction.ACTION_TYPES.VALIDATE_DOMAIN:
             return {...previousState, sealStatus: action};
         case sessionAction.ACTION_TYPES.LOGIN:
         case sessionAction.ACTION_TYPES.VALIDATE_TOKEN:

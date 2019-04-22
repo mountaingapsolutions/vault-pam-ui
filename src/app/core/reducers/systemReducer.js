@@ -14,11 +14,14 @@ import systemAction from 'app/core/actions/systemAction';
  * @returns {Object} The updated state.
  */
 export default (previousState = {
+    config: {},
     selfCapabilities: {},
     sealStatus: {},
     groupData: {}
 }, action) => {
     switch (action.type) {
+        case systemAction.ACTION_TYPES.GET_CONFIG:
+            return {...previousState, config: action.data || {}, action};
         case systemAction.ACTION_TYPES.GET_GROUP_DATA:
             return {...previousState, groupData: action.data || {}, action};
         case systemAction.ACTION_TYPES.GET_SELF_CAPABILITIES:

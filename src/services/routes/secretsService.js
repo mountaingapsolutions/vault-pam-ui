@@ -3,7 +3,7 @@ const {toObject} = require('@mountaingapsolutions/objectutil');
 const chalk = require('chalk');
 const request = require('request');
 const {getSelfActiveRequests, getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
-const {initApiRequest, sendError, setSessionData} = require('services/utils');
+const {initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
 const RequestController = require('services/controllers/Request');
 /* eslint-disable new-cap */
 const router = require('express').Router()
@@ -60,7 +60,8 @@ const router = require('express').Router()
         if (isV2) {
             listUrlParts.splice(1, 0, 'metadata');
         }
-        const {domain, token} = req.session.user;
+        const domain = getDomain();
+        const {token} = req.session.user;
         const apiUrl = `${domain}/v1/${listUrlParts.join('/')}?list=true`;
 
         // Get current user's active Control Group requests.
@@ -163,7 +164,7 @@ const router = require('express').Router()
         });
     })
     .get('/secret/*', async (req, res) => {
-        const {REACT_APP_API_TOKEN: apiToken} = process.env;
+        const {VAULT_API_TOKEN: apiToken} = process.env;
         const {params = {}, query} = req;
         const urlParts = (params[0] || '').split('/').filter(path => !!path);
         const listUrlParts = [...urlParts];
@@ -171,8 +172,7 @@ const router = require('express').Router()
         if (isV2) {
             listUrlParts.splice(1, 0, 'metadata');
         }
-        const {domain} = req.session.user;
-        const apiUrl = `${domain}/v1/${listUrlParts.join('/')}`;
+        const apiUrl = `${getDomain()}/v1/${listUrlParts.join('/')}`;
         request(initApiRequest(apiToken, apiUrl), (error, response, body) => {
             if (error) {
                 sendError(error, response, body);

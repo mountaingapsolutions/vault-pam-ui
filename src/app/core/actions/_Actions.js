@@ -143,11 +143,7 @@ export default class _Actions {
                     };
                 }
             }
-            // Must pass the Vault domain and token if in local storage data.
-            const vaultDomain = localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_DOMAIN);
-            if (vaultDomain) {
-                initData.headers['X-Vault-Domain'] = vaultDomain;
-            }
+            // Must pass the Vault token if in local storage data.
             const vaultToken = window.app.store.getState().sessionReducer.vaultToken.data || localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
             if (headers && headers['X-Vault-Token']) {
                 initData.headers['X-Vault-Token'] = headers['X-Vault-Token'];

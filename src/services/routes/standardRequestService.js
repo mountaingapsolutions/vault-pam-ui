@@ -1,7 +1,7 @@
 const RequestController = require('services/controllers/Request');
-const {getUser} = require('services/routes/userService');
+const {getUser, getUserIds} = require('services/routes/userService');
 const requestLib = require('request');
-const {initApiRequest, sendError, sendNotificationEmail} = require('services/utils');
+const {initApiRequest, getDomain, sendNotificationEmail, sendError} = require('services/utils');
 const {REQUEST_STATUS} = require('services/constants');
 /**
  * @swagger
@@ -32,16 +32,15 @@ const {REQUEST_STATUS} = require('services/constants');
  */
 const _getApproverGroupMemberEmails = async (req) => {
     const result = await new Promise( (resolve, reject) => {
-        const {REACT_APP_API_TOKEN: apiToken} = process.env;
+        const {VAULT_API_TOKEN: apiToken} = process.env;
         if (!apiToken) {
             reject('No API token configured.');
             return;
         }
-        const {domain} = req.session.user;
         const groupName = 'pam-approver';
         let groupMembersEmail = [];
 
-        requestLib(initApiRequest(apiToken, `${domain}/v1/identity/group/name/${groupName}`), (error, response, body) => {
+        requestLib(initApiRequest(apiToken, `${getDomain()}/v1/identity/group/name/${groupName}`), (error, response, body) => {
             if (body && body.data) {
                 const member_entity_ids = body.data.member_entity_ids;
                 const {type: userType} = body.data.metadata;
@@ -84,15 +83,14 @@ const _getApproverGroupMemberEmails = async (req) => {
  */
 const _isApprover = async (req, entityId) => {
     return await new Promise( (resolve, reject) => {
-        const {REACT_APP_API_TOKEN: apiToken} = process.env;
+        const {VAULT_API_TOKEN: apiToken} = process.env;
 
         if (!apiToken) {
             reject('No API token configured.');
         }
 
-        const {domain} = req.session.user;
         const groupName = 'pam-approver';
-        requestLib(initApiRequest(apiToken, `${domain}/v1/identity/group/name/${groupName}`), (error, response, body) => {
+        requestLib(initApiRequest(apiToken, `${getDomain()}/v1/identity/group/name/${groupName}`), (error, response, body) => {
             if (body && body.data) {
                 const {member_entity_ids} = body.data;
                 const {type} = body.data.metadata;
@@ -180,15 +178,33 @@ const getStandardRequestsByApprover = (req) => {
 /**
  * Get standard requests by status.
  *
+ * @param {Object} req The HTTP request object.
  * @param {string} status The request status in database.
  * @returns {Promise}
  */
-const getStandardRequestsByStatus = (status) => {
-    return new Promise( (resolve, reject) => {
-        RequestController.findAllByStatus(status).then(requests => {
-            resolve(requests);
-        }).catch((error) => {
-            reject(error);
+const getStandardRequestsByStatus = async (req, status) => {
+    const {entityId} = req.session.user;
+    return new Promise(async (finalResolve, finalReject) => {
+
+        const standardRequestsPromise = new Promise( (resolve, reject) => {
+            RequestController.findAllByStatus(status).then(requests => {
+                resolve(requests);
+            }).catch((error) => {
+                reject(error);
+            });
+        });
+        const getUserIdsPromise = getUserIds();
+
+        Promise.all([standardRequestsPromise, getUserIdsPromise]).then((results) => {
+            const standardRequests = (Array.isArray(results) && results[0] ? results[0] : []).map(standardRequest => {
+                if (Array.isArray(results) && results[1]) {
+                    (standardRequest.dataValues || {}).requesterName = ((((results[1].body || {}).data || {}).key_info || {})[entityId] || {}).name;
+                }
+                return standardRequest;
+            });
+            finalResolve(standardRequests);
+        }).catch(error => {
+            finalReject(error);
         });
     });
 };
@@ -210,7 +226,7 @@ const getStandardRequestsByUserType = (req) => {
         }
         let result = [];
         try {
-            const data = isApprover ? await getStandardRequestsByStatus(REQUEST_STATUS.PENDING) : await getStandardRequestsByRequester(req);
+            const data = isApprover ? await getStandardRequestsByStatus(req, REQUEST_STATUS.PENDING) : await getStandardRequestsByRequester(req);
             result = result.concat(data);
         } catch (err) {
             reject({message: err});
@@ -235,13 +251,29 @@ const getStandardRequests = () => {
  * @param {Object} req The HTTP request object.
  * @returns {Promise}
  */
-const getStandardRequestsByRequester = (req) => {
+const getStandardRequestsByRequester = async (req) => {
     const {entityId} = req.session.user;
-    return new Promise( (resolve, reject) => {
-        RequestController.findAllByRequester(entityId).then(requests => {
-            resolve(requests);
-        }).catch((error) => {
-            reject(error);
+    return new Promise(async (finalResolve, finalReject) => {
+
+        const standardRequestsPromise = new Promise( (resolve, reject) => {
+            RequestController.findAllByRequester(entityId).then(requests => {
+                resolve(requests);
+            }).catch((error) => {
+                reject(error);
+            });
+        });
+        const getUserIdsPromise = getUserIds();
+
+        Promise.all([standardRequestsPromise, getUserIdsPromise]).then((results) => {
+            const standardRequests = (Array.isArray(results) && results[0] ? results[0] : []).map(standardRequest => {
+                if (Array.isArray(results) && results[1]) {
+                    (standardRequest.dataValues || {}).requesterName = ((((results[1].body || {}).data || {}).key_info || {})[entityId] || {}).name;
+                }
+                return standardRequest;
+            });
+            finalResolve(standardRequests);
+        }).catch(error => {
+            finalReject(error);
         });
     });
 };

@@ -7,6 +7,7 @@ import {Provider} from 'react-redux';
 import {Router} from 'react-router-dom';
 
 import sessionReducer from 'app/core/reducers/sessionReducer';
+import systemReducer from 'app/core/reducers/systemReducer';
 import userReducer from 'app/core/reducers/userReducer';
 
 import Main from './Main';
@@ -23,6 +24,7 @@ const _configureStore = (initialState) => {
     return createStore(
         combineReducers({
             sessionReducer,
+            systemReducer,
             userReducer
         }),
         initialState,

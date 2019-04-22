@@ -27,7 +27,6 @@ const getSessionMiddleware = session({
 const SESSION_USER_DATA_MAP = {
     CONTROL_GROUP_PATHS: 'controlGroupPaths',
     CONTROL_GROUP_SUPPORTED: 'controlGroupSupported',
-    DOMAIN: 'domain',
     ENTITY_ID: 'entityId',
     GROUPS: 'groups',
     STANDARD_REQUEST_SUPPORTED: 'standardRequestSupported',
@@ -35,17 +34,33 @@ const SESSION_USER_DATA_MAP = {
 };
 
 /**
- * Check if control groups are supported
+ * Wraps a request in an Promise for async/await support.
  *
- * @param {Object} req The HTTP request object.
+ * @param {Object} options The request options.
  * @returns {Promise}
  */
-const checkControlGroupSupport = async (req) => {
-    const {domain} = req.session.user;
-    const {REACT_APP_API_TOKEN: apiToken} = process.env;
+const asyncRequest = async (options) => {
+    return await new Promise((resolve, reject) => {
+        request(options, (error, response) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(response);
+            }
+        });
+    });
+};
+
+/**
+ * Check if control groups are supported
+ *
+ * @returns {Promise}
+ */
+const checkControlGroupSupport = async () => {
+    const {VAULT_API_TOKEN: apiToken} = process.env;
     return await new Promise((resolve, reject) => {
         request({
-            ...initApiRequest(apiToken, `${domain}/v1/sys/license`),
+            ...initApiRequest(apiToken, `${getDomain()}/v1/sys/license`),
             method: 'GET',
         }, (error, response, body) => {
             if (error) {
@@ -61,16 +76,14 @@ const checkControlGroupSupport = async (req) => {
 /**
  * Check if standard requests are supported
  *
- * @param {Object} req The HTTP request object.
  * @returns {Promise}
  */
-const checkStandardRequestSupport = async (req) => {
-    const {domain} = req.session.user;
-    const {REACT_APP_API_TOKEN: apiToken} = process.env;
+const checkStandardRequestSupport = async () => {
+    const {VAULT_API_TOKEN: apiToken} = process.env;
     const groupName = 'pam-approver';
     return await new Promise((resolve, reject) => {
         request({
-            ...initApiRequest(apiToken, `${domain}/v1/identity/group/name/${groupName}`),
+            ...initApiRequest(apiToken, `${getDomain()}/v1/identity/group/name/${groupName}`),
             method: 'GET',
         }, (error, response, body) => {
             if (error) {
@@ -98,6 +111,16 @@ const initApiRequest = (token, apiUrl) => {
         uri: apiUrl,
         json: true
     };
+};
+
+/**
+ * Returns the Vault domain.
+ *
+ * @returns {string}
+ */
+const getDomain = () => {
+    const domain = process.env.VAULT_DOMAIN;
+    return domain.endsWith('/') ? domain.slice(0, -1) : domain;
 };
 
 /**
@@ -203,12 +226,32 @@ const sendEmail = (recipients, subject, body) => {
     });
 };
 
+/**
+ * Validates the Vault domain.
+ *
+ * @param {string} domain The domain to validate
+ * @returns {Promise}
+ */
+const validateDomain = async (domain) => {
+    const url = `${domain.endsWith('/') ? domain.slice(0, -1) : domain}/v1/sys/seal-status`;
+    console.log(`Validating ${chalk.bold.yellow(url)}.`);
+    const vaultDomainResponse = await asyncRequest({
+        url,
+        json: true
+    });
+    const responseKeys = Object.keys(vaultDomainResponse.body);
+    // Validation approach to checking for a proper Vault server is to check that the response contains the required sealed, version, and cluster_name keys.
+    return responseKeys.includes('sealed') && responseKeys.includes('version') && responseKeys.includes('cluster_name');
+};
+
 module.exports = {
     checkControlGroupSupport,
     checkStandardRequestSupport,
     initApiRequest,
+    getDomain,
     getSessionMiddleware,
     sendError,
     sendNotificationEmail,
-    setSessionData
+    setSessionData,
+    validateDomain
 };

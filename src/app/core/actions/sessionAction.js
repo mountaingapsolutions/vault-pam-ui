@@ -13,9 +13,7 @@ class SessionAction extends _Actions {
     constructor() {
         super('SessionAction', {
             LOGIN: 'LOGIN',
-            SET_DOMAIN: 'SET_DOMAIN',
             SET_TOKEN: 'SET_TOKEN',
-            VALIDATE_DOMAIN: 'VALIDATE_DOMAIN',
             VALIDATE_TOKEN: 'VALIDATE_TOKEN'
         });
     }
@@ -31,16 +29,6 @@ class SessionAction extends _Actions {
     }
 
     /**
-     * Sets the domain within the client model.
-     *
-     * @param {string} domain The domain to set.
-     * @returns {Object}
-     */
-    setDomain(domain) {
-        return this._createResourceData(this.ACTION_TYPES.SET_DOMAIN, undefined, domain, false);
-    }
-
-    /**
      * Sets the token within the client model.
      *
      * @param {string} token The token to set.
@@ -48,16 +36,6 @@ class SessionAction extends _Actions {
      */
     setToken(token) {
         return this._createResourceData(this.ACTION_TYPES.SET_TOKEN, undefined, token, false);
-    }
-
-    /**
-     * Validates the specified Vault server domain.
-     *
-     * @param {string} domain - The domain to validate.
-     * @returns {function} Redux dispatch function.
-     */
-    validateServer(domain) {
-        return this._dispatchGet(this.ACTION_TYPES.VALIDATE_DOMAIN, '/validate', {domain});
     }
 
     /**

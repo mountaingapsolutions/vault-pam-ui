@@ -83,12 +83,6 @@ export default (previousState = {
                 ...previousState,
                 secretsRequests: updateOrAppend(previousState.secretsRequests, action.data, 'accessor')
             };
-        // Deprecated?
-        case kvAction.ACTION_TYPES.LIST_SECRETS:
-            return {
-                ...previousState,
-                secretsPaths: (action.data || {}).data || {}
-            };
         case kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES:
             return {
                 ...previousState,
@@ -128,17 +122,16 @@ export default (previousState = {
  */
 const _remapRequest = requests => {
     return requests.map(request => {
-        const {createdAt, id, requestData, requesterEntityId, status} = request;
+        const {createdAt, id, requestData, requesterEntityId, requesterName, status} = request;
         return request.wrap_info ? request : {request_info: {data: {
             approved: status,
             authorizations: null,
-            request_entity: {id: requesterEntityId, name: requesterEntityId},
+            request_entity: {id: requesterEntityId, name: requesterName},
             request_path: requestData
         },
         request_id: id,
         creation_time: createdAt,
-        accessor: requesterEntityId,
-        request_info: {}
+        accessor: requesterEntityId
         }};
     });
 };

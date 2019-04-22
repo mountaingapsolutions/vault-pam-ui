@@ -19,7 +19,6 @@ class KvAction extends _Actions {
             DELETE_SECRETS: 'DELETE_SECRETS',
             GET_SECRETS: 'GET_SECRETS',
             LIST_MOUNTS: 'LIST_MOUNTS',
-            LIST_SECRETS: 'LIST_SECRETS', // TODO - Remove?
             LIST_SECRETS_AND_CAPABILITIES: 'LIST_SECRETS_AND_CAPABILITIES',
             LIST_REQUESTS: 'LIST_REQUESTS',
             REJECT_REQUEST: 'REJECT_REQUEST',
@@ -87,20 +86,6 @@ class KvAction extends _Actions {
      */
     listMounts() {
         return this._dispatchGet(this.ACTION_TYPES.LIST_MOUNTS, '/api/v1/sys/mounts');
-    }
-
-    /**
-     * Returns a list of key names at the specified location
-     *
-     * @param {string} [path] Specifies the path of the secrets to list.
-     * @param {boolean} [useApiKey] specifies if API key is used
-     * @returns {function} Redux dispatch function.
-     */
-    listSecrets(path = '', useApiKey = false) {
-        return useApiKey ? this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS, `/api/v1/${this._encodePath(path)}`, {list: true}, {'X-Vault-Token': process.env.REACT_APP_API_TOKEN}) :
-            this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS, `/api/v1/${this._encodePath(path)}`, {
-                list: true
-            });
     }
 
     /**
