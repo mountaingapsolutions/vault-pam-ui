@@ -82,5 +82,4 @@ module.exports = {
     servedPath: getServedPath(resolveApp('package.json')),
 };
 
-
 module.exports.moduleFileExtensions = moduleFileExtensions;

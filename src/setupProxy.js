@@ -19,11 +19,12 @@ module.exports = (app) => {
         const {validate} = require('vault-pam-premium');
         console.log(chalk.bold.green('Premium features available.'));
         validate().then((results) => {
-            app.locals.features = {
+            app.locals.features = results ? {
                 ...results
-            };
+            } : {};
         });
     } catch (packageError) {
         console.log(chalk.bold.red('Premium features unavailable.'));
+        app.locals.features = {};
     }
 };
