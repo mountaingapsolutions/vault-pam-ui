@@ -90,9 +90,6 @@
     "webpack-manifest-plugin": "2.0.4",
     "workbox-webpack-plugin": "3.6.3"
   },
-  "optionalDependencies": {
-    "vault-pam-premium": "git+https://bitbucket.org/mountaingapsolutions/vault-pam-premium.git"
-  },
   "scripts": {
     "start": "node scripts/start.js",
     "startprod": "node productionServer",
@@ -101,6 +98,7 @@
     "postbuild": "mkdir dist && mv build dist/build && npm run copyappfiles && node scripts/dist.js",
     "copyappfiles": "cp .env dist/ || : && cp package.json dist/ && cp robots.txt dist/ && cp src/productionServer.js dist/ && cp -R src/services dist",
     "lint": "eslint --ext .js,.jsx --format table .",
+    "postinstall": "echo whoami: && whoami",
     "test": "node scripts/test.js"
   },
   "eslintConfig": {
@@ -165,5 +163,8 @@
     "presets": [
       "react-app"
     ]
+  },
+  "optionalDependencies": {
+    "vault-pam-premium": "git+https://bitbucket.org/mountaingapsolutions/vault-pam-premium.git"
   }
 }
