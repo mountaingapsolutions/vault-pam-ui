@@ -18,8 +18,7 @@ const hideOperationsUntilAuthorized = () => {
                 const isOperationSecured = !!props.operation.get('security').size;
                 const isOperationAuthorized = props.operation.get('isAuthorized');
                 const isAuthenticated = typeof localStorage !== undefined &&
-                    localStorage.getItem('vault-token') &&
-                    localStorage.getItem('vault-domain');
+                    localStorage.getItem('vault-token');
                 if (!isOperationSecured || isOperationAuthorized && isAuthenticated) {
                     return system.React.createElement(Ori, props);
                 }
@@ -43,11 +42,6 @@ const options = {
                         name: 'x-vault-token',
                         schema: {type: 'apiKey', in: 'header', name: 'x-vault-token'},
                         value: localStorage.getItem('vault-token')
-                    },
-                    'x-vault-domain': {
-                        name: 'x-vault-domain',
-                        schema: {type: 'apiKey', in: 'header', name: 'x-vault-domain'},
-                        value: localStorage.getItem('vault-domain')
                     }
                 });
             }
@@ -67,18 +61,12 @@ const swaggerJsDocOptions = {
                     type: 'apiKey',
                     name: 'x-vault-token',
                     in: 'header'
-                },
-                'x-vault-domain': {
-                    type: 'apiKey',
-                    name: 'x-vault-domain',
-                    in: 'header'
                 }
             }
         },
         security: [
             {
-                'x-vault-token': [],
-                'x-vault-domain': []
+                'x-vault-token': []
             }
         ]
     },

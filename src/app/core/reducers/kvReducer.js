@@ -41,9 +41,10 @@ export default (previousState = {
                 }).filter(mount => mount.type !== 'identity' && mount.type !== 'system')}// Filter out the identity and system mounts.
             };
         case kvAction.ACTION_TYPES.LIST_REQUESTS:
+            const requests = action.data && _remapRequest(action.data);
             return {
                 ...previousState,
-                secretsRequests: action.data || []
+                secretsRequests: requests || []
             };
         case kvAction.ACTION_TYPES.REMOVE_REQUEST_DATA:
             secretsPaths = clone(previousState.secretsPaths);
@@ -82,12 +83,6 @@ export default (previousState = {
                 ...previousState,
                 secretsRequests: updateOrAppend(previousState.secretsRequests, action.data, 'accessor')
             };
-        // Deprecated?
-        case kvAction.ACTION_TYPES.LIST_SECRETS:
-            return {
-                ...previousState,
-                secretsPaths: (action.data || {}).data || {}
-            };
         case kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES:
             return {
                 ...previousState,
@@ -117,4 +112,26 @@ export default (previousState = {
         default:
             return {...previousState};
     }
+};
+
+/**
+ * Helper method to map request from database.
+ *
+ * @param {Array} requests array from database
+ * @returns {Array} remapped request array.
+ */
+const _remapRequest = requests => {
+    return requests.map(request => {
+        const {createdAt, id, requestData, requesterEntityId, requesterName, status} = request;
+        return request.wrap_info ? request : {request_info: {data: {
+            approved: status,
+            authorizations: null,
+            request_entity: {id: requesterEntityId, name: requesterName},
+            request_path: requestData
+        },
+        request_id: id,
+        creation_time: createdAt,
+        accessor: requesterEntityId
+        }};
+    });
 };

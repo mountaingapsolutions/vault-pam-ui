@@ -13,8 +13,6 @@ class LocalStorageUtil {
      */
     constructor() {
         this.KEY_NAMES = {
-            VAULT_DOMAIN: 'vault-domain',
-            VAULT_DOMAINS: 'vault-domains',
             VAULT_TOKEN: 'vault-token'
         };
 

@@ -21,13 +21,14 @@ import {
     VisibilityOff
 } from '@material-ui/icons';
 import {withStyles} from '@material-ui/core/styles/index';
+import md5 from 'md5';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import isEmail from 'validator/lib/isEmail';
 
 import userAction from 'app/core/actions/userAction';
-import Button from 'app/core/components/common/Button';
+import Button from 'app/core/components/Button';
 import SnackbarContent from 'app/core/components/SnackbarContent';
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 
@@ -51,7 +52,8 @@ class UserProfileModal extends Component {
             firstName: '',
             lastName: '',
             email: ''
-        }
+        },
+        useDefaultImage: false
     };
 
     /**
@@ -233,7 +235,7 @@ class UserProfileModal extends Component {
                 {message && <SnackbarContent message={message} variant='info'/>}
                 <List>
                     <ListItem dense>
-                        <AccountCircle color='primary' fontSize='large'/>
+                        {this._renderProfileIcon()}
                         <ListItemText primary={<React.Fragment>
                             <TextField
                                 autoFocus
@@ -356,6 +358,29 @@ class UserProfileModal extends Component {
                 </List>
             </Paper>
         );
+    }
+
+    /**
+     * Renders the profile image element.
+     *
+     * @private
+     * @returns {Element}
+     */
+    _renderProfileIcon() {
+        const {useDefaultImage} = this.state;
+        const {userMetadata = {}} = this.props;
+        const {email} = userMetadata;
+        let element;
+        if (useDefaultImage || !email) {
+            element = <AccountCircle color='primary' fontSize='large'/>;
+        } else {
+            element = <img alt='profile' src={`//www.gravatar.com/avatar/${md5(email.trim().toLowerCase())}?s=35&d=404`} onError={() => {
+                this.setState({
+                    useDefaultImage: true
+                });
+            }}/>;
+        }
+        return <a href='https://en.gravatar.com/emails' rel='noopener noreferrer' style={{marginTop: '8px'}} target='_blank' title='Change your Gravatar'>{element}</a>;
     }
 
     /**

@@ -19,7 +19,6 @@ class KvAction extends _Actions {
             DELETE_SECRETS: 'DELETE_SECRETS',
             GET_SECRETS: 'GET_SECRETS',
             LIST_MOUNTS: 'LIST_MOUNTS',
-            LIST_SECRETS: 'LIST_SECRETS', // TODO - Remove?
             LIST_SECRETS_AND_CAPABILITIES: 'LIST_SECRETS_AND_CAPABILITIES',
             LIST_REQUESTS: 'LIST_REQUESTS',
             REJECT_REQUEST: 'REJECT_REQUEST',
@@ -34,11 +33,13 @@ class KvAction extends _Actions {
      * Authorizes a secrets request.
      *
      * @param {string} accessor The request accessor value.
+     * @param {string} id The request id in database.
      * @returns {function} Redux dispatch function.
      */
-    authorizeRequest(accessor) {
+    authorizeRequest(accessor, id) {
         return this._dispatchPost(this.ACTION_TYPES.AUTHORIZE_REQUEST, '/rest/requests/request/authorize', {
-            accessor
+            accessor,
+            id
         });
     }
 
@@ -47,12 +48,14 @@ class KvAction extends _Actions {
      *
      * @param {string} path Specifies the path of the request to delete.
      * @param {string} [entityId] The user entity id. If not provided, the request will default to the current session user.
+     * @param {string} id The request id in database.
      * @returns {function} Redux dispatch function.
      */
-    deleteRequest(path, entityId = '') {
+    deleteRequest(path, entityId = '', id) {
         return this._dispatchDelete(this.ACTION_TYPES.DELETE_REQUEST, '/rest/requests/request', {
             path,
-            entityId
+            entityId,
+            id
         });
     }
 
@@ -73,7 +76,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     getSecrets(path = '') {
-        return this._dispatchGet(this.ACTION_TYPES.GET_SECRETS, `/api/v1/${this._encodePath(path)}`);
+        return this._dispatchGet(this.ACTION_TYPES.GET_SECRETS, `/rest/secrets/get/${this._encodePath(path)}`);
     }
 
     /**
@@ -86,29 +89,14 @@ class KvAction extends _Actions {
     }
 
     /**
-     * Returns a list of key names at the specified location
-     *
-     * @param {string} [path] Specifies the path of the secrets to list.
-     * @param {boolean} [useApiKey] specifies if API key is used
-     * @returns {function} Redux dispatch function.
-     */
-    listSecrets(path = '', useApiKey = false) {
-        return useApiKey ? this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS, `/api/v1/${this._encodePath(path)}`, {list: true}, {'X-Vault-Token': process.env.REACT_APP_API_TOKEN}) :
-            this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS, `/api/v1/${this._encodePath(path)}`, {
-                list: true
-            });
-    }
-
-    /**
      * Returns a list of key names at the specified location with capabilities mixed in.
      *
      * @param {string} [path] Specifies the path of the secrets to list.
      * @param {number} [version] The KV engine version.
-     * @param {string} [requesterEntityId] Entity ID of requester.
      * @returns {function} Redux dispatch function.
      */
     listSecretsAndCapabilities(path = '', version = 2) {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES, `/rest/secrets/${path}`, {
+        return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES, `/rest/secrets/list/${path}`, {
             version
         });
     }
@@ -142,7 +130,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     listRequests() {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_REQUESTS, '/rest/requests/requests');
+        return this._dispatchGet(this.ACTION_TYPES.LIST_REQUESTS, '/rest/requests/list');
     }
 
     /**
@@ -183,23 +171,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     unwrapSecret(name, token) {
-        // return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/api/v1/sys/wrapping/unwrap', {
-        //     token
-        // }, null, (responseData) => {
-        //     // Inject the name into the response data.
-        //     const {data, inProgress} = responseData;
-        //     if (data && !inProgress) {
-        //         return {
-        //             ...responseData,
-        //             data: {
-        //                 name,
-        //                 data
-        //             }
-        //         };
-        //     }
-        //     return responseData;
-        // });
-        return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/api/v1/sys/wrapping/unwrap', {
+        return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/control-group/request/unwrap', {
             token
         });
     }

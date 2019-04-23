@@ -25,22 +25,19 @@ import ListIcon from '@material-ui/icons/List';
 import LockIcon from '@material-ui/icons/Lock';
 import LockOpenIcon from '@material-ui/icons/LockOpen';
 import {Breadcrumbs} from '@material-ui/lab';
-import {safeWrap, unwrap} from '@mountaingapsolutions/objectutil';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import {Link, withRouter} from 'react-router-dom';
 
 import kvAction from 'app/core/actions/kvAction';
-import Button from 'app/core/components/common/Button';
-import ListModal from 'app/core/components/common/ListModal';
+import Button from 'app/core/components/Button';
 import CreateUpdateSecretModal from 'app/core/components/CreateUpdateSecretModal';
 import ConfirmationModal from 'app/core/components/ConfirmationModal';
 import SnackbarContent from 'app/core/components/SnackbarContent';
 import Constants from 'app/util/Constants';
 
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
-import calendarUtil from 'app/util/CalendarUtil';
 
 /**
  * The secrets list container.
@@ -57,39 +54,16 @@ class SecretsList extends Component {
         super(props);
 
         this.state = {
+            confirmationModalData: {},
             deleteSecretConfirmation: '',
             newSecretAnchorElement: null,
-            requestSecretCancellation: null,
-            requestSecretConfirmation: null,
             secretModalInitialPath: '',
             secretModalMode: '',
-            isListModalOpen: false
+            showConfirmationModal: false,
         };
 
         this._onBack = this._onBack.bind(this);
         this._onCreateUpdateSecretModalClose = this._onCreateUpdateSecretModalClose.bind(this);
-        this._openListModal = this._openListModal.bind(this);
-        this._closeListModal = this._closeListModal.bind(this);
-    }
-
-    /**
-     * Construct query full path from mount name, path, and type of CRUD operation
-     *
-     * @private
-     * @param {string} mountName - mount name from url
-     * @param {string} path - path from URL
-     * @param {string} [operation] - CRUD operation name
-     * @returns {string}
-     */
-    _getQueryFullPath(mountName, path = '', operation) {
-        let queryFullPath = '';
-        const version = this._getVersionFromMount(mountName);
-        if (version) {
-            // See https://www.vaultproject.io/docs/secrets/kv/kv-v2.html for additional information. Version 2 KV secrets engine requires an additional /metadata in the query path.
-            const queryMountPath = version === 2 ? `${mountName}/${operation === 'GET' ? 'data' : 'metadata'}` : mountName;
-            queryFullPath = `${queryMountPath}/${path}`;
-        }
-        return queryFullPath;
     }
 
     /**
@@ -120,26 +94,111 @@ class SecretsList extends Component {
     }
 
     /**
-     * Handle for Notification click is triggered.
+     * Sets the confirmation modal data in state for opening an approved secret.
      *
+     * @param {string} mount The mount point.
+     * @param {string} currentPath The current path.
+     * @param {string} name The name of the secret to open.
+     * @param {string} token The token to unwrap.
      * @private
-     * @param {SyntheticMouseEvent} event The event.
      */
-    _openListModal() {
+    _openApprovedRequestModal(mount, currentPath, name, token) {
         this.setState({
-            isListModalOpen: true
+            showConfirmationModal: true,
+            confirmationModalData: {
+                title: `Open ${name}?`,
+                content: `You have been granted access to ${name}. Be careful, you can only access this data once. If you need access again in the future you will need to get authorized again.`,
+                onClose: (confirm) => {
+                    this.setState({
+                        showConfirmationModal: false
+                    }, () => {
+                        if (confirm) {
+                            const {unwrapSecret} = this.props;
+                            this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'read');
+                            unwrapSecret(name, token);
+                        }
+                    });
+                }
+            }
         });
     }
 
     /**
-     * Handle for when list modal close button is triggered.
+     * Sets the confirmation modal data in state for deleting a secret.
      *
+     * @param {string} mount The mount point.
+     * @param {string} name The name of the secret to delete.
      * @private
-     * @param {SyntheticMouseEvent} event The event.
      */
-    _closeListModal() {
+    _openDeleteSecretConfirmationModal(mount, name) {
         this.setState({
-            isListModalOpen: false
+            showConfirmationModal: true,
+            confirmationModalData: {
+                title: `Delete ${name}?`,
+                content: `This will permanently delete ${name} and all its versions. Are you sure you want to do this?`,
+                onClose: (confirm) => {
+                    if (confirm) {
+                        const {deleteSecrets} = this.props;
+                        deleteSecrets(name, this._getVersionFromMount(mount));
+                    }
+                    this.setState({
+                        showConfirmationModal: false
+                    });
+                }
+            }
+        });
+    }
+
+    /**
+     * Sets the confirmation modal data in state for cancelling a secret request.
+     *
+     * @param {string} mount The mount point.
+     * @param {string} name The name of the secret to cancel.
+     * @private
+     */
+    _openRequestCancellationModal(mount, name) {
+        this.setState({
+            showConfirmationModal: true,
+            confirmationModalData: {
+                title: 'Cancel Privilege Access Request',
+                content: `Would you like to cancel your request to access ${name}?`,
+                onClose: (confirm) => {
+                    if (confirm) {
+                        const {deleteRequest} = this.props;
+                        deleteRequest(name, this._getVersionFromMount(mount));
+                    }
+                    this.setState({
+                        showConfirmationModal: false
+                    });
+                }
+            }
+        });
+    }
+
+    /**
+     * Sets the confirmation modal data in state for requesting a secret.
+     *
+     * @param {string} mount The mount point.
+     * @param {string} name The name of the secret to request.
+     * @param {boolean} isWrapped if request contains wrap token
+     * @private
+     */
+    _openRequestModal(mount, name, isWrapped) {
+        this.setState({
+            showConfirmationModal: true,
+            confirmationModalData: {
+                title: 'Privilege Access Request',
+                content: `The path ${name} has been locked through ${isWrapped ? 'Control Groups' : 'Standard Request'}. Request access?`,
+                onClose: (confirm) => {
+                    if (confirm) {
+                        const {requestSecret} = this.props;
+                        requestSecret(name, this._getVersionFromMount(mount));
+                    }
+                    this.setState({
+                        showConfirmationModal: false
+                    });
+                }
+            }
         });
     }
 
@@ -173,19 +232,6 @@ class SecretsList extends Component {
         this.setState({
             secretModalInitialPath: '',
             secretModalMode: ''
-        });
-    }
-
-    /**
-     * Handle when a secret that requires a request is clicked.
-     *
-     * @private
-     * @param {string} name The name of the secret.
-     * @param {boolean} isRequest True if request, false if cancel.
-     */
-    _toggleRequestSecretModal(name, isRequest = true) {
-        this.setState({
-            [isRequest ? 'requestSecretConfirmation' : 'requestSecretCancellation']: name
         });
     }
 
@@ -314,7 +360,7 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     _renderSecretsListArea() {
-        const {classes, pageError, getSecrets, groupData, history, inProgress, listSecretsAndCapabilities, match, secretsPaths, unwrapSecret, vaultLookupSelf} = this.props;
+        const {classes, pageError, getSecrets, groupData, history, inProgress, listSecretsAndCapabilities, match, secretsPaths, vaultLookupSelf} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
         const requestAccessLabel = 'Request Access';
@@ -345,7 +391,6 @@ class SecretsList extends Component {
                     const mountPath = `${mount}/${currentPath}`;
                     const url = `/secrets/${mountPath}`;
                     const isWrapped = !!wrapInfo;
-                    const canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped;
                     const canUpdate = capabilities.some(capability => capability === 'update' || capability === 'root');
                     const requiresRequest = capabilities.includes('deny') && !name.endsWith('/') || isWrapped;
                     const {request_info: requestInfo = {}} = data;
@@ -353,20 +398,23 @@ class SecretsList extends Component {
                     const authorizations = isWrapped && requestInfo.authorizations;
                     const canDelete = capabilities.includes('delete');
                     const {databaseRequestData} = secret;
+                    const {status} = secret && secret.databaseRequestData || {};
                     const isPathInDB = databaseRequestData && !isApprover || false;
+                    let canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped;
                     let isOwnRequest = false;
                     let isPendingInDatabase = false;
                     let requestStatus = null;
                     let databaseRequestTime = null;
-                    if (isPathInDB) {
-                        const {createdAt, requesterEntityId, status} = databaseRequestData;
+                    if (isPathInDB && (status === Constants.REQUEST_STATUS.APPROVED || status === Constants.REQUEST_STATUS.PENDING)) {
+                        const {createdAt, requesterEntityId} = databaseRequestData;
                         isOwnRequest = currentUserEntityId === requesterEntityId;
-                        isPendingInDatabase = isOwnRequest ? status !== Constants.REQUEST_STATUS.APPROVED : true;
+                        isPendingInDatabase = isOwnRequest ? status === Constants.REQUEST_STATUS.PENDING : true;
                         requestStatus = status;
-                        databaseRequestTime = calendarUtil.dateFormat(createdAt);
+                        databaseRequestTime = new Date(createdAt).toLocaleString();
+                        canOpen = !isPendingInDatabase;
                     }
-                    const creationTime = isPathInDB ? databaseRequestTime : data.request_info && isWrapped ? new Date(wrapInfo.creation_time) : null;
-                    const standardRequest = isPathInDB ? `${!isOwnRequest ? Constants.REQUEST_STATUS.LOCKED : requestStatus} Request type: Standard Request` : null;
+                    const creationTime = isPendingInDatabase ? databaseRequestTime : data.request_info && isWrapped ? new Date(wrapInfo.creation_time) : requestStatus === Constants.REQUEST_STATUS.APPROVED ? databaseRequestTime : null;
+                    const standardRequest = isPendingInDatabase ? `${!isOwnRequest ? Constants.REQUEST_STATUS.LOCKED : requestStatus} Request type: Standard Request` : requestStatus === Constants.REQUEST_STATUS.APPROVED ? `${requestStatus} Request type: Standard Request` : null;
                     let secondaryText = !standardRequest ? requiresRequest ? `Request type: ${isWrapped ? 'Control Groups' : 'Default'}` : '' : standardRequest;
                     if (creationTime) {
                         secondaryText += ` (Requested at ${creationTime.toLocaleString()})`;
@@ -384,14 +432,13 @@ class SecretsList extends Component {
                                 this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'read');
                                 getSecrets(name, this._getVersionFromMount(mount));
                             } else if (isApproved) {
-                                /* eslint-disable no-alert */
-                                if (window.confirm(`You have been granted access to ${name}. Be careful, you can only access this data once. If you need access again in the future you will need to get authorized again.`)) {
-                                    this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'read');
-                                    unwrapSecret(name, wrapInfo.token);
-                                }
-                                /* eslint-enable no-alert */
+                                this._openApprovedRequestModal(mount, currentPath, name, wrapInfo.token);
                             } else {
-                                this._toggleRequestSecretModal(name, !data.request_info);
+                                if (data.request_info) {
+                                    this._openRequestCancellationModal(mount, name);
+                                } else {
+                                    this._openRequestModal(mount, name, isWrapped);
+                                }
                             }
                         }
                     }}/>} disabled={isPendingInDatabase} key={`key-${i}`}>
@@ -413,33 +460,21 @@ class SecretsList extends Component {
                             <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
                                 <IconButton
                                     aria-label={requestAccessLabel}
-                                    onClick={() => this._toggleRequestSecretModal(name, !data.request_info)}>
+                                    onClick={() => data.request_info ? this._openRequestCancellationModal(mount, name) : this._openRequestModal(mount, name, isWrapped)}>
                                     <LockIcon/>
                                 </IconButton>
                             </Tooltip>}
-                            {!isPendingInDatabase && canOpen && <Tooltip aria-label={openLabel} title={openLabel}>
-                                <IconButton aria-label={openLabel} onClick={() => {
-                                    this._openListModal();
-                                    getSecrets(name, this._getVersionFromMount(mount));
-                                }}>
-                                    <LockOpenIcon/>
-                                </IconButton>
-                            </Tooltip>}
                             {isApproved && <Tooltip aria-label={openLabel} title={openLabel}>
-                                <IconButton aria-label={openLabel} onClick={() => {
-                                    /* eslint-disable no-alert */
-                                    if (window.confirm(`You have been granted access to ${name}. Be careful, you can only access this data once. If you need access again in the future you will need to get authorized again.`)) {
-                                        window.alert('TODO: Unwrap secret and open modal.');
-                                    }
-                                    /* eslint-enable no-alert */
-                                }}>
+                                <IconButton
+                                    aria-label={openLabel}
+                                    onClick={() => this._openApprovedRequestModal(mount, currentPath, name, wrapInfo.token)}>
                                     <LockOpenIcon/>
                                 </IconButton>
                             </Tooltip>}
                             {!isPendingInDatabase && canDelete && <Tooltip aria-label={deleteLabel} title={deleteLabel}>
-                                <IconButton aria-label={deleteLabel} onClick={() => this.setState({
-                                    deleteSecretConfirmation: name
-                                })}>
+                                <IconButton
+                                    aria-label={deleteLabel}
+                                    onClick={() => this._openDeleteSecretConfirmationModal(mount, name)}>
                                     <DeleteIcon/>
                                 </IconButton>
                             </Tooltip>}
@@ -464,69 +499,25 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {deleteRequest, classes, deleteSecrets, dismissError, dismissibleError, match, requestSecret, secrets} = this.props;
-        const {params} = match;
-        const {mount} = params;
-        const {deleteSecretConfirmation, isListModalOpen, requestSecretCancellation, requestSecretConfirmation, secretModalMode, secretModalInitialPath} = this.state;
+        const {classes, dismissError, dismissibleError} = this.props;
+        const {confirmationModalData, secretModalMode, secretModalInitialPath, showConfirmationModal} = this.state;
         return <Card className={classes.card}>
             {this._renderBreadcrumbsArea()}
             {dismissibleError && <SnackbarContent message={dismissibleError} variant='error' onClose={dismissError}/>}
             {this._renderSecretsListArea()}
-            <ListModal
-                buttonTitle={'Request Secret'}
-                items={unwrap(safeWrap(secrets).data) || {}}
-                listTitle={'Secrets'}
-                open={isListModalOpen}
-                onClick={() => {
-                    /* eslint-disable no-alert */
-                    window.alert('button clicked!');
-                    /* eslint-enable no-alert */
-                }} onClose={this._closeListModal}/>
             <CreateUpdateSecretModal
                 initialPath={secretModalInitialPath}
                 mode={secretModalMode}
                 open={!!secretModalMode}
                 onClose={this._onCreateUpdateSecretModalClose}/>
             <ConfirmationModal
-                confirmButtonLabel='Delete'
-                content={`This will permanently delete ${deleteSecretConfirmation} and all its versions. Are you sure you want to do this?`}
-                open={!!deleteSecretConfirmation}
-                title={`Delete ${deleteSecretConfirmation}?`}
-                onClose={confirm => {
-                    if (confirm) {
-                        deleteSecrets(deleteSecretConfirmation, this._getVersionFromMount(mount));
-                    }
+                {...confirmationModalData}
+                open={showConfirmationModal && Object.keys(confirmationModalData).length > 0}
+                onExited={() => {
                     this.setState({
-                        deleteSecretConfirmation: ''
+                        confirmationModalData: {}
                     });
-                }}
-            />
-            <ConfirmationModal
-                content={`The path ${requestSecretConfirmation} has been locked through Control Groups. Request access?`}
-                open={!!requestSecretConfirmation}
-                title='Privilege Access Request'
-                onClose={confirm => {
-                    if (confirm) {
-                        requestSecret(requestSecretConfirmation, this._getVersionFromMount(mount));
-                    }
-                    this.setState({
-                        requestSecretConfirmation: null
-                    });
-                }}
-            />
-            <ConfirmationModal
-                content={`Would you like to cancel your request to access ${requestSecretCancellation}?`}
-                open={!!requestSecretCancellation}
-                title='Cancel Privilege Access Request'
-                onClose={confirm => {
-                    if (confirm) {
-                        deleteRequest(requestSecretCancellation, this._getVersionFromMount(mount));
-                    }
-                    this.setState({
-                        requestSecretCancellation: null
-                    });
-                }}
-            />
+                }}/>
         </Card>;
     }
 }

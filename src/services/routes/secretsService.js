@@ -3,14 +3,14 @@ const {toObject} = require('@mountaingapsolutions/objectutil');
 const chalk = require('chalk');
 const request = require('request');
 const {getSelfActiveRequests, getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
-const {initApiRequest, sendError, setSessionData} = require('services/utils');
+const {initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
 const RequestController = require('services/controllers/Request');
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
 /**
  * @swagger
- * /rest/secrets/{path}:
+ * /rest/secrets/list/{path}:
  *   get:
  *     tags:
  *       - Secrets
@@ -38,7 +38,7 @@ const router = require('express').Router()
  *       404:
  *         description: Not found.
  */
-    .get('/*', async (req, res) => {
+    .get('/list/*', async (req, res) => {
         // Check for Control Group policies.
         const {controlGroupPaths} = req.session.user;
         if (!controlGroupPaths) {
@@ -60,7 +60,8 @@ const router = require('express').Router()
         if (isV2) {
             listUrlParts.splice(1, 0, 'metadata');
         }
-        const {domain, token} = req.session.user;
+        const domain = getDomain();
+        const {token} = req.session.user;
         const apiUrl = `${domain}/v1/${listUrlParts.join('/')}?list=true`;
 
         // Get current user's active Control Group requests.
@@ -160,6 +161,54 @@ const router = require('express').Router()
             } catch (err) {
                 sendError(url, res, err);
             }
+        });
+    })
+    /**
+     * @swagger
+     * /rest/secrets/get/{path}:
+     *   get:
+     *     tags:
+     *       - Secrets
+     *     name: List secret values.
+     *     summary: Retrieves the list of secret values by path.
+     *     parameters:
+     *       - name: path
+     *         in: path
+     *         description: The Vault secrets path.
+     *         schema:
+     *           type: string
+     *         required: true
+     *       - name: version
+     *         in: query
+     *         description: The version of the Vault KV secrets engine.
+     *         schema:
+     *           type: integer
+     *           minimum: 1
+     *           maximum: 2
+     *           default: 2
+     *         required: true
+     *     responses:
+     *       200:
+     *         description: Success.
+     *       404:
+     *         description: Not found.
+     */
+    .get('/get/*', async (req, res) => {
+        const {VAULT_API_TOKEN: apiToken} = process.env;
+        const {params = {}, query} = req;
+        const urlParts = (params[0] || '').split('/').filter(path => !!path);
+        const listUrlParts = [...urlParts];
+        const isV2 = String(query.version) === '2';
+        if (isV2) {
+            listUrlParts.splice(1, 0, 'metadata');
+        }
+        const apiUrl = `${getDomain()}/v1/${listUrlParts.join('/')}`;
+        request(initApiRequest(apiToken, apiUrl), (error, response, body) => {
+            if (error) {
+                sendError(error, response, body);
+                return;
+            }
+            res.json({...body});
         });
     });
 

@@ -4,6 +4,7 @@ const session = require('express-session');
 const nodemailer = require('nodemailer');
 const request = require('request');
 const {filter} = require('@mountaingapsolutions/objectutil');
+const {getUpdateRequestStatusEmailContent} = require('services/mail/templates');
 
 const getSessionMiddleware = session({
     secret: process.env.SESSION_SECRET || 'correct horse battery staple',
@@ -25,24 +26,41 @@ const getSessionMiddleware = session({
  */
 const SESSION_USER_DATA_MAP = {
     CONTROL_GROUP_PATHS: 'controlGroupPaths',
-    DOMAIN: 'domain',
+    CONTROL_GROUP_SUPPORTED: 'controlGroupSupported',
     ENTITY_ID: 'entityId',
-    TOKEN: 'token',
-    GROUPS: 'groups'
+    GROUPS: 'groups',
+    STANDARD_REQUEST_SUPPORTED: 'standardRequestSupported',
+    TOKEN: 'token'
+};
+
+/**
+ * Wraps a request in an Promise for async/await support.
+ *
+ * @param {Object} options The request options.
+ * @returns {Promise}
+ */
+const asyncRequest = async (options) => {
+    return await new Promise((resolve, reject) => {
+        request(options, (error, response) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(response);
+            }
+        });
+    });
 };
 
 /**
  * Check if control groups are supported
  *
- * @param {Object} req The HTTP request object.
  * @returns {Promise}
  */
-const checkControlGroupSupport = async (req) => {
-    const {domain} = req.session.user;
-    const {REACT_APP_API_TOKEN: apiToken} = process.env;
+const checkControlGroupSupport = async () => {
+    const {VAULT_API_TOKEN: apiToken} = process.env;
     return await new Promise((resolve, reject) => {
         request({
-            ...initApiRequest(apiToken, `${domain}/v1/sys/license`),
+            ...initApiRequest(apiToken, `${getDomain()}/v1/sys/license`),
             method: 'GET',
         }, (error, response, body) => {
             if (error) {
@@ -50,6 +68,29 @@ const checkControlGroupSupport = async (req) => {
             } else {
                 const {data} = body;
                 resolve(data && data.features.includes('Control Groups'));
+            }
+        });
+    });
+};
+
+/**
+ * Check if standard requests are supported
+ *
+ * @returns {Promise}
+ */
+const checkStandardRequestSupport = async () => {
+    const {VAULT_API_TOKEN: apiToken} = process.env;
+    const groupName = 'pam-approver';
+    return await new Promise((resolve, reject) => {
+        request({
+            ...initApiRequest(apiToken, `${getDomain()}/v1/identity/group/name/${groupName}`),
+            method: 'GET',
+        }, (error, response, body) => {
+            if (error) {
+                reject(error);
+            } else {
+                const {data} = body;
+                resolve(!!data);
             }
         });
     });
@@ -70,6 +111,16 @@ const initApiRequest = (token, apiUrl) => {
         uri: apiUrl,
         json: true
     };
+};
+
+/**
+ * Returns the Vault domain.
+ *
+ * @returns {string}
+ */
+const getDomain = () => {
+    const domain = process.env.VAULT_DOMAIN;
+    return domain.endsWith('/') ? domain.slice(0, -1) : domain;
 };
 
 /**
@@ -120,6 +171,30 @@ const setSessionData = (req, sessionUserData) => {
 };
 
 /**
+ * Setup email notification for requests.
+ *
+ * @param {Object} data Requests data.
+ */
+const sendNotificationEmail = data => {
+    const {approvers, userSession, requestData, requesterData} = data;
+    const {data: requester} = requesterData.body;
+    const {engineType, requestData: secret, status, type} = requestData;
+    const {domain, entityId} = userSession;
+    const emailData = {
+        domain,
+        requester,
+        secret,
+        type,
+        status,
+        engineType,
+        approver: entityId
+    };
+    const emailContents = getUpdateRequestStatusEmailContent(emailData);
+    const recipients = [...approvers, requester.metadata.email];
+    sendEmail(recipients, emailContents.subject, emailContents.body);
+};
+
+/**
  * Sends email.
  *
  * @param {Array} recipients The email recipients.
@@ -151,11 +226,32 @@ const sendEmail = (recipients, subject, body) => {
     });
 };
 
+/**
+ * Validates the Vault domain.
+ *
+ * @param {string} domain The domain to validate
+ * @returns {Promise}
+ */
+const validateDomain = async (domain) => {
+    const url = `${domain.endsWith('/') ? domain.slice(0, -1) : domain}/v1/sys/seal-status`;
+    console.log(`Validating ${chalk.bold.yellow(url)}.`);
+    const vaultDomainResponse = await asyncRequest({
+        url,
+        json: true
+    });
+    const responseKeys = Object.keys(vaultDomainResponse.body);
+    // Validation approach to checking for a proper Vault server is to check that the response contains the required sealed, version, and cluster_name keys.
+    return responseKeys.includes('sealed') && responseKeys.includes('version') && responseKeys.includes('cluster_name');
+};
+
 module.exports = {
     checkControlGroupSupport,
+    checkStandardRequestSupport,
     initApiRequest,
+    getDomain,
     getSessionMiddleware,
-    sendEmail,
     sendError,
-    setSessionData
+    sendNotificationEmail,
+    setSessionData,
+    validateDomain
 };

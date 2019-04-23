@@ -1,8 +1,8 @@
 const RequestController = require('services/controllers/Request');
-const {getUser} = require('services/routes/userService');
+const {getUser, getUserIds} = require('services/routes/userService');
 const requestLib = require('request');
-const {initApiRequest, sendEmail, sendError} = require('services/utils');
-const {getRequestEmailContent} = require('services/mail/templates');
+const {initApiRequest, getDomain, sendNotificationEmail, sendError} = require('services/utils');
+const {REQUEST_STATUS} = require('services/constants');
 /**
  * @swagger
  * definitions:
@@ -32,16 +32,15 @@ const {getRequestEmailContent} = require('services/mail/templates');
  */
 const _getApproverGroupMemberEmails = async (req) => {
     const result = await new Promise( (resolve, reject) => {
-        const {REACT_APP_API_TOKEN: apiToken} = process.env;
+        const {VAULT_API_TOKEN: apiToken} = process.env;
         if (!apiToken) {
             reject('No API token configured.');
             return;
         }
-        const {domain} = req.session.user;
         const groupName = 'pam-approver';
         let groupMembersEmail = [];
 
-        requestLib(initApiRequest(apiToken, `${domain}/v1/identity/group/name/${groupName}`), (error, response, body) => {
+        requestLib(initApiRequest(apiToken, `${getDomain()}/v1/identity/group/name/${groupName}`), (error, response, body) => {
             if (body && body.data) {
                 const member_entity_ids = body.data.member_entity_ids;
                 const {type: userType} = body.data.metadata;
@@ -84,16 +83,14 @@ const _getApproverGroupMemberEmails = async (req) => {
  */
 const _isApprover = async (req, entityId) => {
     return await new Promise( (resolve, reject) => {
-        const {REACT_APP_API_TOKEN: apiToken} = process.env;
+        const {VAULT_API_TOKEN: apiToken} = process.env;
 
         if (!apiToken) {
             reject('No API token configured.');
         }
 
-        const {domain} = req.session.user;
         const groupName = 'pam-approver';
-
-        requestLib(initApiRequest(apiToken, `${domain}/v1/identity/group/name/${groupName}`), (error, response, body) => {
+        requestLib(initApiRequest(apiToken, `${getDomain()}/v1/identity/group/name/${groupName}`), (error, response, body) => {
             if (body && body.data) {
                 const {member_entity_ids} = body.data;
                 const {type} = body.data.metadata;
@@ -103,6 +100,8 @@ const _isApprover = async (req, entityId) => {
                 } else {
                     reject(error);
                 }
+            } else {
+                reject(`${groupName} group not found.`);
             }
         });
     });
@@ -134,26 +133,20 @@ const createStandardRequest = (req) => {
  */
 const createOrGetStandardRequest = (req) => {
     const {requestData, type, status, engineType} = req.body;
-    const {domain, entityId: requesterEntityId} = req.session.user;
+    const {entityId: requesterEntityId} = req.session.user;
     return new Promise((resolve, reject) => {
         RequestController.findOrCreate(requesterEntityId, requestData, type, status, engineType).then(request => {
             // if a new request, send email to approvers
             if (request._options.isNewRecord === true) {
-                _getApproverGroupMemberEmails(req).then((approvers) => {
+                _getApproverGroupMemberEmails(req).then(approvers => {
                     getUser(req, requesterEntityId, 'admin').then(requesterData => {
                         if (requesterData && requesterData.body && requesterData.body.data) {
-                            const {data: requester} = requesterData.body;
-                            const emailData = {
-                                domain,
-                                requester,
-                                requestData,
-                                type,
-                                status,
-                                engineType,
-                                approvers
-                            };
-                            const emailContents = getRequestEmailContent(emailData);
-                            sendEmail(approvers, emailContents.subject, emailContents.body);
+                            sendNotificationEmail({
+                                approvers,
+                                requestData: request,
+                                requesterData,
+                                userSession: req.session.user
+                            });
                         }
                     });
                 });
@@ -183,16 +176,125 @@ const getStandardRequestsByApprover = (req) => {
 };
 
 /**
+ * Get standard requests by status.
+ *
+ * @param {Object} req The HTTP request object.
+ * @param {string} status The request status in database.
+ * @returns {Promise}
+ */
+const getStandardRequestsByStatus = async (req, status) => {
+    const {entityId} = req.session.user;
+    return new Promise(async (finalResolve, finalReject) => {
+
+        const standardRequestsPromise = new Promise( (resolve, reject) => {
+            RequestController.findAllByStatus(status).then(requests => {
+                resolve(requests);
+            }).catch((error) => {
+                reject(error);
+            });
+        });
+        const getUserIdsPromise = getUserIds();
+
+        Promise.all([standardRequestsPromise, getUserIdsPromise]).then((results) => {
+            const standardRequests = (Array.isArray(results) && results[0] ? results[0] : []).map(standardRequest => {
+                if (Array.isArray(results) && results[1]) {
+                    (standardRequest.dataValues || {}).requesterName = ((((results[1].body || {}).data || {}).key_info || {})[entityId] || {}).name;
+                }
+                return standardRequest;
+            });
+            finalResolve(standardRequests);
+        }).catch(error => {
+            finalReject(error);
+        });
+    });
+};
+
+/**
+ * Get standard requests by user type.
+ *
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
+const getStandardRequestsByUserType = (req) => {
+    const {entityId} = req.session.user;
+    return new Promise(async (resolve, reject) => {
+        let isApprover = false;
+        try {
+            isApprover = await _isApprover(req, entityId);
+        } catch (err) {
+            reject({message: err});
+        }
+        let result = [];
+        try {
+            const data = isApprover ? await getStandardRequestsByStatus(req, REQUEST_STATUS.PENDING) : await getStandardRequestsByRequester(req);
+            result = result.concat(data);
+        } catch (err) {
+            reject({message: err});
+        }
+        resolve(result);
+    });
+};
+
+const getStandardRequests = () => {
+    return new Promise( (resolve, reject) => {
+        RequestController.findAll().then(requests => {
+            resolve(requests);
+        }).catch((error) => {
+            reject(error);
+        });
+    });
+};
+
+/**
  * Get standard requests by requester.
  *
  * @param {Object} req The HTTP request object.
  * @returns {Promise}
  */
-const getStandardRequestsByRequester = (req) => {
+const getStandardRequestsByRequester = async (req) => {
     const {entityId} = req.session.user;
+    return new Promise(async (finalResolve, finalReject) => {
+
+        const standardRequestsPromise = new Promise( (resolve, reject) => {
+            RequestController.findAllByRequester(entityId).then(requests => {
+                resolve(requests);
+            }).catch((error) => {
+                reject(error);
+            });
+        });
+        const getUserIdsPromise = getUserIds();
+
+        Promise.all([standardRequestsPromise, getUserIdsPromise]).then((results) => {
+            const standardRequests = (Array.isArray(results) && results[0] ? results[0] : []).map(standardRequest => {
+                if (Array.isArray(results) && results[1]) {
+                    (standardRequest.dataValues || {}).requesterName = ((((results[1].body || {}).data || {}).key_info || {})[entityId] || {}).name;
+                }
+                return standardRequest;
+            });
+            finalResolve(standardRequests);
+        }).catch(error => {
+            finalReject(error);
+        });
+    });
+};
+
+const updateStandardRequestById = async req => {
+    const {id, status} = req.body;
     return new Promise( (resolve, reject) => {
-        RequestController.findAllByRequester(entityId).then(requests => {
-            resolve(requests);
+        RequestController.updateStatus(id, status).then(request => {
+            const {requesterEntityId} = request[1];
+            _getApproverGroupMemberEmails(req).then((approvers) => {
+                getUser(req, requesterEntityId, 'admin').then(requesterData => {
+                    if (requesterData && requesterData.body && requesterData.body.data) {
+                        sendNotificationEmail({
+                            approvers,
+                            requestData: request[1],
+                            requesterData,
+                            userSession: req.session.user});
+                    }
+                });
+            });
+            resolve(request);
         }).catch((error) => {
             reject(error);
         });
@@ -215,9 +317,21 @@ const updateStandardRequestByApprover = async (req) => {
         } catch (err) {
             reject({message: err});
         }
-
         if (isApprover) {
             RequestController.updateStatusByApprover(id, approverEntityId, status).then(request => {
+                const {requesterEntityId} = request[1];
+                _getApproverGroupMemberEmails(req).then((approvers) => {
+                    getUser(req, requesterEntityId, 'admin').then(requesterData => {
+                        if (requesterData && requesterData.body && requesterData.body.data) {
+                            sendNotificationEmail({
+                                approvers,
+                                requestData: request[1],
+                                requesterData,
+                                userSession: req.session.user
+                            });
+                        }
+                    });
+                });
                 resolve(request);
             });
         } else {
@@ -451,7 +565,11 @@ module.exports = {
     createStandardRequest,
     createOrGetStandardRequest,
     router,
+    getStandardRequests,
     getStandardRequestsByApprover,
     getStandardRequestsByRequester,
-    updateStandardRequestByApprover
+    getStandardRequestsByUserType,
+    getStandardRequestsByStatus,
+    updateStandardRequestByApprover,
+    updateStandardRequestById
 };

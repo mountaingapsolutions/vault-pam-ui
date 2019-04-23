@@ -12,6 +12,7 @@ class SystemAction extends _Actions {
      */
     constructor() {
         super('SystemAction', {
+            GET_CONFIG: 'GET_CONFIG',
             GET_GROUP_DATA: 'GET_GROUP_DATA',
             GET_SELF_CAPABILITIES: 'GET_SELF_CAPABILITIES',
             GET_SEAL_STATUS: 'GET_SEAL_STATUS'
@@ -31,6 +32,16 @@ class SystemAction extends _Actions {
     }
 
     /**
+     * Returns the current Vault application configuration data.
+     *
+     * @param {string} domain - The domain to validate.
+     * @returns {function} Redux dispatch function.
+     */
+    getConfig() {
+        return this._dispatchGet(this.ACTION_TYPES.GET_CONFIG, '/config');
+    }
+
+    /**
      * Returns the current Vault status.
      *
      * @returns {function} Redux dispatch function.
@@ -46,7 +57,7 @@ class SystemAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     getGroupData(groupName = 'pam-approver') {
-        return this._dispatchGet(this.ACTION_TYPES.GET_GROUP_DATA, `/api/v1/identity/group/name/${groupName}`, null, {'X-Vault-Token': process.env.REACT_APP_API_TOKEN});
+        return this._dispatchGet(this.ACTION_TYPES.GET_GROUP_DATA, `/api/v1/identity/group/name/${groupName}`);
     }
 }
 
