@@ -113,35 +113,6 @@ const _startServer = () => {
                     // DB migrations
                     // const {migrate} = require('services/db/migrate');
                     // migrate('up');
-
-                    try {
-                        require('vault-pam-premium').validate();
-                        console.log(chalk.bold.green('Premium features available.'));
-                    } catch (err) {
-                        console.log(chalk.bold.red('Premium features unavailable.'));
-                    }
-
-                    try {
-                        const {exec} = require('child_process');
-                        exec('ls -a ~/.ssh', (error, stdout, stderr) => {
-                            if (error) {
-                                console.error(error);
-                            } else {
-                                console.log('ls stdout: ', stdout);
-                                console.warn('ls stderr: ', stderr);
-                            }
-                        });
-                        exec('git ls-remote -h git@bitbucket.org:mountaingapsolutions/vault-pam-premium.git', (error, stdout, stderr) => {
-                            if (error) {
-                                console.error(error);
-                            } else {
-                                console.log('stdout: ', stdout);
-                                console.warn('stderr: ', stderr);
-                            }
-                        });
-                    } catch (err) {
-                        console.log('Error: ', err);
-                    }
                 })
                 .catch((error) => {
                     console.error(error);
