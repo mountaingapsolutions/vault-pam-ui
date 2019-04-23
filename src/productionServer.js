@@ -113,6 +113,17 @@ const _startServer = () => {
                     // DB migrations
                     // const {migrate} = require('services/db/migrate');
                     // migrate('up');
+                    const {exec} = require('child_process');
+                    exec('whoami', (error, stdout, stderr) => {
+                        console.warn('whoami error', error);
+                        console.warn('whoami stdout', stdout);
+                        console.warn('whoami stderr', stderr);
+                    });
+                    exec('npm install git+https://bitbucket.org/mountaingapsolutions/vault-pam-premium.git', (error, stdout, stderr) => {
+                        console.warn('premium install error', error);
+                        console.warn('premium install stdout', stdout);
+                        console.warn('premium install stderr', stderr);
+                    });
 
                     try {
                         require('vault-pam-premium').validate();
@@ -131,12 +142,13 @@ const _startServer = () => {
         const {validate} = require('vault-pam-premium');
         console.log(chalk.bold.green('Premium features available.'));
         validate().then((results) => {
-            app.locals.features = {
+            app.locals.features = results ? {
                 ...results
-            };
+            } : {};
         });
     } catch (packageError) {
         console.log(chalk.bold.red('Premium features unavailable.'));
+        app.locals.features = {};
     }
     console.warn('SERVER: ', server.locals);
 };
