@@ -4,57 +4,66 @@
 readonly APP_NAME=vault-pam-ui
 readonly CURRENT_SCRIPT="$(basename -- ${BASH_SOURCE[0]})"
 readonly CURRENT_DIRECTORY="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-readonly DOCKER_BINARY="$(command -v docker)"
 readonly ENV_VARS=(PAM_DATABASE
                   PAM_DATABASE_USER
                   PAM_DATABASE_PASSWORD
                   PAM_DATABASE_URL
                   PAM_DATABASE_PORT
                   VAULT_API_TOKEN
+                  VAULT_DOMAIN
                   PAM_MAIL_SERVICE
                   PAM_MAIL_USER
                   PAM_MAIL_PASS)
 # styles
 NL=$'\n'
 BOLD=$(tput bold)
-SGR0=$(tput sgr0)
+NORMAL=$(tput sgr0)
 
-# usage: print [args...]
-print() {
-    printf "${CURRENT_SCRIPT}: $*$NL"
-}
-
-# usage: print_raw [args...]
 print_raw() {
     printf "$*$NL"
 }
 
-# usage: error [args...]
-error() {
-    print "error: $*" >&2
+show_grey () {
+    echo -e $BOLD$(tput setaf 7) $@ $NORMAL
 }
 
-# usage: error_raw [args...]
-error_raw() {
-    print "$*" >&2
+show_norm () {
+    echo -e $BOLD$(tput setaf 15) $@ $NORMAL
+}
+
+show_info () {
+    echo -e $BOLD$(tput setaf 2) $@ $NORMAL
+}
+
+show_warn () {
+    echo -e $BOLD$(tput setaf 11) $@ $NORMAL
+}
+
+show_err ()  {
+    echo -e $BOLD$(tput setaf 9) $@ $NORMAL
+}
+
+print_title() {
+    print_raw $NL
+    show_info "---- ${1:Title} ----"
 }
 
 confirm() {
   while true; do
-    read -r -n 1 -p "${1:-Continue?} [y/n]: " REPLY
-    case $REPLY in
-      [yY]) echo ; return 0 ;;
-      [nN]) echo ; return 1 ;;
-      *) printf " \033[31m %s \n\033[0m" "invalid input"
-    esac
+  read -r -n 1 -p "${1:-Continue?} [y/n]: " REPLY
+      case $REPLY in
+          [yY]) echo; return 0 ;;
+          [nN]) echo; return 1 ;;
+          *) show_err "Invalid nput"
+      esac
   done
 }
 
 print_required_env(){
-    print_raw "Required environment variables"
+    show_warn "Required environment variables"
     for i in "${ENV_VARS[@]}"
     do
-        print_raw "\t${i}"
+        show_warn "\t${i}"
     done
 }
 
@@ -64,12 +73,12 @@ validate_env_file() {
     do
         ENV_VAL=$(grep -w $i .env | cut -d '=' -f2)
         if [[ -z "${ENV_VAL}" ]]; then
-            error "${i} not set in ${CURRENT_DIRECTORY}/.env"
+            show_err "${i} not set in ${CURRENT_DIRECTORY}/.env"
             print_required_env
             exit 1
         fi
     done
-    print_raw "All environment variables in ${CURRENT_DIRECTORY}/.env are present."
+    show_info "All environment variables in ${CURRENT_DIRECTORY}/.env are present."
 }
 
 # detect .env file
@@ -82,43 +91,43 @@ check_env_file() {
 # accept a question(string) and assign it to a variable
 ask() {
     if [[ -z "${!2}" ]]; then
-        read -p "${NL}${BOLD}$1${SGR0}" $2
+        read -p "${NL}${BOLD}$1${NORMAL}" $2
     fi
 }
 
 # Database questions
 questions_db() {
-    print_raw "**** DB ****"
-    if $(confirm "Are you using EXTERNAL postgresql database(RDS or any hosted database)?" && return 0 || return 1); then
+    print_title "Database"
+    if $(confirm "Are you using an EXTERNAL postgresql database(RDS or any hosted database)?" && return 0 || return 1); then
         ask "Enter database host: " PAM_DATABASE_URL
         ask "Enter database port: " PAM_DATABASE_PORT
         ask "Enter database name: " PAM_DATABASE
         ask "Enter database user: " PAM_DATABASE_USER
         ask "Enter database password: " PAM_DATABASE_PASSWORD
     else
-        print_raw $NR
-        error "We only support EXTERNAL DB for now."
+        print_raw $NL
+        show_err "We only support EXTERNAL DB for now."
         exit 1
     fi
 }
 
 questions_vault() {
-    print_raw "**** Vault ****"
+    print_title "Vault"
+    ask "Enter vault domain: " VAULT_DOMAIN
     ask "Enter vault token: " VAULT_API_TOKEN
 }
 
 questions_email() {
-    print_raw "**** Email ****"
+    print_title "Email"
     ask "Enter email service(gmail for now): " PAM_MAIL_SERVICE
     ask "Enter email username: " PAM_MAIL_USER
     ask "Enter email password: " PAM_MAIL_PASS
 }
 
 build() {
-    print_raw "Building docker image..."
+    print_raw $NL
+    show_info "Building docker image..."
     docker build -t $APP_NAME .
-    #docker ps -a
-    #print_raw "Sweet! The application will be up soon."
 }
 
 run(){
@@ -130,45 +139,53 @@ run(){
         $APP_NAME
 }
 
+build_run() {
+    echo $PARAMS
+    "${PARAMS}"docker-compose up -d --build
+}
+
 run_params() {
     for ENV_KEY in "${ENV_VARS[@]}"
     do
         ENV_VAL="${!ENV_KEY}"
-
-        PARAMS="$PARAMS-e $ENV_KEY=$ENV_VAL "
+        PARAMS="${PARAMS}${ENV_KEY}=${ENV_VAL} "
     done
-    docker run -itd \
-        -v ${PWD}:/usr/src/app \
-        -v /usr/src/app/node_modules \
-        -p 3000:3000 \
-        $PARAMS \
-        --rm \
-        $APP_NAME
+    show_info "Running docker with these parameters: ${PARAMS}"
+
+    build_run $PARAMS
+    #docker run -itd \
+    #    -v ${PWD}:/usr/src/app \
+    #    -v /usr/src/app/node_modules \
+    #    -p 3000:3000 \
+    #    $PARAMS \
+    #    --name $APP_NAME \
+    #    --rm \
+    #    $APP_NAME
     }
 
-done() {
-    docker ps -a
-    print_raw "Sweet! The application will be up soon."
+finish() {
+    show_info "Listing all running docker images."
+    docker-compose ps
+    show_info "Sweet! The application will be up soon."
+    print_raw $NL
 }
 
 main() {
-    print_raw "**************************************************"
-    print_raw "**** Welcome to Vault PAM installation script ****"
-    print_raw "**************************************************"
-    print_raw $NR
+    show_info "--------------------------------------------------"
+    show_info "---- Welcome to Vault PAM installation script ----"
+    show_info "--------------------------------------------------"
+    print_raw $NL
     if check_env_file
     then
         validate_env_file
-        build
-        run
-        done
+        build_run
+        finish
     else
         questions_db
         questions_vault
         questions_email
-        build
         run_params
-        done
+        finish
     fi
 }
 
