@@ -561,7 +561,7 @@ const deleteControlGroupRequest = async (req) => {
             });
             sendNotificationEmail({
                 approvers: emailRecipients,
-                requestData: {requestData: decodedPath, status: REQUEST_STATUS.CANCELED},
+                requestData: {requestData: decodedPath, status: entityId ? REQUEST_STATUS.REJECTED : REQUEST_STATUS.CANCELED},
                 requesterData,
                 userSession: {domain, entityId: entityIdSelf}
             });
