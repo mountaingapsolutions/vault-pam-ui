@@ -176,6 +176,29 @@ const getStandardRequestsByApprover = (req) => {
 };
 
 /**
+ * Get user secret access.
+ *
+ * @param {Object} req The HTTP request object.
+ * @param {Object} param The table condition for query.
+ * @returns {Promise}
+ */
+const getUserSecretsAccess = (req, param) => {
+    const {entityId} = req.session.user;
+    return new Promise(async (resolve, reject) => {
+        let isApprover = false;
+        let result = false;
+        try {
+            isApprover = await _isApprover(req, entityId);
+            const requestDBRec = await RequestController.findByParams(param);
+            result = isApprover || requestDBRec.length > 0;
+        } catch (err) {
+            reject({message: err});
+        }
+        resolve(result);
+    });
+};
+
+/**
  * Get standard requests by status.
  *
  * @param {Object} req The HTTP request object.
@@ -565,6 +588,7 @@ module.exports = {
     createStandardRequest,
     createOrGetStandardRequest,
     router,
+    getUserSecretsAccess,
     getStandardRequests,
     getStandardRequestsByApprover,
     getStandardRequestsByRequester,

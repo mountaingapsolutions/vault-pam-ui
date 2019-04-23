@@ -88,6 +88,20 @@ const findAllByStatus = (status) => {
 };
 
 /**
+ * Find requests by parameters.
+ *
+ * @param {Object} params The request params.
+ * @returns {Object}
+ */
+const findByParams = params => {
+    return Request.findAll({
+        where: {...params}
+    }).then(requests => {
+        return requests;
+    });
+};
+
+/**
  * Update a Request Status by Request Id.
  *
  * @param {string} id The request id.
@@ -155,6 +169,7 @@ module.exports = {
     findAllByRequester,
     findAllByStatus,
     findById,
+    findByParams,
     findOrCreate,
     updateStatus,
     updateStatusByApprover

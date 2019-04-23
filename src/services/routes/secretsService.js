@@ -5,6 +5,10 @@ const request = require('request');
 const {getSelfActiveRequests, getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
 const {initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
 const RequestController = require('services/controllers/Request');
+const {
+    getUserSecretsAccess
+} = require('services/routes/standardRequestService');
+const {REQUEST_STATUS} = require('services/constants');
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
@@ -194,22 +198,32 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .get('/get/*', async (req, res) => {
+        const {entityId} = req.session.user;
         const {VAULT_API_TOKEN: apiToken} = process.env;
         const {params = {}, query} = req;
-        const urlParts = (params[0] || '').split('/').filter(path => !!path);
-        const listUrlParts = [...urlParts];
-        const isV2 = String(query.version) === '2';
-        if (isV2) {
-            listUrlParts.splice(1, 0, 'metadata');
-        }
-        const apiUrl = `${getDomain()}/v1/${listUrlParts.join('/')}`;
-        request(initApiRequest(apiToken, apiUrl), (error, response, body) => {
-            if (error) {
-                sendError(error, response, body);
-                return;
-            }
-            res.json({...body});
+        const isAccessAllowed = await getUserSecretsAccess(req, {
+            requesterEntityId: entityId || null,
+            status: REQUEST_STATUS.APPROVED,
+            requestData: params[0]
         });
+        if (isAccessAllowed) {
+            const urlParts = (params[0] || '').split('/').filter(path => !!path);
+            const listUrlParts = [...urlParts];
+            const isV2 = String(query.version) === '2';
+            if (isV2) {
+                listUrlParts.splice(1, 0, 'metadata');
+            }
+            const apiUrl = `${getDomain()}/v1/${listUrlParts.join('/')}`;
+            request(initApiRequest(apiToken, apiUrl), (error, response, body) => {
+                if (error) {
+                    sendError(error, response, body);
+                    return;
+                }
+                res.json({...body});
+            });
+        } else {
+            sendError(req.originalUrl, res, 'Access Denied');
+        }
     });
 
 module.exports = {
