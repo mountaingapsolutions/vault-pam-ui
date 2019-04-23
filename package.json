@@ -98,7 +98,7 @@
     "postbuild": "mkdir dist && mv build dist/build && npm run copyappfiles && node scripts/dist.js",
     "copyappfiles": "cp .env dist/ || : && cp package.json dist/ && cp robots.txt dist/ && cp src/productionServer.js dist/ && cp -R src/services dist",
     "lint": "eslint --ext .js,.jsx --format table .",
-    "postinstall": "echo whoami: && whoami",
+    "postinstall": "echo Trying simple echo command",
     "test": "node scripts/test.js"
   },
   "eslintConfig": {
