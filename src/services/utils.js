@@ -26,7 +26,6 @@ const getSessionMiddleware = session({
  */
 const SESSION_USER_DATA_MAP = {
     CONTROL_GROUP_PATHS: 'controlGroupPaths',
-    CONTROL_GROUP_SUPPORTED: 'controlGroupSupported',
     ENTITY_ID: 'entityId',
     GROUPS: 'groups',
     STANDARD_REQUEST_SUPPORTED: 'standardRequestSupported',
@@ -52,25 +51,27 @@ const asyncRequest = async (options) => {
 };
 
 /**
- * Check if control groups are supported
+ * Checks for premium features and injects it app.local to be used throughout the application lifecycle.
  *
- * @returns {Promise}
+ * @param {Object} app The top-level Express application.
  */
-const checkControlGroupSupport = async () => {
-    const {VAULT_API_TOKEN: apiToken} = process.env;
-    return await new Promise((resolve, reject) => {
-        request({
-            ...initApiRequest(apiToken, `${getDomain()}/v1/sys/license`),
-            method: 'GET',
-        }, (error, response, body) => {
-            if (error) {
-                reject(error);
-            } else {
-                const {data} = body;
-                resolve(data && data.features.includes('Control Groups'));
-            }
+const checkPremiumFeatures = (app) => {
+    const features = app.locals.features ? {
+        ...app.locals.features
+    } : {};
+    try {
+        const {validate} = require('vault-pam-premium');
+        console.log(chalk.bold.green('Premium features available.'));
+        validate().then((results) => {
+            app.locals.features = results ? {
+                ...features,
+                ...results
+            } : features;
         });
-    });
+    } catch (packageError) {
+        console.log(chalk.bold.red('Premium features unavailable.'));
+        app.locals.features = features;
+    }
 };
 
 /**
@@ -245,7 +246,7 @@ const validateDomain = async (domain) => {
 };
 
 module.exports = {
-    checkControlGroupSupport,
+    checkPremiumFeatures,
     checkStandardRequestSupport,
     initApiRequest,
     getDomain,

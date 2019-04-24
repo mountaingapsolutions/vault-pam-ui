@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
 const chalk = require('chalk');
 const request = require('request');
-const {getSelfActiveRequests, getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
+const {getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
 const {checkIfApprover} = require('services/routes/standardRequestService');
-const {checkControlGroupSupport, initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
+const {initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
 const RequestController = require('services/controllers/Request');
 const {
     getUserSecretsAccess
@@ -69,7 +69,10 @@ const router = require('express').Router()
         const apiUrl = `${domain}/v1/${listUrlParts.join('/')}?list=true`;
 
         // Get current user's active Control Group requests.
-        const activeRequests = await getSelfActiveRequests(req);
+        let activeRequests = {};
+        if (req.app.locals.features['control-groups']) {
+            activeRequests = await require('vault-pam-premium').getActiveRequests(req);
+        }
 
         console.log(`Listing secrets from ${chalk.yellow.bold(apiUrl)}.`);
 
@@ -221,12 +224,7 @@ const router = require('express').Router()
      */
     .get('/get/*', async (req, res) => {
         const {entityId, token} = req.session.user;
-        let controlGroupSupport = false;
-        try {
-            controlGroupSupport = await checkControlGroupSupport();
-        } catch (err) {
-            sendError(req.originalUrl, res, err);
-        }
+        const controlGroupSupport = !!req.app.locals.features['control-groups'];
         const {VAULT_API_TOKEN: apiToken} = process.env;
         const {params = {}, query} = req;
         const isAccessAllowed = !controlGroupSupport ? await getUserSecretsAccess(req, {

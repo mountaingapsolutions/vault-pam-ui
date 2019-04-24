@@ -21,7 +21,7 @@ const {api, config, login, logout, authenticatedRoutes} = require('services/rout
 // Overcome the DEPTH_ZERO_SELF_SIGNED_CERT error.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-const {getSessionMiddleware, validateDomain} = require('services/utils');
+const {checkPremiumFeatures, getSessionMiddleware, validateDomain} = require('services/utils');
 if (!process.env.VAULT_DOMAIN) {
     console.error('No Vault domain configured.');
     process.exit(9);
@@ -119,16 +119,5 @@ const _startServer = () => {
                 });
         });
 
-    try {
-        const {validate} = require('vault-pam-premium');
-        console.log('Premium features available.');
-        validate().then((results) => {
-            app.locals.features = results ? {
-                ...results
-            } : {};
-        });
-    } catch (err) {
-        console.log('Premium features unavailable.');
-        app.locals.features = {};
-    }
+    checkPremiumFeatures(app);
 };

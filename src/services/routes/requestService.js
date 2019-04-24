@@ -4,7 +4,6 @@ const {
     createControlGroupRequest,
     deleteControlGroupRequest,
     getControlGroupRequests,
-    getSelfActiveRequests
 } = require('services/routes/controlGroupService');
 const {
     createOrGetStandardRequest,
@@ -13,26 +12,14 @@ const {
     updateStandardRequestByApprover,
     updateStandardRequestById
 } = require('services/routes/standardRequestService');
-const {checkControlGroupSupport, checkStandardRequestSupport, sendError, setSessionData} = require('services/utils');
+const {checkStandardRequestSupport, sendError, setSessionData} = require('services/utils');
 const {REQUEST_STATUS} = require('services/constants');
 
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
     .use(async (req, res, next) => {
-        const {controlGroupSupported, standardRequestSupported} = req.session.user;
-        if (controlGroupSupported === undefined) {
-            try {
-                let controlGroupSupport = await checkControlGroupSupport();
-                setSessionData(req, {
-                    controlGroupSupported: controlGroupSupport
-                });
-                console.log('Setting Control Group support in session user data: ', controlGroupSupport);
-            } catch (err) {
-                sendError(req.originalUrl, res, err);
-                return;
-            }
-        }
+        const {standardRequestSupported} = req.session.user;
         if (standardRequestSupported === undefined) {
             try {
                 let standardRequestSupport = await checkStandardRequestSupport();
@@ -62,8 +49,8 @@ const router = require('express').Router()
      */
     .get('/list', async (req, res) => {
         let requests = [];
-        const {controlGroupSupported, standardRequestSupported} = req.session.user;
-        if (controlGroupSupported === true) {
+        const {standardRequestSupported} = req.session.user;
+        if (req.app.locals.features['control-groups']) {
             try {
                 const controlGroupRequests = await getControlGroupRequests(req);
                 requests = requests.concat(controlGroupRequests);
@@ -98,10 +85,10 @@ const router = require('express').Router()
      */
     .get('/self', async (req, res) => {
         let requests = [];
-        const {controlGroupSupported, standardRequestSupported} = req.session.user;
-        if (controlGroupSupported === true) {
+        const {standardRequestSupported} = req.session.user;
+        if (req.app.locals.features['control-groups']) {
             try {
-                const controlGroupSelfRequests = await getSelfActiveRequests(req);
+                const controlGroupSelfRequests = await require('vault-pam-premium').getActiveRequests(req);
                 requests = requests.concat(controlGroupSelfRequests);
             } catch (err) {
                 sendError(req.originalUrl, res, err);
@@ -154,9 +141,9 @@ const router = require('express').Router()
     .delete('/request', async (req, res) => {
         const {id, path} = req.query;
         let result;
-        const {controlGroupSupported, standardRequestSupported} = req.session.user;
+        const {standardRequestSupported} = req.session.user;
         try {
-            if (controlGroupSupported === true && path) {
+            if (req.app.locals.features['control-groups'] && path) {
                 result = await deleteControlGroupRequest(req);
             } else if (standardRequestSupported && id) {
                 req.body = {id, status: REQUEST_STATUS.CANCELED};
@@ -208,9 +195,9 @@ const router = require('express').Router()
     .post('/request', async (req, res) => {
         const {path, requestData} = req.body;
         let result;
-        const {controlGroupSupported, standardRequestSupported} = req.session.user;
+        const {standardRequestSupported} = req.session.user;
         try {
-            if (controlGroupSupported === true && path) {
+            if (req.app.locals.features['control-groups'] && path) {
                 result = await createControlGroupRequest(req);
                 //TODO add engineType checking - engineType
             } else if (standardRequestSupported && requestData) {
@@ -256,9 +243,9 @@ const router = require('express').Router()
     .post('/request/authorize', async (req, res) => {
         const {accessor, id} = req.body;
         let result;
-        const {controlGroupSupported, standardRequestSupported} = req.session.user;
+        const {standardRequestSupported} = req.session.user;
         try {
-            if (controlGroupSupported === true && accessor) {
+            if (req.app.locals.features['control-groups'] && accessor) {
                 result = await authorizeControlGroupRequest(req);
             } else if (standardRequestSupported && id) {
                 req.body.status = REQUEST_STATUS.APPROVED;
