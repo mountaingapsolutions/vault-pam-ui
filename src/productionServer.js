@@ -123,9 +123,7 @@ const _startServer = () => {
     const bitbucketAccessToken = process.env.BITBUCKET_ACCESS_TOKEN;
     if (bitbucketUser && bitbucketAccessToken) {
         console.log('Configuration for premium features detected. Attempting to install vault-pam-premium...');
-        console.log('__dirname: ', __dirname);
-        console.log('cwd: ', process.cwd());
-        require('child_process').exec(`npm install git+https://${bitbucketUser}:${bitbucketAccessToken}@bitbucket.org/mountaingapsolutions/vault-pam-premium.git --no-save`, (error, stdout, stderr) => {
+        require('child_process').exec(`npm install git+https://${bitbucketUser}:${bitbucketAccessToken}@bitbucket.org/mountaingapsolutions/vault-pam-premium.git --no-save --silent`, (error, stdout, stderr) => {
             if (error) {
                 console.error(error);
             } else {
