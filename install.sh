@@ -15,7 +15,7 @@ readonly ENV_VARS=(PAM_DATABASE
                   PAM_MAIL_USER
                   PAM_MAIL_PASS)
 # styles
-NL='\n'
+NL=$'\n'
 BOLD=$(tput bold)
 NORMAL=$(tput sgr0)
 
@@ -140,18 +140,21 @@ questions_email() {
     ask "Enter email password: " PAM_MAIL_PASS
 }
 
+# Build dist folder
 build_dist() {
     print_raw $NL
     show_info "Building dist..."
     npm run build
 }
 
+# Build docker container
 build_docker() {
     print_raw $NL
     show_info "Building docker image..."
     docker build -t $APP_NAME .
 }
 
+# Run docker container
 run_docker() {
     # check for param
     PARAMS="-e PORT=$PORT -e USE_HSTS=$USE_HSTS "
@@ -181,6 +184,7 @@ run_docker() {
     docker run $DOCKER_FLAGS
 }
 
+# Show running container
 finish() {
     show_info "Listing all running docker containers."
     docker ps
@@ -188,6 +192,7 @@ finish() {
     print_raw $NL
 }
 
+# Main function
 main() {
     show_info "--------------------------------------------------"
     show_info "---- Welcome to Vault PAM installation script ----"
