@@ -40,7 +40,6 @@ validateDomain(process.env.VAULT_DOMAIN)
         process.exit(9);
     });
 
-
 /**
  * Starts the prod server.
  *
@@ -113,24 +112,6 @@ const _startServer = () => {
                     // DB migrations
                     // const {migrate} = require('services/db/migrate');
                     // migrate('up');
-                    const {exec} = require('child_process');
-                    exec('whoami', (error, stdout, stderr) => {
-                        console.warn('whoami error', error);
-                        console.warn('whoami stdout', stdout);
-                        console.warn('whoami stderr', stderr);
-                    });
-                    exec('npm install git+https://bitbucket.org/mountaingapsolutions/vault-pam-premium.git', (error, stdout, stderr) => {
-                        console.warn('premium install error', error);
-                        console.warn('premium install stdout', stdout);
-                        console.warn('premium install stderr', stderr);
-                    });
-
-                    try {
-                        require('vault-pam-premium').validate();
-                        console.log(chalk.bold.green('Premium features available.'));
-                    } catch (packageError) {
-                        console.log(chalk.bold.red('Premium features unavailable.'));
-                    }
                 })
                 .catch((error) => {
                     console.error(error);
@@ -138,17 +119,42 @@ const _startServer = () => {
                 });
         });
 
+    const bitbucketUser = process.env.BITBUCKET_USER;
+    const bitbucketAccessToken = process.env.BITBUCKET_ACCESS_TOKEN;
+    if (bitbucketUser && bitbucketAccessToken) {
+        console.log('Configuration for premium features detected. Attempting to install vault-pam-premium...');
+        require('child_process').exec(`npm install git+https://${bitbucketUser}:${bitbucketAccessToken}@bitbucket.org/mountaingapsolutions/vault-pam-premium.git --no-save --silent`, (error, stdout, stderr) => {
+            if (error) {
+                console.error(error);
+            } else {
+                console.log(stdout);
+                console.warn(stderr);
+                console.log('Successfully installed vault-pam-premium!');
+            }
+            _checkPremiumFeatures(app);
+        });
+    } else {
+        _checkPremiumFeatures(app);
+    }
+};
+
+/**
+ * Checks and initializes premium features.
+ *
+ * @private
+ * @param {Object} app The Express app reference.
+ */
+const _checkPremiumFeatures = (app) => {
     try {
         const {validate} = require('vault-pam-premium');
-        console.log(chalk.bold.green('Premium features available.'));
+        console.log('Premium features available.');
         validate().then((results) => {
             app.locals.features = results ? {
                 ...results
             } : {};
         });
-    } catch (packageError) {
-        console.log(chalk.bold.red('Premium features unavailable.'));
+    } catch (err) {
+        console.log('Premium features unavailable.');
         app.locals.features = {};
     }
-    console.warn('SERVER: ', server.locals);
 };

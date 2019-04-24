@@ -3,7 +3,8 @@ const REQUEST_STATUS = {
     APPROVED: 'APPROVED',
     CANCELED: 'CANCELED',
     LOCKED: 'LOCKED',
-    PENDING: 'PENDING'
+    PENDING: 'PENDING',
+    REJECTED: 'REJECTED'
 };
 
 module.exports = {

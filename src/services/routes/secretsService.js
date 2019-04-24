@@ -3,8 +3,12 @@ const {toObject} = require('@mountaingapsolutions/objectutil');
 const chalk = require('chalk');
 const request = require('request');
 const {getSelfActiveRequests, getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
-const {initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
+const {checkControlGroupSupport, initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
 const RequestController = require('services/controllers/Request');
+const {
+    getUserSecretsAccess
+} = require('services/routes/standardRequestService');
+const {REQUEST_STATUS} = require('services/constants');
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
@@ -194,22 +198,39 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .get('/get/*', async (req, res) => {
+        const {entityId, token} = req.session.user;
+        let controlGroupSupport = false;
+        try {
+            controlGroupSupport = await checkControlGroupSupport();
+        } catch (err) {
+            sendError(req.originalUrl, res, err);
+        }
         const {VAULT_API_TOKEN: apiToken} = process.env;
         const {params = {}, query} = req;
-        const urlParts = (params[0] || '').split('/').filter(path => !!path);
-        const listUrlParts = [...urlParts];
-        const isV2 = String(query.version) === '2';
-        if (isV2) {
-            listUrlParts.splice(1, 0, 'metadata');
-        }
-        const apiUrl = `${getDomain()}/v1/${listUrlParts.join('/')}`;
-        request(initApiRequest(apiToken, apiUrl), (error, response, body) => {
-            if (error) {
-                sendError(error, response, body);
-                return;
+        const isAccessAllowed = !controlGroupSupport ? await getUserSecretsAccess(req, {
+            requesterEntityId: entityId || null,
+            status: REQUEST_STATUS.APPROVED,
+            requestData: params[0]
+        }) : true;
+
+        if (isAccessAllowed) {
+            const urlParts = (params[0] || '').split('/').filter(path => !!path);
+            const listUrlParts = [...urlParts];
+            const isV2 = String(query.version) === '2';
+            if (isV2) {
+                listUrlParts.splice(1, 0, 'metadata');
             }
-            res.json({...body});
-        });
+            const apiUrl = `${getDomain()}/v1/${listUrlParts.join('/')}`;
+            request(initApiRequest(controlGroupSupport ? token : apiToken, apiUrl), (error, response, body) => {
+                if (error) {
+                    sendError(error, response, body);
+                    return;
+                }
+                res.json({...body});
+            });
+        } else {
+            sendError(req.originalUrl, res, 'Access Denied');
+        }
     });
 
 module.exports = {
