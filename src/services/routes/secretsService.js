@@ -1,8 +1,8 @@
 /* eslint-disable no-console */
-const {toObject} = require('@mountaingapsolutions/objectutil');
 const chalk = require('chalk');
 const request = require('request');
 const {getSelfActiveRequests, getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
+const {checkIfApprover} = require('services/routes/standardRequestService');
 const {checkControlGroupSupport, initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
 const RequestController = require('services/controllers/Request');
 const {
@@ -65,15 +65,27 @@ const router = require('express').Router()
             listUrlParts.splice(1, 0, 'metadata');
         }
         const domain = getDomain();
-        const {token} = req.session.user;
+        const {entityId, token} = req.session.user;
         const apiUrl = `${domain}/v1/${listUrlParts.join('/')}?list=true`;
 
         // Get current user's active Control Group requests.
         const activeRequests = await getSelfActiveRequests(req);
 
         console.log(`Listing secrets from ${chalk.yellow.bold(apiUrl)}.`);
-        // Get Secret Requests from Database
-        const databaseRequestMap = toObject(await RequestController.findAll(), 'requestData');
+
+        // Get Standard Requests
+        let standardRequests;
+        try {
+            const isApprover = await checkIfApprover(req, entityId);
+            if (isApprover) {
+                standardRequests = await RequestController.findAll();
+            } else {
+                standardRequests = await RequestController.findAllByRequester(entityId);
+            }
+        } catch (err) {
+            console.log(`No standard requests found: ${err}`);
+        }
+
         request(initApiRequest(token, apiUrl), (error, response, body) => {
             if (error) {
                 sendError(url, res, error);
@@ -124,7 +136,17 @@ const router = require('express').Router()
                             const secret = {
                                 name: lastPath === '' ? `${keySplit[keySplit.length - 2]}/` : lastPath,
                                 capabilities: capabilities[key] || [],
-                                databaseRequestData: databaseRequestMap[key]
+                                // return most recently created standardRequest if available
+                                ...standardRequests && {
+                                    standardRequestData: standardRequests.reduce((result, currentRequest) => {
+                                        if ((currentRequest.dataValues || {}).requestData === key &&
+                                            (!result.createdAt ||
+                                            (currentRequest.dataValues || {}).createdAt > result.createdAt)) {
+                                            result = {...currentRequest.dataValues};
+                                        }
+                                        return result;
+                                    }, {})
+                                }
                             };
                             const canRead = (capabilities[key] || []).includes('read');
                             if (canRead && !key.endsWith('/')) {

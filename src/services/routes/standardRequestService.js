@@ -81,7 +81,7 @@ const _getApproverGroupMemberEmails = async (req) => {
  * @param {string} entityId user's entityId.
  * @returns {Promise}
  */
-const _isApprover = async (req, entityId) => {
+const checkIfApprover = async (req, entityId) => {
     return await new Promise( (resolve, reject) => {
         const {VAULT_API_TOKEN: apiToken} = process.env;
 
@@ -188,7 +188,7 @@ const getUserSecretsAccess = (req, param) => {
         let isApprover = false;
         let result = false;
         try {
-            isApprover = await _isApprover(req, entityId);
+            isApprover = await checkIfApprover(req, entityId);
             const requestDBRec = await RequestController.findByParams(param);
             result = isApprover || requestDBRec.length > 0;
         } catch (err) {
@@ -206,7 +206,6 @@ const getUserSecretsAccess = (req, param) => {
  * @returns {Promise}
  */
 const getStandardRequestsByStatus = async (req, status) => {
-    const {entityId} = req.session.user;
     return new Promise(async (finalResolve, finalReject) => {
 
         const standardRequestsPromise = new Promise( (resolve, reject) => {
@@ -221,7 +220,7 @@ const getStandardRequestsByStatus = async (req, status) => {
         Promise.all([standardRequestsPromise, getUserIdsPromise]).then((results) => {
             const standardRequests = (Array.isArray(results) && results[0] ? results[0] : []).map(standardRequest => {
                 if (Array.isArray(results) && results[1]) {
-                    (standardRequest.dataValues || {}).requesterName = ((((results[1].body || {}).data || {}).key_info || {})[entityId] || {}).name;
+                    (standardRequest.dataValues || {}).requesterName = ((((results[1].body || {}).data || {}).key_info || {})[(standardRequest.dataValues || {}).requesterEntityId] || {}).name;
                 }
                 return standardRequest;
             });
@@ -243,7 +242,7 @@ const getStandardRequestsByUserType = (req) => {
     return new Promise(async (resolve, reject) => {
         let isApprover = false;
         try {
-            isApprover = await _isApprover(req, entityId);
+            isApprover = await checkIfApprover(req, entityId);
         } catch (err) {
             reject({message: err});
         }
@@ -336,7 +335,7 @@ const updateStandardRequestByApprover = async (req) => {
     return await new Promise( async (resolve, reject) => {
         let isApprover = false;
         try {
-            isApprover = await _isApprover(req, approverEntityId);
+            isApprover = await checkIfApprover(req, approverEntityId);
         } catch (err) {
             reject({message: err});
         }
@@ -585,6 +584,7 @@ const router = require('express').Router()
     });
 
 module.exports = {
+    checkIfApprover,
     createStandardRequest,
     createOrGetStandardRequest,
     router,

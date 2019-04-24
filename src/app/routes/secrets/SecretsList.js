@@ -154,9 +154,10 @@ class SecretsList extends Component {
      *
      * @param {string} mount The mount point.
      * @param {string} name The name of the secret to cancel.
+     * @param {string} [id] The request id in database.
      * @private
      */
-    _openRequestCancellationModal(mount, name) {
+    _openRequestCancellationModal(mount, name, id) {
         this.setState({
             showConfirmationModal: true,
             confirmationModalData: {
@@ -165,7 +166,7 @@ class SecretsList extends Component {
                 onClose: (confirm) => {
                     if (confirm) {
                         const {deleteRequest} = this.props;
-                        deleteRequest(name, this._getVersionFromMount(mount));
+                        deleteRequest(name, this._getVersionFromMount(mount), id);
                     }
                     this.setState({
                         showConfirmationModal: false
@@ -360,15 +361,12 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     _renderSecretsListArea() {
-        const {classes, pageError, getSecrets, groupData, history, inProgress, listSecretsAndCapabilities, match, secretsPaths, vaultLookupSelf} = this.props;
+        const {classes, pageError, getSecrets, history, inProgress, listSecretsAndCapabilities, match, secretsPaths} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
         const requestAccessLabel = 'Request Access';
         const deleteLabel = 'Delete';
         const openLabel = 'Open';
-        const currentUserEntityId = vaultLookupSelf.data && vaultLookupSelf.data.data.entity_id;
-        const approverEntityIds = groupData.data && groupData.data.member_entity_ids || [];
-        const isApprover = approverEntityIds.includes(currentUserEntityId);
         if (inProgress) {
             return <Grid container justify='center'>
                 <Grid item>
@@ -385,40 +383,25 @@ class SecretsList extends Component {
         } else if ((secretsPaths.secrets || []).length > 0) {
             return <List>{
                 (secretsPaths.secrets || []).map((secret, i) => {
-                    const {capabilities, data = {}, name} = secret;
-                    const {wrap_info: wrapInfo} = data;
+                    const {capabilities, standardRequestData, data = {}, name} = secret;
+                    const {createdAt, id, status} = standardRequestData || {};
+                    const {request_info: requestInfo = {}, wrap_info: wrapInfo} = data;
                     const currentPath = path ? `${path}/${name}` : name;
                     const mountPath = `${mount}/${currentPath}`;
                     const url = `/secrets/${mountPath}`;
                     const isWrapped = !!wrapInfo;
+                    const canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped || status === Constants.REQUEST_STATUS.APPROVED;
                     const canUpdate = capabilities.some(capability => capability === 'update' || capability === 'root');
                     const requiresRequest = capabilities.includes('deny') && !name.endsWith('/') || isWrapped;
-                    const {request_info: requestInfo = {}} = data;
                     const isApproved = isWrapped && requestInfo.approved;
                     const authorizations = isWrapped && requestInfo.authorizations;
                     const canDelete = capabilities.includes('delete');
-                    const {databaseRequestData} = secret;
-                    const {status} = secret && secret.databaseRequestData || {};
-                    const isPathInDB = databaseRequestData && !isApprover || false;
-                    let canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped;
-                    let isOwnRequest = false;
-                    let isPendingInDatabase = false;
-                    let requestStatus = null;
-                    let databaseRequestTime = null;
-                    if (isPathInDB && (status === Constants.REQUEST_STATUS.APPROVED || status === Constants.REQUEST_STATUS.PENDING)) {
-                        const {createdAt, requesterEntityId} = databaseRequestData;
-                        isOwnRequest = currentUserEntityId === requesterEntityId;
-                        isPendingInDatabase = isOwnRequest ? status === Constants.REQUEST_STATUS.PENDING : true;
-                        requestStatus = status;
-                        databaseRequestTime = new Date(createdAt).toLocaleString();
-                        canOpen = !isPendingInDatabase;
-                    }
-                    const creationTime = isPendingInDatabase ? databaseRequestTime : data.request_info && isWrapped ? new Date(wrapInfo.creation_time) : requestStatus === Constants.REQUEST_STATUS.APPROVED ? databaseRequestTime : null;
-                    const standardRequest = isPendingInDatabase ? `${!isOwnRequest ? Constants.REQUEST_STATUS.LOCKED : requestStatus} Request type: Standard Request` : requestStatus === Constants.REQUEST_STATUS.APPROVED ? `${requestStatus} Request type: Standard Request` : null;
-                    let secondaryText = !standardRequest ? requiresRequest ? `Request type: ${isWrapped ? 'Control Groups' : 'Default'}` : '' : standardRequest;
-                    if (creationTime) {
-                        secondaryText += ` (Requested at ${creationTime.toLocaleString()})`;
-                    }
+                    const isPendingInDatabase = status === Constants.REQUEST_STATUS.PENDING;
+                    const creationTime = data.request_info && isWrapped ? new Date(wrapInfo.creation_time) :
+                        isPendingInDatabase ? new Date(createdAt).toLocaleString() :
+                            null;
+                    const secondaryText = `${requiresRequest && isWrapped ? 'Request type: Control Groups' : requiresRequest || isPendingInDatabase ? 'Request type: Standard Request' : ''}${creationTime ? ` (Requested at ${creationTime.toLocaleString()})` : ''}`;
+
                     return <ListItem button component={(props) => <Link to={url} {...props} onClick={event => {
                         event.preventDefault();
                         if (name.includes('/')) {
@@ -436,12 +419,14 @@ class SecretsList extends Component {
                             } else {
                                 if (data.request_info) {
                                     this._openRequestCancellationModal(mount, name);
+                                } else if (status === Constants.REQUEST_STATUS.PENDING) {
+                                    this._openRequestCancellationModal(mount, name, id);
                                 } else {
                                     this._openRequestModal(mount, name, isWrapped);
                                 }
                             }
                         }
-                    }}/>} disabled={isPendingInDatabase} key={`key-${i}`}>
+                    }}/>} key={`key-${i}`}>
                         <ListItemAvatar>
                             <Avatar>{
                                 name.endsWith('/') ? <FolderIcon/> : <FileCopyIcon/>
@@ -529,7 +514,6 @@ SecretsList.propTypes = {
     dismissError: PropTypes.func.isRequired,
     dismissibleError: PropTypes.string,
     getSecrets: PropTypes.func.isRequired,
-    groupData: PropTypes.object,
     history: PropTypes.object.isRequired,
     inProgress: PropTypes.bool,
     listMounts: PropTypes.func.isRequired,
@@ -540,8 +524,8 @@ SecretsList.propTypes = {
     secrets: PropTypes.object,
     secretsMounts: PropTypes.object,
     secretsPaths: PropTypes.object,
-    unwrapSecret: PropTypes.func.isRequired,
-    vaultLookupSelf: PropTypes.object
+    secretsRequests: PropTypes.array,
+    unwrapSecret: PropTypes.func.isRequired
 };
 
 /**
@@ -584,13 +568,13 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch, ownProps) => {
     return {
-        deleteRequest: (name, version) => {
+        deleteRequest: (name, version, id) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
             const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
             return new Promise((resolve, reject) => {
-                dispatch(kvAction.deleteRequest(fullPath))
+                dispatch(kvAction.deleteRequest(fullPath, '', id))
                     .then(() => {
                         dispatch(kvAction.listSecretsAndCapabilities(`${mount}${path ? `/${path}` : ''}`, version))
                             .then(resolve)
