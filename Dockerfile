@@ -1,5 +1,5 @@
 # base image
-FROM node:9.4.0
+FROM keymetrics/pm2:latest-alpine
 
 # create the folders
 RUN mkdir -p /usr/src/dist
@@ -13,7 +13,6 @@ WORKDIR /usr/src/dist/
 # add `/usr/src/app/node_modules/.bin` to $PATH
 ENV PATH /usr/src/dist/node_modules/.bin:$PATH
 
-RUN npm install pm2 -g
 RUN npm install --production
 
 # start app
