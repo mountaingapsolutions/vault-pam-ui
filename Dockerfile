@@ -1,5 +1,5 @@
 # base image
-FROM keymetrics/pm2:latest-alpine
+FROM mhart/alpine-node:latest
 
 # create the folders
 RUN mkdir -p /usr/src/dist
