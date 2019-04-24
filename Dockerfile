@@ -1,20 +1,20 @@
 # base image
 FROM node:9.4.0
 
+# create the folders
+RUN mkdir -p /usr/src/dist
+
+# bundle APP files
+ADD dist /usr/src/dist
+
 # set working directory
-RUN mkdir /app
-WORKDIR /app
+WORKDIR /usr/src/dist/
 
 # add `/usr/src/app/node_modules/.bin` to $PATH
-ENV PATH /app/node_modules/.bin:$PATH
+ENV PATH /usr/src/dist/node_modules/.bin:$PATH
 
-# install and cache app dependencies
-# COPY package.json /usr/src/app/package.json
-COPY package.json /app/package.json
-
-COPY . /app/
-RUN npm install
-RUN npm install react-scripts@1.1.1 -g --silent
+RUN npm install pm2 -g
+RUN npm install --production
 
 # start app
-CMD ["forever", "start"]
+CMD ["npm", "run", "startpm2prod"]

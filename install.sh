@@ -15,7 +15,7 @@ readonly ENV_VARS=(PAM_DATABASE
                   PAM_MAIL_USER
                   PAM_MAIL_PASS)
 # styles
-NL=$'\n'
+NL='\n'
 BOLD=$(tput bold)
 NORMAL=$(tput sgr0)
 
@@ -78,7 +78,7 @@ validate_env_file() {
             exit 1
         fi
     done
-    show_info "All environment variables in ${CURRENT_DIRECTORY}/.env are present."
+    show_info "All required environment variables in ${CURRENT_DIRECTORY}/.env are present."
 }
 
 # detect .env file
@@ -111,12 +111,28 @@ questions_db() {
     fi
 }
 
+# PAM questions
+questions_pam() {
+    print_title "PAM UI"
+    ask "Enter pam ui port (Default: 8080): " PORT
+    if [[ -z "$PORT" ]]; then
+        show_warn "No PORT entered. Using 8080"
+        PORT=8080
+    else
+        # If userInput is not empty show what the user typed in and run ls -l
+        show_warn "Using port $PORT"
+    fi
+    USE_HSTS=false
+}
+
+# Vault questions
 questions_vault() {
     print_title "Vault"
     ask "Enter vault domain: " VAULT_DOMAIN
     ask "Enter vault token: " VAULT_API_TOKEN
 }
 
+# Email questions
 questions_email() {
     print_title "Email"
     ask "Enter email service(gmail for now): " PAM_MAIL_SERVICE
@@ -124,49 +140,51 @@ questions_email() {
     ask "Enter email password: " PAM_MAIL_PASS
 }
 
-build() {
+build_dist() {
+    print_raw $NL
+    show_info "Building dist..."
+    npm run build
+}
+
+build_docker() {
     print_raw $NL
     show_info "Building docker image..."
     docker build -t $APP_NAME .
 }
 
-run(){
-    docker run -itd \
-        -v ${PWD}:/usr/src/app \
-        -v /usr/src/app/node_modules \
-        -p 3000:3000 \
-        --rm \
-        $APP_NAME
-}
+run_docker() {
+    # check for param
+    PARAMS="-e PORT=$PORT -e USE_HSTS=$USE_HSTS "
 
-build_run() {
-    echo $PARAMS
-    "${PARAMS}"docker-compose up -d --build
-}
+    if [ -z "$1" ]
+    then
+        for ENV_KEY in "${ENV_VARS[@]}"
+        do
+            ENV_VAL="${!ENV_KEY}"
+            PARAMS="${PARAMS}-e ${ENV_KEY}=${ENV_VAL} "
+        done
+    fi
 
-run_params() {
-    for ENV_KEY in "${ENV_VARS[@]}"
-    do
-        ENV_VAL="${!ENV_KEY}"
-        PARAMS="${PARAMS}${ENV_KEY}=${ENV_VAL} "
-    done
+    # stop running container if any
+    OLD_CONTAINER="$(docker ps --all --quiet --filter=name="$APP_NAME")"
+    if [ -n "$OLD_CONTAINER" ]; then
+        show_warn "An existing $APP_NAME container is running. Stopping..."
+        docker stop $OLD_CONTAINER
+    fi
+
     show_info "Running docker with these parameters: ${PARAMS}"
-
-    build_run $PARAMS
-    #docker run -itd \
-    #    -v ${PWD}:/usr/src/app \
-    #    -v /usr/src/app/node_modules \
-    #    -p 3000:3000 \
-    #    $PARAMS \
-    #    --name $APP_NAME \
-    #    --rm \
-    #    $APP_NAME
-    }
+    DOCKER_FLAGS="-itd \
+        -p $PORT:$PORT \
+        $PARAMS \
+        --name $APP_NAME \
+        --rm $APP_NAME"
+    docker run $DOCKER_FLAGS
+}
 
 finish() {
-    show_info "Listing all running docker images."
-    docker-compose ps
-    show_info "Sweet! The application will be up soon."
+    show_info "Listing all running docker containers."
+    docker ps
+    show_info "Sweet! The application will be up soon at https://localhost:$PORT"
     print_raw $NL
 }
 
@@ -175,18 +193,21 @@ main() {
     show_info "---- Welcome to Vault PAM installation script ----"
     show_info "--------------------------------------------------"
     print_raw $NL
+    questions_pam
     if check_env_file
     then
         validate_env_file
-        build_run
-        finish
+        USE_ENV=true
     else
         questions_db
         questions_vault
         questions_email
-        run_params
-        finish
+
     fi
+    build_dist
+    build_docker
+    run_docker $USE_ENV
+    finish
 }
 
 if [[ "$0" == "${BASH_SOURCE[0]}" ]]; then

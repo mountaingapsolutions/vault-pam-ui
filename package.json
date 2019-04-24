@@ -23,6 +23,7 @@
     "nodemailer": "^6.1.0",
     "pg": "^7.9.0",
     "pg-hstore": "^2.3.2",
+    "pm2": "^3.5.0",
     "request": "^2.88.0",
     "sequelize": "^5.1.1",
     "socket.io": "^2.2.0",
@@ -99,7 +100,8 @@
     "copyappfiles": "cp .env dist/ || : && cp package.json dist/ && cp robots.txt dist/ && cp src/productionServer.js dist/ && cp -R src/services dist",
     "lint": "eslint --ext .js,.jsx --format table .",
     "postinstall": "echo whoami: && whoami",
-    "test": "node scripts/test.js"
+    "test": "node scripts/test.js",
+    "startpm2prod": "pm2-runtime start productionServer.js"
   },
   "eslintConfig": {
     "extends": "react-app"
