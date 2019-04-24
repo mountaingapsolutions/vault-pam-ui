@@ -119,32 +119,6 @@ const _startServer = () => {
                 });
         });
 
-    const bitbucketUser = process.env.BITBUCKET_USER;
-    const bitbucketAccessToken = process.env.BITBUCKET_ACCESS_TOKEN;
-    if (bitbucketUser && bitbucketAccessToken) {
-        console.log('Configuration for premium features detected. Attempting to install vault-pam-premium...');
-        require('child_process').exec(`npm install git+https://${bitbucketUser}:${bitbucketAccessToken}@bitbucket.org/mountaingapsolutions/vault-pam-premium.git --no-save --silent`, (error, stdout, stderr) => {
-            if (error) {
-                console.error(error);
-            } else {
-                console.log(stdout);
-                console.warn(stderr);
-                console.log('Successfully installed vault-pam-premium!');
-            }
-            _checkPremiumFeatures(app);
-        });
-    } else {
-        _checkPremiumFeatures(app);
-    }
-};
-
-/**
- * Checks and initializes premium features.
- *
- * @private
- * @param {Object} app The Express app reference.
- */
-const _checkPremiumFeatures = (app) => {
     try {
         const {validate} = require('vault-pam-premium');
         console.log('Premium features available.');
