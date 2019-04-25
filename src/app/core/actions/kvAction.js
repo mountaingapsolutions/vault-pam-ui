@@ -37,6 +37,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     authorizeRequest(accessor, id) {
+        // TODO - Rename endpoint. Too redundant.
         return this._dispatchPost(this.ACTION_TYPES.AUTHORIZE_REQUEST, '/rest/requests/request/authorize', {
             accessor,
             id
@@ -52,6 +53,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     deleteRequest(path, entityId = '', id) {
+        // TODO - Rename endpoint. Too redundant.
         return this._dispatchDelete(this.ACTION_TYPES.DELETE_REQUEST, '/rest/requests/request', {
             path,
             ...entityId && {entityId},
@@ -108,6 +110,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     requestSecret(requestData) {
+        // TODO - Rename endpoint. Too redundant.
         return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/requests/request', {
             ...requestData
         });
@@ -171,7 +174,8 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     unwrapSecret(name, token) {
-        return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/control-group/request/unwrap', {
+        // TODO - Rename endpoint. Too redundant.
+        return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/requests/request/unwrap', {
             token
         });
     }

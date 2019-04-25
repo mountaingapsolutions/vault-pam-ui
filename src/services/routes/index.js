@@ -3,7 +3,6 @@ const chalk = require('chalk');
 const request = require('request');
 const swaggerUi = require('swagger-ui-express');
 const {options, swaggerDoc} = require('services/Swagger');
-const {router: controlGroupServiceRouter} = require('services/routes/controlGroupService');
 const {router: secretsServiceRouter} = require('services/routes/secretsService');
 const {router: userServiceRouter} = require('services/routes/userService');
 const {router: requestServiceRouter} = require('services/routes/requestService');
@@ -164,7 +163,6 @@ const authenticatedRoutes = require('express').Router()
     .use('/user', userServiceRouter)
     .use('/requests', requestServiceRouter)
     .use('/request', standardRequestServiceRouter)
-    .use('/control-group', controlGroupServiceRouter)
     .use('/secrets', secretsServiceRouter)
     .get('/session', (req, res) => {
         const {'x-vault-token': token} = req.headers;

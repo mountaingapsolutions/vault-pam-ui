@@ -232,7 +232,7 @@ const router = require('express').Router()
     })
     /**
      * @swagger
-     * /rest/requests/authorize:
+     * /rest/requests/request/authorize:
      *   post:
      *     tags:
      *       - Requests
@@ -288,6 +288,46 @@ const router = require('express').Router()
             return;
         }
         res.json(result);
+    })
+    /**
+     * @swagger
+     * /rest/requests/request/unwrap:
+     *   post:
+     *     tags:
+     *       - Requests
+     *     summary: Unwraps an authorized Control Group request.
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               token:
+     *                 type: string
+     *               required:
+     *                 - token
+     *     responses:
+     *       200:
+     *         description: The unwrapped secret.
+     *       400:
+     *         description: Wrapping token is not valid, does not exist, or needs further authorization.
+     *       403:
+     *         description: Unauthorized.
+     */
+    .post('/request/unwrap', async (req, res) => {
+        let result;
+        try {
+            result = await require('vault-pam-premium').unwrapRequest(req);
+            (result.groups || []).forEach((groupName) => {
+                console.warn(`Emit read-approved-request accessor ${result.accessor} to ${groupName}.`);
+                notificationsManager.getInstance().to(groupName).emit('read-approved-request', result.accessor);
+            });
+            res.status(result.statusCode).json(result.body);
+        } catch (err) {
+            sendError(req.originalUrl, res, err.message, err.statusCode);
+            return;
+        }
     });
 
 module.exports = {
