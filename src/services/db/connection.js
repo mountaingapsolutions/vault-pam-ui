@@ -3,10 +3,10 @@ let sequelize = null;
 let dataModel = {};
 
 const {PAM_DATABASE, PAM_DATABASE_USER, PAM_DATABASE_PASSWORD, PAM_DATABASE_URL, PAM_DATABASE_PORT} = process.env;
-if (PAM_DATABASE && PAM_DATABASE_USER && PAM_DATABASE_PASSWORD && PAM_DATABASE_URL && PAM_DATABASE_PORT) {
-    /* eslint-disable no-console */
-    console.info('All required database variables found. Attempting to establish connection...');
+const logger = require('services/logger');
 
+if (PAM_DATABASE && PAM_DATABASE_USER && PAM_DATABASE_PASSWORD && PAM_DATABASE_URL && PAM_DATABASE_PORT) {
+    logger.info('All required database variables found. Attempting to establish connection...');
     promise = new Promise((resolve, reject) => {
         const Sequelize = require('sequelize');
         const {models} = require('services/db/models');
@@ -20,9 +20,9 @@ if (PAM_DATABASE && PAM_DATABASE_USER && PAM_DATABASE_PASSWORD && PAM_DATABASE_U
                 port: PAM_DATABASE_PORT
             }
         );
-        console.info('Initializing models...');
+        logger.info('Initializing models...');
         Object.keys(models).map(key => {
-            console.info(`Initializing ${key}...`);
+            logger.info(`Initializing ${key}...`);
             const model = models[key](sequelize);
             dataModel[key] = model;
             return model;
@@ -31,7 +31,6 @@ if (PAM_DATABASE && PAM_DATABASE_USER && PAM_DATABASE_PASSWORD && PAM_DATABASE_U
             logging: true
         }).then(resolve()).catch(reject);
     });
-    /* eslint-enable no-console */
 } else {
     promise = new Promise((resolve, reject) => {
         reject('Required database variables have not been set. (╯°□°)╯︵ ┻━┻');
@@ -45,9 +44,7 @@ if (PAM_DATABASE && PAM_DATABASE_USER && PAM_DATABASE_PASSWORD && PAM_DATABASE_U
  * @private
  */
 const start = () => {
-    /* eslint-disable no-console */
-    console.info('Detecting database configuration...');
-    /* eslint-enable no-console */
+    logger.info('Detecting database configuration...');
     return promise;
 };
 
@@ -59,9 +56,7 @@ const start = () => {
  * @private
  */
 const getModel = (modelName) => {
-    /* eslint-disable no-console */
-    console.info(`Fetching data model ${modelName}`);
-    /* eslint-enable no-console */
+    logger.info(`Fetching data model ${modelName}`);
     return dataModel[modelName];
 };
 

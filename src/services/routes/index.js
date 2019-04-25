@@ -9,6 +9,7 @@ const {router: userServiceRouter} = require('services/routes/userService');
 const {router: requestServiceRouter} = require('services/routes/requestService');
 const {router: standardRequestServiceRouter} = require('services/routes/standardRequestService');
 const {initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
+const logger = require('services/logger');
 
 /**
  * Pass-through to the designated Vault server API endpoint.
@@ -129,7 +130,7 @@ const authenticatedRoutes = require('express').Router()
 
             // Token mismatch, so need to verify through Vault again.
             if (token !== sessionToken) {
-                console.log(`Token mismatch for the API call ${_yellowBold(req.originalUrl)} between header and stored session. Re-verifying through Vault.`);
+                logger.log(`Token mismatch for the API call ${_yellowBold(req.originalUrl)} between header and stored session. Re-verifying through Vault.`);
                 const apiUrl = `${getDomain()}/v1/auth/token/lookup-self`;
                 request(initApiRequest(token, apiUrl), (error, response, body) => {
                     if (error) {
@@ -156,7 +157,7 @@ const authenticatedRoutes = require('express').Router()
                     });
                 });
             } else {
-                console.info('Move along. Nothing to see here.');
+                logger.info('Move along. Nothing to see here.');
                 next();
             }
         }
@@ -166,6 +167,7 @@ const authenticatedRoutes = require('express').Router()
     .use('/request', standardRequestServiceRouter)
     .use('/control-group', controlGroupServiceRouter)
     .use('/secrets', secretsServiceRouter)
+    .use('/log', logger.router)
     .get('/session', (req, res) => {
         const {'x-vault-token': token} = req.headers;
         _sendTokenValidationResponse(token, req, res);

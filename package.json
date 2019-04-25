@@ -28,7 +28,8 @@
     "socket.io": "^2.2.0",
     "swagger-jsdoc": "^3.2.8",
     "swagger-ui-express": "^4.0.2",
-    "umzug": "^2.2.0"
+    "umzug": "^2.2.0",
+    "winston": "^3.2.1"
   },
   "devDependencies": {
     "@babel/core": "7.2.2",
