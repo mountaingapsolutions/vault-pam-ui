@@ -1,6 +1,5 @@
-/* eslint-disable no-console */
+/* eslint-disable no-console, no-unused-vars */
 const {filter, safeWrap, unwrap} = require('@mountaingapsolutions/objectutil');
-const chalk = require('chalk');
 const hcltojson = require('hcl-to-json');
 const request = require('request');
 const notificationsManager = require('services/notificationsManager');
@@ -281,124 +280,6 @@ const authorizeControlGroupRequest = async (req) => {
 };
 
 /**
- * Creates a new Control Group request.
- *
- * @param {Object} req The HTTP request object.
- * @returns {Promise}
- */
-const createControlGroupRequest = async (req) => {
-    let emailRecipients = [];
-    const {VAULT_API_TOKEN: apiToken} = process.env;
-    return new Promise(async (finalResolve, reject) => {
-        if (!apiToken) {
-            reject({message: 'no API token was set.', statusCode: 403});
-            return;
-        }
-
-        const domain = getDomain();
-        const {controlGroupPaths, entityId, token} = req.session.user;
-        if (!controlGroupPaths) {
-            reject({message: 'No approval group has been configured.', statusCode: 500});
-            return;
-        }
-
-        const {path} = req.body;
-        if (!path) {
-            reject({message: 'Required input data not provided.'});
-            return;
-        }
-
-        const matches = Object.keys(controlGroupPaths).filter(controlGroupPath => {
-            const regex = new RegExp(controlGroupPath.endsWith('/*') ? controlGroupPath.replace('/*', '/.+') : controlGroupPath);
-            return path.match(regex);
-        }).map(controlGroupPath => controlGroupPaths[controlGroupPath]);
-        const {group_names: groupNames = []} = unwrap(safeWrap(matches[0]).factor.approvers.identity) || {};
-        if (groupNames.length === 0) {
-            reject({message: 'Unable to process request - no approvers found.', statusCode: 404});
-            return;
-        }
-
-        const secretRequest = await new Promise((resolve) => {
-            const getSecretApiUrl = `${domain}/v1/${path}`;
-            request(initApiRequest(token, getSecretApiUrl), (error, response, body) => resolve(body));
-        });
-
-        const {wrap_info: wrapInfo} = secretRequest || {};
-        if (!wrapInfo) {
-            reject({message: 'Unable to process request ${path}'});
-            return;
-        }
-        const requestInfo = await checkControlGroupRequestStatus(req, wrapInfo.accessor);
-
-        // Persist the data.
-        const promises = groupNames.map((groupName) => {
-            // Persist the request data as meta data of the corresponding group.
-            return new Promise((resolve) => {
-                const apiGroupUrl = `${domain}/v1/identity/group/name/${groupName}`;
-                request(initApiRequest(apiToken, apiGroupUrl), async (error, response, body) => {
-                    if (error) {
-                        console.log(`Error fetching ${apiGroupUrl}: `, error);
-                        resolve();
-                    } else if (response.statusCode !== 200) {
-                        console.log(`Received ${response.statusCode} in attempting to fetch ${apiGroupUrl}.`);
-                        resolve();
-                    } else {
-                        const {metadata = {}} = (body || {}).data;
-                        const metaKey = _encodeMetaKey(entityId, path);
-                        const metaValue = JSON.stringify(wrapInfo);
-                        const requestNotification = {
-                            accessor: wrapInfo.accessor,
-                            request_info: requestInfo,
-                            wrap_info: wrapInfo
-                        };
-                        console.warn('Emit create-request data ', requestNotification, ' to ', groupName);
-                        await Promise.all((((body || {}).data || {}).member_entity_ids || []).map(async approverEntityId => {
-                            await getUser(req, approverEntityId, 'admin').then(userData => {
-                                const email = ((((userData || {}).body || {}).data || {}).metadata || {}).email;
-                                email && !emailRecipients.includes(email) && emailRecipients.push(email);
-                            });
-                        }));
-                        notificationsManager.getInstance().in(groupName).emit('create-request', requestNotification);
-                        console.log(`Persisting to ${apiGroupUrl} with the key/value pair: ${chalk.bold.yellow(metaKey)} / ${chalk.bold.yellow(metaValue)}`);
-                        request({
-                            ...initApiRequest(apiToken, apiGroupUrl),
-                            method: 'POST',
-                            json: {
-                                metadata: {
-                                    ...metadata,
-                                    [metaKey]: metaValue
-                                }
-                            }
-                        }, (groupUpdateError, groupUpdateResponse, groupUpdateBody) => {
-                            if (groupUpdateError) {
-                                console.log(`Error updating ${apiGroupUrl}: `, groupUpdateError);
-                            } else {
-                                console.log(`Update response: ${groupUpdateResponse.statusCode} - `, groupUpdateBody);
-                            }
-                            resolve();
-                        });
-                    }
-                });
-            });
-        });
-        Promise.all(promises).then(async () => {
-            const requesterData = await getUser(req, entityId, 'admin').then(userData => {
-                return userData;
-            });
-            sendNotificationEmail({
-                approvers: emailRecipients,
-                requestData: {requestData: secretRequest.wrap_info.creation_path, status: REQUEST_STATUS.PENDING},
-                requesterData,
-                userSession: {domain, entityId}
-            });
-            finalResolve({
-                status: 'ok'
-            });
-        });
-    });
-};
-
-/**
  * Deletes an active Control Group request.
  *
  * @param {Object} req The HTTP request object.
@@ -634,81 +515,6 @@ const revokeAccessor = async (req, accessor) => {
 const router = require('express').Router()
 /* eslint-enable new-cap */
 
-/**
- * @swagger
- * /rest/control-group/request:
- *   post:
- *     tags:
- *       - Control-Group
- *     summary: Initiates a Control Group access request for a particular secret path.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               path:
- *                 type: string
- *               required:
- *                 - path
- *     responses:
- *       200:
- *         description: Success.
- *       400:
- *         description: Required path input was not provided.
- *       403:
- *         description: No API token was set.
- *       500:
- *         description: No approval group has been configured.
- */
-    .post('/request', async (req, res) => {
-        let result;
-        try {
-            result = await createControlGroupRequest(req);
-        } catch (err) {
-            sendError(req.originalUrl, res, err.message, err.statusCode);
-            return;
-        }
-        res.json(result);
-    })
-    /**
-     * @swagger
-     * /rest/control-group/request:
-     *   delete:
-     *     tags:
-     *       - Control-Group
-     *     summary: Deletes the specified Control Group request.
-     *     parameters:
-     *       - name: path
-     *         in: query
-     *         required: true,
-     *         description: The path of the request to delete.
-     *         schema:
-     *           type: string
-     *       - name: entityId
-     *         in: query
-     *         description: Optional entity id of the request to delete. If not provided, will default to the session user's entity id.
-     *         schema:
-     *           type: string
-     *     responses:
-     *       200:
-     *         description: Success.
-     *       403:
-     *         description: Unauthorized.
-     *       404:
-     *         description: Request not found.
-     */
-    .delete('/request', async (req, res) => {
-        let result;
-        try {
-            result = await deleteControlGroupRequest(req);
-        } catch (err) {
-            sendError(req.originalUrl, res, err.message, err.statusCode);
-            return;
-        }
-        res.json(result);
-    })
     /**
      * @swagger
      * /rest/control-group/request/authorize:
@@ -898,12 +704,9 @@ const router = require('express').Router()
 module.exports = {
     authorizeControlGroupRequest,
     checkControlGroupRequestStatus,
-    createControlGroupRequest,
-    deleteControlGroupRequest,
     getControlGroupPaths,
     getControlGroupRequests,
     getGroupsByUser,
     getPathFromEncodedMetaKey,
-    revokeAccessor,
     router
 };

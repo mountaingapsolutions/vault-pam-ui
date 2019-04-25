@@ -68,7 +68,7 @@ const checkPremiumFeatures = (app) => {
                 ...results
             } : features;
         });
-    } catch (packageError) {
+    } catch (err) {
         console.log(chalk.bold.red('Premium features unavailable.'));
         app.locals.features = features;
     }
@@ -180,9 +180,9 @@ const sendNotificationEmail = data => {
     const {approvers, userSession, requestData, requesterData} = data;
     const {data: requester} = requesterData.body;
     const {engineType, requestData: secret, status, type} = requestData;
-    const {domain, entityId} = userSession;
+    const {entityId} = userSession;
     const emailData = {
-        domain,
+        domain: getDomain(),
         requester,
         secret,
         type,

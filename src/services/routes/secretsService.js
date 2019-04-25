@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 const chalk = require('chalk');
 const request = require('request');
-const {getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
+const {getControlGroupPaths} = require('services/routes/controlGroupService');
 const {checkIfApprover} = require('services/routes/standardRequestService');
 const {initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
 const RequestController = require('services/controllers/Request');
@@ -166,8 +166,12 @@ const router = require('express').Router()
                                                 secret.data = secretBody;
                                                 const {wrap_info: wrapInfo} = secretBody;
                                                 if (wrapInfo) {
-                                                    // Just immediately revoke the accessor. A new one will be generated upon a user requesting access. The initial wrap_info accessor is only to inform the user that this secret is wrapped.
-                                                    revokeAccessor(req, wrapInfo.accessor);
+                                                    try {
+                                                        // Just immediately revoke the accessor. A new one will be generated upon a user requesting access. The initial wrap_info accessor is only to inform the user that this secret is wrapped.
+                                                        require('vault-pam-premium').revokeAccessor(req, wrapInfo.accessor);
+                                                    } catch (err) {
+                                                        console.error(`Error occurred. The package vault-pam-premium possibly unavailable: ${err.toString()}`);
+                                                    }
                                                 }
                                                 secretResolve();
                                             }

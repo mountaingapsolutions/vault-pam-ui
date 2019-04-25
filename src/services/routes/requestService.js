@@ -1,10 +1,9 @@
 /* eslint-disable no-console */
 const {
     authorizeControlGroupRequest,
-    createControlGroupRequest,
-    deleteControlGroupRequest,
     getControlGroupRequests,
 } = require('services/routes/controlGroupService');
+const notificationsManager = require('services/notificationsManager');
 const {
     createOrGetStandardRequest,
     getStandardRequestsByUserType,
@@ -139,12 +138,27 @@ const router = require('express').Router()
      *         description: Request not found.
      */
     .delete('/request', async (req, res) => {
-        const {id, path} = req.query;
+        const {entityId, id, path} = req.query;
         let result;
         const {standardRequestSupported} = req.session.user;
         try {
             if (req.app.locals.features['control-groups'] && path) {
-                result = await deleteControlGroupRequest(req);
+                const {accessor, groups = []} = await require('vault-pam-premium').deleteControlGroupRequest(req);
+                // If entity id provided, it means it was a request rejection.
+                if (entityId) {
+                    // Notify the user of the request rejection.
+                    console.warn(`Emit reject-request of accessor ${accessor} to ${entityId}.`);
+                    notificationsManager.getInstance().to(entityId).emit('reject-request', accessor);
+                }
+                groups.forEach(group => {
+                    const requestType = entityId ? 'reject-request' : 'cancel-request';
+                    // Notify the group of the cancellation or rejection.
+                    console.warn(`Emit ${requestType} of accessor ${accessor} to ${group.data.name}.`);
+                    notificationsManager.getInstance().to(group.data.name).emit(requestType, accessor);
+                });
+                result = {
+                    status: 'ok'
+                };
             } else if (standardRequestSupported && id) {
                 req.body = {id, status: REQUEST_STATUS.CANCELED};
                 result = await updateStandardRequestById(req);
@@ -198,7 +212,14 @@ const router = require('express').Router()
         const {standardRequestSupported} = req.session.user;
         try {
             if (req.app.locals.features['control-groups'] && path) {
-                result = await createControlGroupRequest(req);
+                const {groups = [], data} = await require('vault-pam-premium').createControlGroupRequest(req);
+                groups.forEach((groupName) => {
+                    console.warn('Emit create-request data ', data, ' to ', groupName);
+                    notificationsManager.getInstance().in(groupName).emit('create-request', data);
+                });
+                result = {
+                    status: 'ok'
+                };
                 //TODO add engineType checking - engineType
             } else if (standardRequestSupported && requestData) {
                 result = await createOrGetStandardRequest(req);
