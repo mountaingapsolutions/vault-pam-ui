@@ -1,8 +1,5 @@
 /* eslint-disable no-console */
-const {
-    authorizeControlGroupRequest,
-    getControlGroupRequests,
-} = require('services/routes/controlGroupService');
+const {safeWrap, unwrap} = require('@mountaingapsolutions/objectutil');
 const notificationsManager = require('services/notificationsManager');
 const {
     createOrGetStandardRequest,
@@ -51,7 +48,7 @@ const router = require('express').Router()
         const {standardRequestSupported} = req.session.user;
         if (req.app.locals.features['control-groups']) {
             try {
-                const controlGroupRequests = await getControlGroupRequests(req);
+                const controlGroupRequests = await require('vault-pam-premium').getRequests(req);
                 requests = requests.concat(controlGroupRequests);
             } catch (err) {
                 sendError(req.originalUrl, res, err);
@@ -143,7 +140,7 @@ const router = require('express').Router()
         const {standardRequestSupported} = req.session.user;
         try {
             if (req.app.locals.features['control-groups'] && path) {
-                const {accessor, groups = []} = await require('vault-pam-premium').deleteControlGroupRequest(req);
+                const {accessor, groups = []} = await require('vault-pam-premium').deleteRequest(req);
                 // If entity id provided, it means it was a request rejection.
                 if (entityId) {
                     // Notify the user of the request rejection.
@@ -212,7 +209,7 @@ const router = require('express').Router()
         const {standardRequestSupported} = req.session.user;
         try {
             if (req.app.locals.features['control-groups'] && path) {
-                const {groups = [], data} = await require('vault-pam-premium').createControlGroupRequest(req);
+                const {groups = [], data} = await require('vault-pam-premium').createRequest(req);
                 groups.forEach((groupName) => {
                     console.warn('Emit create-request data ', data, ' to ', groupName);
                     notificationsManager.getInstance().in(groupName).emit('create-request', data);
@@ -264,10 +261,21 @@ const router = require('express').Router()
     .post('/request/authorize', async (req, res) => {
         const {accessor, id} = req.body;
         let result;
-        const {standardRequestSupported} = req.session.user;
+        const {groups, standardRequestSupported} = req.session.user;
         try {
             if (req.app.locals.features['control-groups'] && accessor) {
-                result = await authorizeControlGroupRequest(req);
+                const {data} = await require('vault-pam-premium').authorizeRequest(req);
+                const requester = unwrap(safeWrap(data).request_info.data.request_entity.id);
+                if (requester) {
+                    console.warn('Emit approve-request data ', data, ' to ', requester, ' and the following groups: ', groups.join(', '));
+                    notificationsManager.getInstance().to(requester).emit('approve-request', data);
+                    groups.forEach((groupName) => {
+                        notificationsManager.getInstance().to(groupName).emit('approve-request', data);
+                    });
+                }
+                result = {
+                    status: 'ok'
+                };
             } else if (standardRequestSupported && id) {
                 req.body.status = REQUEST_STATUS.APPROVED;
                 result = await updateStandardRequestByApprover(req);

@@ -64,93 +64,6 @@ const checkControlGroupRequestStatus = async (req, accessor) => {
 };
 
 /**
- * Retrieves Control Group paths from policies.
- *
- * @param {Object} req The HTTP request object.
- * @returns {Promise}
- */
-const getControlGroupPaths = async (req) => {
-    const result = await new Promise((resolve, reject) => {
-        const {VAULT_API_TOKEN: apiToken} = process.env;
-        if (!apiToken) {
-            reject('No API token configured.');
-            return;
-        }
-        const domain = getDomain();
-        const {token} = req.session.user;
-        const apiUrl = `${domain}/v1/auth/token/lookup-self`;
-        const controlGroupPolicies = {};
-        request(initApiRequest(token, apiUrl), (error, response, body) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-            Promise.all(body.data.policies.filter(name => name !== 'root').map(name => new Promise((policyResolve) => {
-                const policyApiUrl = `${domain}/v1/sys/policy/${name}`;
-                request(initApiRequest(apiToken, policyApiUrl), (policyError, policyResponse, policyBody) => {
-                    if (policyError) {
-                        console.log(`Error in retrieving "${policyApiUrl}": `, policyError);
-                    }
-                    const {rules} = (policyBody || {}).data || {};
-                    if (rules) {
-                        try {
-                            const parsedRules = hcltojson(rules);
-                            Object.keys(parsedRules.path).forEach(path => {
-                                const {control_group: controlGroup} = parsedRules.path[path];
-                                if (controlGroup) {
-                                    controlGroupPolicies[path] = controlGroup;
-                                }
-                            });
-                        } catch (err) {
-                            console.error(err);
-                        }
-                    }
-                    policyResolve();
-                });
-            }))).then(() => resolve(controlGroupPolicies));
-        });
-    });
-    return result;
-};
-
-/**
- * Retrieves the groups that the session user is assigned to.
- *
- * @param {Object} req The HTTP request object.
- * @returns {Promise}
- */
-const getGroupsByUser = async (req) => {
-    const {VAULT_API_TOKEN: apiToken} = process.env;
-    const domain = getDomain();
-    const {entityId} = req.session.user;
-    const result = await new Promise((resolve, reject) => {
-        const groups = [];
-        request(initApiRequest(apiToken, `${domain}/v1/identity/group/id?list=true`), (error, response, body) => {
-            if (error) {
-                reject(error);
-            } else if (response.statusCode !== 200) {
-                reject(body.errors || body);
-            } else {
-                Promise.all((((body || {}).data || {}).keys || []).map(key => {
-                    return new Promise((groupResolve) => {
-                        request(initApiRequest(apiToken, `${domain}/v1/identity/group/id/${key}`), (groupError, groupResponse, groupBody) => {
-                            if (groupBody) {
-                                const {member_entity_ids: entityIds = []} = groupBody.data || {};
-                                if (entityIds.includes(entityId)) {
-                                    groups.push(groupBody);
-                                }
-                            }
-                            groupResolve();
-                        });
-                    });
-                })).then(() => resolve(groups));
-            }
-        });
-    });
-    return result;
-};
-
-/**
  * Retrieves the groups that contain the specified metadata key.
  *
  * @param {Object} req The HTTP request object.
@@ -253,6 +166,7 @@ const authorizeControlGroupRequest = async (req) => {
                     const requesterData = await getUser(req, requester, 'admin').then(userData => {
                         return userData;
                     });
+                    // TODO - Refactor and move to requestService.
                     sendNotificationEmail({
                         approvers: emailRecipients,
                         requestData: {requestData: requestInfo.request_info.data.request_path, status: REQUEST_STATUS.APPROVED},
@@ -357,6 +271,7 @@ const deleteControlGroupRequest = async (req) => {
             const requesterData = await getUser(req, entityId || entityIdSelf, 'admin').then(userData => {
                 return userData;
             });
+            // TODO - Refactor and move to requestService.
             sendNotificationEmail({
                 approvers: emailRecipients,
                 requestData: {requestData: decodedPath, status: entityId ? REQUEST_STATUS.REJECTED : REQUEST_STATUS.CANCELED},
@@ -370,46 +285,6 @@ const deleteControlGroupRequest = async (req) => {
             console.error(err);
             reject({message: `Unable to delete the request to ${path} for entity ${entityId || entityIdSelf}.`});
         }
-    });
-};
-
-/**
- * Returns all active Control Group requests by the groups that the session user is associated to.
- *
- * @param {Object} req The HTTP request object.
- * @returns {Promise}
- */
-const getControlGroupRequests = async (req) => {
-    return new Promise(async (resolve, reject) => {
-        let groups = [];
-        try {
-            groups = await getGroupsByUser(req);
-        } catch (err) {
-            reject({message: err});
-        }
-        if (groups.length === 0) {
-            resolve([]);
-        }
-        const requests = {};
-        groups.forEach(group => {
-            Object.keys(group.data.metadata).forEach(metadataKey => {
-                if (metadataKey.startsWith('entity=')) {
-                    requests[metadataKey] = group.data.metadata[metadataKey];
-                }
-            });
-        });
-        const wrapInfoList = Object.keys(requests).map(key => JSON.parse(requests[key]));
-        Promise.all(wrapInfoList.map(requestData => checkControlGroupRequestStatus(req, requestData.accessor)))
-            .then((results) => {
-                resolve(results.map((request_info, i) => {
-                    return {
-                        accessor: wrapInfoList[i].accessor,
-                        request_info,
-                        wrap_info: wrapInfoList[i]
-                    };
-                }));
-            })
-            .catch(() => reject({message: 'Unable to retrieve requests.'}));
     });
 };
 
@@ -517,44 +392,6 @@ const router = require('express').Router()
 
     /**
      * @swagger
-     * /rest/control-group/request/authorize:
-     *   post:
-     *     tags:
-     *       - Control-Group
-     *     summary: Authorizes a Control Group request.
-     *     requestBody:
-     *       required: true
-     *       content:
-     *         application/json:
-     *           schema:
-     *             type: object
-     *             properties:
-     *               accessor:
-     *                 type: string
-     *               required:
-     *                 - accessor
-     *     responses:
-     *       200:
-     *         description: Success.
-     *       400:
-     *         description: Invalid accessor.
-     *       403:
-     *         description: Unauthorized.
-     *       500:
-     *         description: No approval group has been configured.
-     */
-    .post('/request/authorize', async (req, res) => {
-        let result;
-        try {
-            result = await authorizeControlGroupRequest(req);
-        } catch (err) {
-            sendError(req.originalUrl, res, err.message, err.statusCode);
-            return;
-        }
-        res.json(result);
-    })
-    /**
-     * @swagger
      * /rest/control-group/request/unwrap:
      *   post:
      *     tags:
@@ -588,29 +425,6 @@ const router = require('express').Router()
             sendError(req.originalUrl, res, err.message, err.statusCode);
             return;
         }
-    })
-    /**
-     * @swagger
-     * /rest/control-group/requests:
-     *   get:
-     *     tags:
-     *       - Control-Group
-     *     summary: Retrieves active Control Group requests from users.
-     *     responses:
-     *       200:
-     *         description: Success.
-     *       403:
-     *         description: Unauthorized.
-     */
-    .get('/requests', async (req, res) => {
-        let result;
-        try {
-            result = await getControlGroupRequests(req);
-        } catch (err) {
-            sendError(req.originalUrl, res, err.message, err.statusCode);
-            return;
-        }
-        res.json(result);
     })
     /**
      * @swagger
@@ -702,11 +516,5 @@ const router = require('express').Router()
     });
 
 module.exports = {
-    authorizeControlGroupRequest,
-    checkControlGroupRequestStatus,
-    getControlGroupPaths,
-    getControlGroupRequests,
-    getGroupsByUser,
-    getPathFromEncodedMetaKey,
     router
 };

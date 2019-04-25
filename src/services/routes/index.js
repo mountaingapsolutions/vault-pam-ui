@@ -3,7 +3,7 @@ const chalk = require('chalk');
 const request = require('request');
 const swaggerUi = require('swagger-ui-express');
 const {options, swaggerDoc} = require('services/Swagger');
-const {router: controlGroupServiceRouter, getGroupsByUser} = require('services/routes/controlGroupService');
+const {router: controlGroupServiceRouter} = require('services/routes/controlGroupService');
 const {router: secretsServiceRouter} = require('services/routes/secretsService');
 const {router: userServiceRouter} = require('services/routes/userService');
 const {router: requestServiceRouter} = require('services/routes/requestService');
@@ -148,7 +148,7 @@ const authenticatedRoutes = require('express').Router()
                     res.cookie('entity_id', entityId, {
                         httpOnly: true
                     });
-                    getGroupsByUser(req).then(groups => {
+                    _getGroupsByUser(req).then(groups => {
                         setSessionData(req, {
                             groups: groups.map(group => group.data.name)
                         });
@@ -177,21 +177,6 @@ const authenticatedRoutes = require('express').Router()
     });
 
 /**
- * Sends the a Vault domain error response.
- *
- * @private
- * @param {Object} url The requested Vault server url.
- * @param {Object} res The HTTP response object.
- * @param {Object} error The error.
- */
-const _sendVaultDomainError = (url, res, error) => {
-    console.warn(`Error in retrieving url "${url}": `, error);
-    res.status(400).json({
-        errors: ['Invalid Vault server domain.']
-    });
-};
-
-/**
  * Disables cache for the response.
  *
  * @private
@@ -201,6 +186,44 @@ const _disableCache = (res) => {
     res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.header('Pragma', 'no-cache');
     res.header('Expires', 0);
+};
+
+/**
+ * Retrieves the groups that the session user is assigned to.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
+const _getGroupsByUser = async (req) => {
+    const {VAULT_API_TOKEN: apiToken} = process.env;
+    const domain = getDomain();
+    const {entityId} = req.session.user;
+    const result = await new Promise((resolve, reject) => {
+        const groups = [];
+        request(initApiRequest(apiToken, `${domain}/v1/identity/group/id?list=true`), (error, response, body) => {
+            if (error) {
+                reject(error);
+            } else if (response.statusCode !== 200) {
+                reject(body.errors || body);
+            } else {
+                Promise.all((((body || {}).data || {}).keys || []).map(key => {
+                    return new Promise((groupResolve) => {
+                        request(initApiRequest(apiToken, `${domain}/v1/identity/group/id/${key}`), (groupError, groupResponse, groupBody) => {
+                            if (groupBody) {
+                                const {member_entity_ids: entityIds = []} = groupBody.data || {};
+                                if (entityIds.includes(entityId)) {
+                                    groups.push(groupBody);
+                                }
+                            }
+                            groupResolve();
+                        });
+                    });
+                })).then(() => resolve(groups));
+            }
+        });
+    });
+    return result;
 };
 
 /**
@@ -227,14 +250,14 @@ const _sendTokenValidationResponse = (token, req, res) => {
             res.cookie('entity_id', entityId, {
                 httpOnly: true
             });
-            getGroupsByUser(req).then(groups => {
+            _getGroupsByUser(req).then(groups => {
                 setSessionData(req, {
                     groups: groups.map(group => group.data.name)
                 });
                 res.status(response.statusCode).json(body);
             });
         } catch (err) {
-            _sendVaultDomainError(apiUrl, res, err);
+            sendError(apiUrl, res, err);
         }
     });
 };

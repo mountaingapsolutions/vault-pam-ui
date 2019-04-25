@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
 const chalk = require('chalk');
 const request = require('request');
-const {getControlGroupPaths} = require('services/routes/controlGroupService');
 const {checkIfApprover} = require('services/routes/standardRequestService');
 const {initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
 const RequestController = require('services/controllers/Request');
@@ -45,10 +44,10 @@ const router = require('express').Router()
     .get('/list/*', async (req, res) => {
         // Check for Control Group policies.
         const {controlGroupPaths} = req.session.user;
-        if (!controlGroupPaths) {
+        if (!controlGroupPaths && req.app.locals.features['control-groups']) {
             let paths = {};
             try {
-                paths = await getControlGroupPaths(req);
+                paths = await require('vault-pam-premium').getPaths(req);
             } catch (err) {
                 console.error(err);
             }
