@@ -1,6 +1,5 @@
 /* eslint-disable no-console, no-unused-vars */
 const {filter, safeWrap, unwrap} = require('@mountaingapsolutions/objectutil');
-const hcltojson = require('hcl-to-json');
 const request = require('request');
 const notificationsManager = require('services/notificationsManager');
 const {getDomain, initApiRequest, sendError, sendNotificationEmail} = require('services/utils');
@@ -23,17 +22,6 @@ const KEY_REPLACEMENT_MAP = {
  */
 const _encodeMetaKey = (entityId, path) => {
     return `entity=${entityId}${KEY_REPLACEMENT_MAP.COMMA}path=${path.replace(/\//g, KEY_REPLACEMENT_MAP.FORWARD_SLASH).replace(/ /g, KEY_REPLACEMENT_MAP.SPACE)}`;
-};
-
-/**
- * Returns the decoded path from the encoded metadata key.
- *
- * @param {string} encodedMetaKey The encoded metadata key.
- * @returns {string}
- */
-const getPathFromEncodedMetaKey = (encodedMetaKey) => {
-    // Using split and join approach over replace so that the SPACE =+= key does not need to be regex escapped (i.e. =\\+=).
-    return encodedMetaKey.split(`${KEY_REPLACEMENT_MAP.COMMA}path=`)[1].split(KEY_REPLACEMENT_MAP.FORWARD_SLASH).join('/').split(KEY_REPLACEMENT_MAP.SPACE).join(' ');
 };
 
 /**
@@ -254,7 +242,7 @@ const deleteControlGroupRequest = async (req) => {
                 reject({message: `No accessor found for ${decodedPath}.`, statusCode: 404});
                 return;
             }
-            await revokeAccessor(req, accessor);
+            //await revokeAccessor(req, accessor);
             // If entity id provided, it means it was a request rejection.
             if (entityId) {
                 // Notify the user of the request rejection.
@@ -287,125 +275,3 @@ const deleteControlGroupRequest = async (req) => {
         }
     });
 };
-
-/**
- * Revokes the provided accessor.
- *
- * @param {Object} req The HTTP request object.
- * @param {string} accessor The accessor to revoke.
- * @returns {Promise}
- */
-const revokeAccessor = async (req, accessor) => {
-    const {VAULT_API_TOKEN: apiToken} = process.env;
-    const result = await new Promise((resolve, reject) => {
-        request({
-            ...initApiRequest(apiToken, `${getDomain()}/v1/auth/token/revoke-accessor`),
-            method: 'POST',
-            json: {
-                accessor
-            }
-        }, (error, response) => {
-            if (response.statusCode === 204) {
-                console.log(`Accessor successfully revoked: ${accessor}.`);
-                resolve();
-            } else {
-                console.log(`Error in attempting to revoke ${accessor}: `, error);
-                reject();
-            }
-        });
-    });
-    return result;
-};
-
-/* eslint-disable new-cap */
-const router = require('express').Router()
-/* eslint-enable new-cap */
-
-    /**
-     * @swagger
-     * /rest/control-group/requests:
-     *   delete:
-     *     tags:
-     *       - Control-Group
-     *     summary: "Cleanup endpoint to delete all Control Group requests. Note: this is a very destructive operation and an admin token is required."
-     *     responses:
-     *       200:
-     *         description: Success.
-     *       403:
-     *         description: Unauthorized.
-     */
-    .delete('/requests', async (req, res) => {
-        const domain = getDomain();
-        const {token} = req.session.user;
-
-        try {
-            await new Promise((resolve, reject) => {
-                request(initApiRequest(token, `${domain}/v1/auth/token/accessors/?list=true`), (error, response, body) => {
-                    if (error) {
-                        reject(error);
-                    } else if (response.statusCode !== 200) {
-                        reject(response);
-                    } else {
-                        const {keys: accessors} = body.data || {};
-                        if (accessors) {
-                            // Revoke all Control Group accessors.
-                            Promise.all(accessors.map(accessor => new Promise((accessorResolve) => request({
-                                ...initApiRequest(token, `${domain}/v1/auth/token/lookup-accessor`),
-                                method: 'POST',
-                                json: {
-                                    accessor
-                                }
-                            }, (accessorError, accessorResponse, accessorBody) => {
-                                const {policies = []} = (accessorBody || {}).data || {};
-                                if (policies.includes('control-group')) {
-                                    // For each Control Group accessor, look for older versions and revoke them.
-                                    revokeAccessor(req, accessor)
-                                        .then(accessorResolve)
-                                        .catch(accessorResolve);
-                                } else {
-                                    accessorResolve();
-                                }
-                            }))))
-                                .then(resolve)
-                                .catch(resolve);
-                        } else {
-                            resolve();
-                        }
-                    }
-                });
-            });
-        } catch (err) {
-            sendError(req.originalUrl, res, err.statusCode ? err.body.errors : err, err.statusCode || 500);
-            return;
-        }
-        try {
-            await new Promise((resolve) => {
-                request(initApiRequest(token, `${domain}/v1/identity/group/id?list=true`), (error, response, body) => {
-                    const keys = unwrap(safeWrap(body).data.keys) || [];
-                    Promise.all(keys.map(key => {
-                        return new Promise((groupResolve) => {
-                            request(initApiRequest(token, `${domain}/v1/identity/group/id/${key}`), (groupError, groupResponse, groupBody) => {
-                                const {id, metadata = {}} = (groupBody || {}).data || {};
-                                const updatedMetadata = filter(metadata, metaKey => !metaKey.startsWith('entity='));
-                                request({
-                                    ...initApiRequest(token, `${domain}/v1/identity/group/id/${id}`),
-                                    method: 'POST',
-                                    json: {
-                                        metadata: updatedMetadata
-                                    }
-                                }, () => groupResolve());
-                            });
-                        });
-                    }))
-                        .then(resolve)
-                        .catch(resolve);
-                });
-            });
-        } catch (err) {
-            sendError(req.originalUrl, res, err.statusCode ? err.body.errors : err, err.statusCode || 500);
-            return;
-        }
-        res.json({
-            status: 'ok'
-        });
-    });
