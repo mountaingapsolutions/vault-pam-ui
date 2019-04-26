@@ -15,6 +15,16 @@ class Logger {
      */
     _xhrRequestPost(url, data) {
         return new Promise((resolve, reject) => {
+            let isTimeout = false;
+            let timeoutId;
+
+            timeoutId = setTimeout(() => {
+                reject({
+                    error: `Timeout from: ${url}`
+                });
+                isTimeout = true;
+            }, 30000);
+
             let postData = {
                 method: 'POST',
                 credentials: 'same-origin',
@@ -36,12 +46,15 @@ class Logger {
                 return res.headers.get('content-type').includes('application/json') ? res.json() : res.text();
             }).then(response => {
                 const responseData = typeof response === 'object' ? response : {response};
-                if (ok) {
-                    resolve(responseData);
-                } else {
-                    reject(responseData);
+                if (!isTimeout) {
+                    if (ok) {
+                        resolve(responseData);
+                    } else {
+                        reject(responseData);
+                    }
+                    clearTimeout(timeoutId);
                 }
-            });
+            }).catch(err => reject(err));
         });
     }
 
@@ -118,9 +131,7 @@ class Logger {
      */
     print(params = {}) {
         this._xhrRequestPost('/rest/log',
-            {
-                ...params
-            });
+            {...params});
     }
 }
 

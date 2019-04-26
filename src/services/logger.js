@@ -4,6 +4,7 @@ const {createLogger, format, transports} = require('winston');
  * Main Logging method.
  */
 const _logger = createLogger({
+    level: process.env.LOG_LEVEL || 'info',
     format: format.combine(
         format.timestamp({
             format: 'YYYY-MM-DD HH:mm:ss'
@@ -14,7 +15,6 @@ const _logger = createLogger({
     ),
     transports: [
         new transports.File({filename: 'logs/error.log', level: 'error'}),
-        new transports.File({filename: 'logs/info.log', level: 'info'}),
         new transports.File({filename: 'logs/combined.log'})
     ],
     exitOnError: false
@@ -42,7 +42,7 @@ const _log = (level, data, req) => {
     _logger.log({
         ...logObject
     });
-    return null;
+    return logObject;
 };
 
 if (process.env.NODE_ENV !== 'production') {
@@ -58,12 +58,12 @@ if (process.env.NODE_ENV !== 'production') {
 const router = require('express').Router()
 /* eslint-enable new-cap */
     .post('/', async (req, res) => {
-        return _log(req.body.level || 'log', req.body, req, res);
+        res.json(_log(req.body.level || 'info', req.body, req));
     });
 
 module.exports = {
     info: _log.bind(this, 'info'),
-    log: _log.bind(this, 'log'),
+    log: _log.bind(this, 'info'),
     warn: _log.bind(this, 'warn'),
     error: _log.bind(this, 'error'),
     router
