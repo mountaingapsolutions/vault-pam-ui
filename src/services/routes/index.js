@@ -193,17 +193,19 @@ const _disableCache = (res) => {
  * @param {Object} req The HTTP request object.
  * @returns {Promise}
  */
-const _getGroupsByUser = async (req) => {
+const _getGroupsByUser = (req) => {
     const {VAULT_API_TOKEN: apiToken} = process.env;
     const domain = getDomain();
     const {entityId} = req.session.user;
-    const result = await new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const groups = [];
         request(initApiRequest(apiToken, `${domain}/v1/identity/group/id?list=true`), (error, response, body) => {
             if (error) {
-                reject(error);
+                console.error(error);
+                resolve([]);
             } else if (response.statusCode !== 200) {
-                reject(body.errors || body);
+                console.error(body.errors || body);
+                resolve([]);
             } else {
                 Promise.all((((body || {}).data || {}).keys || []).map(key => {
                     return new Promise((groupResolve) => {
@@ -221,7 +223,6 @@ const _getGroupsByUser = async (req) => {
             }
         });
     });
-    return result;
 };
 
 /**
@@ -240,20 +241,24 @@ const _sendTokenValidationResponse = (token, req, res) => {
             return;
         }
         try {
-            const {entity_id: entityId} = body.data || {};
-            setSessionData(req, {
-                token,
-                entityId
-            });
-            res.cookie('entity_id', entityId, {
-                httpOnly: true
-            });
-            _getGroupsByUser(req).then(groups => {
+            if (!body.errors) {
+                const {entity_id: entityId} = body.data || {};
                 setSessionData(req, {
-                    groups: groups.map(group => group.data.name)
+                    token,
+                    entityId
                 });
+                res.cookie('entity_id', entityId, {
+                    httpOnly: true
+                });
+                _getGroupsByUser(req).then(groups => {
+                    setSessionData(req, {
+                        groups: groups.map(group => group.data.name)
+                    });
+                    res.status(response.statusCode).json(body);
+                });
+            } else {
                 res.status(response.statusCode).json(body);
-            });
+            }
         } catch (err) {
             sendError(apiUrl, res, err);
         }

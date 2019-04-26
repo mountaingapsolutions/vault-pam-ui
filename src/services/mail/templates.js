@@ -1,3 +1,49 @@
+/**
+ * Creates the primary email template.
+ *
+ * @private
+ * @param {string} body The body content.
+ * @returns {string}
+ */
+const _createTemplate = (body) => {
+    return `<table style="background: #EEE; font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif; width: 100%">
+                <thead>
+                    <tr>
+                        <th style="background: #2196f3; height: 64px; text-align: left;">
+                            <h6 style="margin: 0 0 0 20px; color: #FFF !important; font-size: 1.25em; font-family: inherit; font-weight: 500;">[Vault PAM] Secrets access request</h6>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="background: #FFF; padding: 20px;">
+                            ${body}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>`;
+};
+
+/**
+ * Returns the secrets request template.
+ *
+ * @param {Object} emailData The email data map.
+ * @returns {Object}
+ */
+const secretsRequestTemplate = (emailData) => {
+    const {url, from, to, secretsPath} = emailData;
+    return {
+        from,
+        to,
+        subject: `[Vault PAM] Secrets access request - ${secretsPath}`,
+        html: _createTemplate(`<p style="color: #000;">
+                                   <b>${from}</b> is requesting access to <b>${secretsPath}</b>.
+                               </p>
+                               <p style="color: #000;">
+                                   To view this request, go to <a href="${url}">${url}</a>. 
+                               </p>`)
+    };
+};
 
 /**
  * Get approval email contents.
@@ -45,6 +91,8 @@ const getUpdateRequestStatusEmailContent = emailData => {
 };
 
 module.exports = {
-    getUpdateRequestStatusEmailContent
+    secretsRequestTemplate,
+    getUpdateRequestStatusEmailContent,
+    'create-request': secretsRequestTemplate
 };
 

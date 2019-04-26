@@ -1,7 +1,7 @@
 const RequestController = require('services/controllers/Request');
-const {getUser, getUserIds} = require('services/routes/userService');
+const {getUserIds} = require('services/routes/userService');
 const requestLib = require('request');
-const {initApiRequest, getDomain, sendNotificationEmail, sendError} = require('services/utils');
+const {initApiRequest, getDomain, sendError} = require('services/utils');
 const {REQUEST_STATUS} = require('services/constants');
 /**
  * @swagger
@@ -25,56 +25,6 @@ const {REQUEST_STATUS} = require('services/constants');
  */
 
 /**
- * Retrieves the approver group members' emails
- *
- * @param {Object} req The HTTP request object.
- * @returns {Promise}
- */
-const _getApproverGroupMemberEmails = async (req) => {
-    const result = await new Promise( (resolve, reject) => {
-        const {VAULT_API_TOKEN: apiToken} = process.env;
-        if (!apiToken) {
-            reject('No API token configured.');
-            return;
-        }
-        const groupName = 'pam-approver';
-        let groupMembersEmail = [];
-
-        requestLib(initApiRequest(apiToken, `${getDomain()}/v1/identity/group/name/${groupName}`), (error, response, body) => {
-            if (body && body.data) {
-                const member_entity_ids = body.data.member_entity_ids;
-                const {type: userType} = body.data.metadata;
-                if (userType === 'admin' && member_entity_ids) {
-                    Promise.all(member_entity_ids.map(id => {
-                        return new Promise((memberResolve, memberReject) => {
-                            // get user from getUser
-                            getUser(req, id, userType).then(user => {
-                                if (user && user.body.data && user.body.data.metadata) {
-                                    const {email} = user.body.data.metadata;
-                                    groupMembersEmail.push(email);
-                                    memberResolve();
-                                } else {
-                                    /* eslint-disable no-console */
-                                    console.warn(`User information not found. Entity ID: ${id}`);
-                                    /* eslint-enable no-console */
-                                }
-                            }).catch(err => {
-                                memberReject(err);
-                            });
-                        });
-                    })).then(() => {
-                        resolve(groupMembersEmail);
-                    }).catch((err) => {
-                        reject(err);
-                    });
-                }
-            }
-        });
-    });
-    return result;
-};
-
-/**
  * Check if user is a member of approver group
  *
  * @param {Object} req The HTTP request object.
@@ -82,7 +32,7 @@ const _getApproverGroupMemberEmails = async (req) => {
  * @returns {Promise}
  */
 const checkIfApprover = async (req, entityId) => {
-    return await new Promise( (resolve, reject) => {
+    return await new Promise((resolve, reject) => {
         const {VAULT_API_TOKEN: apiToken} = process.env;
 
         if (!apiToken) {
@@ -92,14 +42,8 @@ const checkIfApprover = async (req, entityId) => {
         const groupName = 'pam-approver';
         requestLib(initApiRequest(apiToken, `${getDomain()}/v1/identity/group/name/${groupName}`), (error, response, body) => {
             if (body && body.data) {
-                const {member_entity_ids} = body.data;
-                const {type} = body.data.metadata;
-
-                if (type === 'admin' && member_entity_ids) {
-                    resolve(member_entity_ids.includes(entityId));
-                } else {
-                    reject(error);
-                }
+                const {member_entity_ids = []} = body.data || {};
+                resolve(member_entity_ids.includes(entityId));
             } else {
                 reject(`${groupName} group not found.`);
             }
@@ -114,7 +58,7 @@ const checkIfApprover = async (req, entityId) => {
  * @returns {Promise}
  */
 const createStandardRequest = (req) => {
-    return new Promise( (resolve, reject) => {
+    return new Promise((resolve, reject) => {
         const {requestData, type, status, engineType} = req.body;
         const {entityId: requesterEntityId} = req.session.user;
         RequestController.create(requesterEntityId, requestData, type, status, engineType).then(request => {
@@ -135,26 +79,9 @@ const createOrGetStandardRequest = (req) => {
     const {requestData, type, status, engineType} = req.body;
     const {entityId: requesterEntityId} = req.session.user;
     return new Promise((resolve, reject) => {
-        RequestController.findOrCreate(requesterEntityId, requestData, type, status, engineType).then(request => {
-            // if a new request, send email to approvers
-            if (request._options.isNewRecord === true) {
-                _getApproverGroupMemberEmails(req).then(approvers => {
-                    getUser(req, requesterEntityId, 'admin').then(requesterData => {
-                        if (requesterData && requesterData.body && requesterData.body.data) {
-                            sendNotificationEmail({
-                                approvers,
-                                requestData: request,
-                                requesterData,
-                                userSession: req.session.user
-                            });
-                        }
-                    });
-                });
-            }
-            resolve(request);
-        }).catch((error) => {
-            reject(error);
-        });
+        RequestController.findOrCreate(requesterEntityId, requestData, type, status, engineType)
+            .then(resolve)
+            .catch(reject);
     });
 };
 
@@ -166,7 +93,7 @@ const createOrGetStandardRequest = (req) => {
  */
 const getStandardRequestsByApprover = (req) => {
     const {entityId} = req.session.user;
-    return new Promise( (resolve, reject) => {
+    return new Promise((resolve, reject) => {
         RequestController.findAllByApprover(entityId).then(requests => {
             resolve(requests);
         }).catch((error) => {
@@ -208,7 +135,7 @@ const getUserSecretsAccess = (req, param) => {
 const getStandardRequestsByStatus = async (req, status) => {
     return new Promise(async (finalResolve, finalReject) => {
 
-        const standardRequestsPromise = new Promise( (resolve, reject) => {
+        const standardRequestsPromise = new Promise((resolve, reject) => {
             RequestController.findAllByStatus(status).then(requests => {
                 resolve(requests);
             }).catch((error) => {
@@ -258,7 +185,7 @@ const getStandardRequestsByUserType = (req) => {
 };
 
 const getStandardRequests = () => {
-    return new Promise( (resolve, reject) => {
+    return new Promise((resolve, reject) => {
         RequestController.findAll().then(requests => {
             resolve(requests);
         }).catch((error) => {
@@ -277,7 +204,7 @@ const getStandardRequestsByRequester = async (req) => {
     const {entityId} = req.session.user;
     return new Promise(async (finalResolve, finalReject) => {
 
-        const standardRequestsPromise = new Promise( (resolve, reject) => {
+        const standardRequestsPromise = new Promise((resolve, reject) => {
             RequestController.findAllByRequester(entityId).then(requests => {
                 resolve(requests);
             }).catch((error) => {
@@ -302,24 +229,8 @@ const getStandardRequestsByRequester = async (req) => {
 
 const updateStandardRequestById = async req => {
     const {id, status} = req.body;
-    return new Promise( (resolve, reject) => {
-        RequestController.updateStatus(id, status).then(request => {
-            const {requesterEntityId} = request[1];
-            _getApproverGroupMemberEmails(req).then((approvers) => {
-                getUser(req, requesterEntityId, 'admin').then(requesterData => {
-                    if (requesterData && requesterData.body && requesterData.body.data) {
-                        sendNotificationEmail({
-                            approvers,
-                            requestData: request[1],
-                            requesterData,
-                            userSession: req.session.user});
-                    }
-                });
-            });
-            resolve(request);
-        }).catch((error) => {
-            reject(error);
-        });
+    return new Promise((resolve, reject) => {
+        RequestController.updateStatus(id, status).then(resolve).catch(reject);
     });
 };
 
@@ -332,7 +243,7 @@ const updateStandardRequestById = async req => {
 const updateStandardRequestByApprover = async (req) => {
     const {id, status} = req.body;
     const {entityId: approverEntityId} = req.session.user;
-    return await new Promise( async (resolve, reject) => {
+    return await new Promise(async (resolve, reject) => {
         let isApprover = false;
         try {
             isApprover = await checkIfApprover(req, approverEntityId);
@@ -340,22 +251,7 @@ const updateStandardRequestByApprover = async (req) => {
             reject({message: err});
         }
         if (isApprover) {
-            RequestController.updateStatusByApprover(id, approverEntityId, status).then(request => {
-                const {requesterEntityId} = request[1];
-                _getApproverGroupMemberEmails(req).then((approvers) => {
-                    getUser(req, requesterEntityId, 'admin').then(requesterData => {
-                        if (requesterData && requesterData.body && requesterData.body.data) {
-                            sendNotificationEmail({
-                                approvers,
-                                requestData: request[1],
-                                requesterData,
-                                userSession: req.session.user
-                            });
-                        }
-                    });
-                });
-                resolve(request);
-            });
+            RequestController.updateStatusByApprover(id, approverEntityId, status).then(resolve).catch(reject);
         } else {
             reject({message: 'Unauthorized', statusCode: 403});
         }
@@ -365,20 +261,20 @@ const updateStandardRequestByApprover = async (req) => {
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
-    /**
-     * @swagger
-     * /rest/request:
-     *   get:
-     *     tags:
-     *       - Standard Requests
-     *     name: Get requests
-     *     summary: Get requests
-     *     responses:
-     *       200:
-     *         description: Request found
-     *       404:
-     *         description: Request not found
-     */
+/**
+ * @swagger
+ * /rest/request:
+ *   get:
+ *     tags:
+ *       - Standard Requests
+ *     name: Get requests
+ *     summary: Get requests
+ *     responses:
+ *       200:
+ *         description: Request found
+ *       404:
+ *         description: Request not found
+ */
     .get('/', (req, res) => {
         RequestController.findAll().then(request => {
             res.json(request);

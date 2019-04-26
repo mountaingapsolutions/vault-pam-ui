@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 const {safeWrap, unwrap} = require('@mountaingapsolutions/objectutil');
 const notificationsManager = require('services/notificationsManager');
+const {sendMailFromTemplate} = require('services/mail/smtpClient');
 const {
     createOrGetStandardRequest,
     getStandardRequestsByUserType,
@@ -8,8 +9,36 @@ const {
     updateStandardRequestByApprover,
     updateStandardRequestById
 } = require('services/routes/standardRequestService');
-const {checkStandardRequestSupport, sendError, setSessionData} = require('services/utils');
+const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, setSessionData} = require('services/utils');
 const {REQUEST_STATUS} = require('services/constants');
+
+/**
+ * Retrieves users associated to the provided group name.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @param {string} groupName The group name.
+ * @returns {Promise}
+ */
+const _getUsersByGroupName = async (req, groupName) => {
+    const {VAULT_API_TOKEN: apiToken} = process.env;
+    const domain = getDomain();
+
+    const groupRequest = initApiRequest(apiToken, `${domain}/v1/identity/group/name/${groupName}`);
+    const {member_entity_ids: entityIds = []} = ((await asyncRequest(groupRequest)).body || {}).data || {};
+    return new Promise((resolve) => {
+        Promise.all(entityIds.map((entityId) => new Promise((userResolve) => {
+            const userRequest = initApiRequest(apiToken, `${domain}/v1/identity/entity/id/${entityId}`);
+            asyncRequest(userRequest)
+                .then((response) => userResolve(response.body))
+                .catch((error) => userResolve(error));
+        })))
+            .then((responses) => {
+                resolve(responses.filter((response) => response.data).map((response) => response.data));
+            });
+    });
+
+};
 
 /* eslint-disable new-cap */
 const router = require('express').Router()
@@ -159,6 +188,7 @@ const router = require('express').Router()
             } else if (standardRequestSupported && id) {
                 req.body = {id, status: REQUEST_STATUS.CANCELED};
                 result = await updateStandardRequestById(req);
+                // TODO - Send canceled email.
             } else {
                 sendError(req.originalUrl, res, 'Invalid request', 400);
                 return;
@@ -208,11 +238,13 @@ const router = require('express').Router()
         let result;
         const {standardRequestSupported} = req.session.user;
         try {
+            const approverGroupPromises = [];
             if (req.app.locals.features['control-groups'] && path) {
                 const {groups = [], data} = await require('vault-pam-premium').createRequest(req);
                 groups.forEach((groupName) => {
                     console.warn('Emit create-request data ', data, ' to ', groupName);
                     notificationsManager.getInstance().in(groupName).emit('create-request', data);
+                    approverGroupPromises.push(_getUsersByGroupName(req, groupName));
                 });
                 result = {
                     status: 'ok'
@@ -220,10 +252,29 @@ const router = require('express').Router()
                 //TODO add engineType checking - engineType
             } else if (standardRequestSupported && requestData) {
                 result = await createOrGetStandardRequest(req);
+                approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             } else {
                 sendError(req.originalUrl, res, 'Invalid request', 400);
                 return;
             }
+            const approvers = {};
+            Promise.all(approverGroupPromises).then((groups) => {
+                groups.forEach((users) => {
+                    users.forEach((user) => {
+                        if (user.metadata && user.metadata.email) {
+                            approvers[user.metadata.email] = user;
+                        }
+                    });
+                });
+                sendMailFromTemplate('create-request', {
+                    url: `${req.protocol}://${req.get('host')}`,
+                    from: 'John Ho <john.ho@mountaingapsolutions.com>',
+                    to: Object.keys(approvers).join(', '),
+                    secretsPath: path
+                });
+            });
+            //smtpClient
+
         } catch (err) {
             sendError(req.originalUrl, res, err.message, err.statusCode);
             return;
@@ -279,6 +330,7 @@ const router = require('express').Router()
             } else if (standardRequestSupported && id) {
                 req.body.status = REQUEST_STATUS.APPROVED;
                 result = await updateStandardRequestByApprover(req);
+                // TODO - Send approved email.
             } else {
                 sendError(req.originalUrl, res, 'Invalid request', 400);
                 return;

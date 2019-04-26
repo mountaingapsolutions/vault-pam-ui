@@ -85,27 +85,21 @@ const _login = async (req, username, password) => {
 /**
  * Gets a user by optional entity id. If no entity id is provided, defaults to current session user's entity id.
  *
- * @TODO - HVU-89 - Yikes... this is gonna need to be reverted. Passing userType doesn't pass the sniff test. This makes my eyes hurt.
  * @param {Object} req The HTTP request object.
  * @param {string} [id] The entity id.
- * @param {string} userType The user type.
  * @returns {Promise}
  */
-const getUser = async (req, id, userType = null) => {
+const getUser = async (req, id) => {
     return await new Promise((resolve, reject) => {
         const {VAULT_API_TOKEN: apiToken} = process.env;
         const domain = getDomain();
         const {entityId: sessionUserEntityId, token: sessionUserToken} = req.session.user;
         let apiRequest;
-        if (userType === 'admin' && id) {
-            apiRequest = initApiRequest(apiToken, `${domain}/v1/identity/entity/id/${id}`);
+        // If entity id is provided, use the session user token to handle proper permissions. Otherwise, use the admin token to fetch the session user data.
+        if (id) {
+            apiRequest = initApiRequest(sessionUserToken, `${domain}/v1/identity/entity/id/${id}`);
         } else {
-            // If entity id is provided, use the session user token to handle proper permissions. Otherwise, use the admin token to fetch the session user data.
-            if (id) {
-                apiRequest = initApiRequest(sessionUserToken, `${domain}/v1/identity/entity/id/${id}`);
-            } else {
-                apiRequest = initApiRequest(apiToken, `${domain}/v1/identity/entity/id/${sessionUserEntityId}`);
-            }
+            apiRequest = initApiRequest(apiToken, `${domain}/v1/identity/entity/id/${sessionUserEntityId}`);
         }
         request(apiRequest, (error, response) => {
             if (error) {
