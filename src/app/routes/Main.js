@@ -174,7 +174,7 @@ class Main extends Component {
     componentDidMount() {
         const {checkSession, listRequests} = this.props;
         checkSession().then(() => {
-            const {listMounts, getGroupData, getSealStatus, user, vaultLookupSelf} = this.props;
+            const {listMounts, getSealStatus, user, vaultLookupSelf} = this.props;
 
             if (vaultLookupSelf.data.data.policies.includes('root')) {
                 localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
@@ -190,7 +190,6 @@ class Main extends Component {
                     isUserProfileModalOpen: true
                 });
             }
-            getGroupData();
             getSealStatus();
             listMounts();
         });
@@ -348,7 +347,6 @@ class Main extends Component {
 Main.propTypes = {
     checkSession: PropTypes.func.isRequired,
     classes: PropTypes.object.isRequired,
-    getGroupData: PropTypes.func.isRequired,
     getSealStatus: PropTypes.func.isRequired,
     group: PropTypes.object,
     isLoggedIn: PropTypes.bool,
@@ -400,7 +398,6 @@ const _mapDispatchToProps = (dispatch) => {
         },
         listMounts: () => dispatch(kvAction.listMounts()),
         listRequests: () => dispatch(kvAction.listRequests()),
-        getGroupData: () => dispatch(systemAction.getGroupData()),
         getSealStatus: () => dispatch(systemAction.getSealStatus()),
         logout: () => dispatch(userAction.logout())
     };

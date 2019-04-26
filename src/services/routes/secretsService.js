@@ -68,7 +68,7 @@ const router = require('express').Router()
         const apiUrl = `${domain}/v1/${listUrlParts.join('/')}?list=true`;
 
         // Get current user's active Control Group requests.
-        let activeRequests = {};
+        let activeRequests = [];
         if (req.app.locals.features['control-groups']) {
             activeRequests = await require('vault-pam-premium').getActiveRequests(req);
         }
@@ -154,7 +154,7 @@ const router = require('express').Router()
                             if (canRead && !key.endsWith('/')) {
                                 promises.push(new Promise((secretResolve) => {
                                     const getSecretApiUrl = `${domain}/v1/${key}`;
-                                    const activeRequest = activeRequests[key];
+                                    const activeRequest = activeRequests.find(activeReq => (activeReq.request_info || {}).request_path === key);
                                     if (activeRequest) {
                                         console.log(`Active request found for ${key}: `, activeRequest);
                                         secret.data = activeRequest;

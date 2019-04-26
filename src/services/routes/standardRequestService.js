@@ -93,9 +93,8 @@ const checkIfApprover = async (req, entityId) => {
         requestLib(initApiRequest(apiToken, `${getDomain()}/v1/identity/group/name/${groupName}`), (error, response, body) => {
             if (body && body.data) {
                 const {member_entity_ids} = body.data;
-                const {type} = body.data.metadata;
 
-                if (type === 'admin' && member_entity_ids) {
+                if (member_entity_ids) {
                     resolve(member_entity_ids.includes(entityId));
                 } else {
                     reject(error);
@@ -203,13 +202,15 @@ const getUserSecretsAccess = (req, param) => {
  *
  * @param {Object} req The HTTP request object.
  * @param {string} status The request status in database.
+ * @param {boolean} [isApprover] if user is approver, retrieve all pending requests
  * @returns {Promise}
  */
-const getStandardRequestsByStatus = async (req, status) => {
+const getStandardRequestsByStatus = async (req, status, isApprover) => {
+    const {entityId} = req.session.user;
     return new Promise(async (finalResolve, finalReject) => {
 
         const standardRequestsPromise = new Promise( (resolve, reject) => {
-            RequestController.findAllByStatus(status).then(requests => {
+            RequestController.findByParams({...!isApprover && {requesterEntityId: entityId}, status}).then(requests => {
                 resolve(requests);
             }).catch((error) => {
                 reject(error);
@@ -248,7 +249,7 @@ const getStandardRequestsByUserType = (req) => {
         }
         let result = [];
         try {
-            const data = isApprover ? await getStandardRequestsByStatus(req, REQUEST_STATUS.PENDING) : await getStandardRequestsByRequester(req);
+            const data = await getStandardRequestsByStatus(req, REQUEST_STATUS.PENDING, isApprover);
             result = result.concat(data);
         } catch (err) {
             reject({message: err});
@@ -268,39 +269,6 @@ const getStandardRequests = () => {
             resolve(requests);
         }).catch((error) => {
             reject(error);
-        });
-    });
-};
-
-/**
- * Get standard requests by requester.
- *
- * @param {Object} req The HTTP request object.
- * @returns {Promise}
- */
-const getStandardRequestsByRequester = async (req) => {
-    const {entityId} = req.session.user;
-    return new Promise(async (finalResolve, finalReject) => {
-
-        const standardRequestsPromise = new Promise( (resolve, reject) => {
-            RequestController.findAllByRequester(entityId).then(requests => {
-                resolve(requests);
-            }).catch((error) => {
-                reject(error);
-            });
-        });
-        const getUserIdsPromise = getUserIds();
-
-        Promise.all([standardRequestsPromise, getUserIdsPromise]).then((results) => {
-            const standardRequests = (Array.isArray(results) && results[0] ? results[0] : []).map(standardRequest => {
-                if (Array.isArray(results) && results[1]) {
-                    (standardRequest.dataValues || {}).requesterName = ((((results[1].body || {}).data || {}).key_info || {})[entityId] || {}).name;
-                }
-                return standardRequest;
-            });
-            finalResolve(standardRequests);
-        }).catch(error => {
-            finalReject(error);
         });
     });
 };
@@ -431,8 +399,8 @@ const router = require('express').Router()
      *   get:
      *     tags:
      *       - Standard Requests
-     *     name: Get all requests that current user created
-     *     summary: Get all requests that current user created
+     *     name: Get all pending requests that current user created
+     *     summary: Get all pending requests that current user created
      *     responses:
      *       200:
      *         description: Requests found
@@ -440,7 +408,7 @@ const router = require('express').Router()
     .get('/requester', async (req, res) => {
         let result;
         try {
-            result = await getStandardRequestsByRequester(req);
+            result = await getStandardRequestsByStatus(req, REQUEST_STATUS.PENDING);
         } catch (err) {
             sendError(req.originalUrl, res, err);
             return;
@@ -602,7 +570,6 @@ module.exports = {
     getUserSecretsAccess,
     getStandardRequests,
     getStandardRequestsByApprover,
-    getStandardRequestsByRequester,
     getStandardRequestsByUserType,
     getStandardRequestsByStatus,
     updateStandardRequestByApprover,

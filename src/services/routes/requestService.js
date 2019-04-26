@@ -4,7 +4,7 @@ const notificationsManager = require('services/notificationsManager');
 const {
     createOrGetStandardRequest,
     getStandardRequestsByUserType,
-    getStandardRequestsByRequester,
+    getStandardRequestsByStatus,
     updateStandardRequestByApprover,
     updateStandardRequestById
 } = require('services/routes/standardRequestService');
@@ -29,6 +29,46 @@ const router = require('express').Router()
             }
         }
         next();
+    })
+    /**
+     * @swagger
+     * /rest/requests/all:
+     *   get:
+     *     tags:
+     *       - Requests
+     *     summary: Retrieves active requests and user's active requests
+     *     responses:
+     *       200:
+     *         description: Success.
+     *       403:
+     *         description: Unauthorized.
+     */
+    .get('/all', async (req, res) => {
+        let requests = [];
+        const {standardRequestSupported} = req.session.user;
+        if (req.app.locals.features['control-groups']) {
+            try {
+                const controlGroupRequests = await require('vault-pam-premium').getRequests(req);
+                requests = requests.concat(controlGroupRequests);
+
+                const controlGroupSelfRequests = await require('vault-pam-premium').getActiveRequests(req);
+                requests = requests.concat(controlGroupSelfRequests);
+            } catch (err) {
+                sendError(req.originalUrl, res, err);
+                return;
+            }
+        }
+
+        if (standardRequestSupported === true) {
+            try {
+                const standardRequests = await getStandardRequestsByUserType(req);
+                requests = requests.concat(standardRequests);
+            } catch (err) {
+                sendError(req.originalUrl, res, err);
+                return;
+            }
+        }
+        res.json(requests);
     })
     /**
      * @swagger
@@ -94,7 +134,7 @@ const router = require('express').Router()
 
         if (standardRequestSupported === true) {
             try {
-                const standardSelfRequests = await getStandardRequestsByRequester(req);
+                const standardSelfRequests = await getStandardRequestsByStatus(req, REQUEST_STATUS.PENDING);
                 requests = requests.concat(standardSelfRequests);
             } catch (err) {
                 sendError(req.originalUrl, res, err);
