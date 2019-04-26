@@ -1,9 +1,8 @@
 /* eslint-disable no-console */
-const {toObject} = require('@mountaingapsolutions/objectutil');
 const chalk = require('chalk');
 const request = require('request');
-const {getSelfActiveRequests, getControlGroupPaths, revokeAccessor} = require('services/routes/controlGroupService');
-const {checkControlGroupSupport, initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
+const {checkIfApprover} = require('services/routes/standardRequestService');
+const {initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
 const RequestController = require('services/controllers/Request');
 const {
     getUserSecretsAccess
@@ -45,10 +44,10 @@ const router = require('express').Router()
     .get('/list/*', async (req, res) => {
         // Check for Control Group policies.
         const {controlGroupPaths} = req.session.user;
-        if (!controlGroupPaths) {
+        if (!controlGroupPaths && req.app.locals.features['control-groups']) {
             let paths = {};
             try {
-                paths = await getControlGroupPaths(req);
+                paths = await require('vault-pam-premium').getPaths(req);
             } catch (err) {
                 console.error(err);
             }
@@ -65,15 +64,30 @@ const router = require('express').Router()
             listUrlParts.splice(1, 0, 'metadata');
         }
         const domain = getDomain();
-        const {token} = req.session.user;
+        const {entityId, token} = req.session.user;
         const apiUrl = `${domain}/v1/${listUrlParts.join('/')}?list=true`;
 
         // Get current user's active Control Group requests.
-        const activeRequests = await getSelfActiveRequests(req);
+        let activeRequests = {};
+        if (req.app.locals.features['control-groups']) {
+            activeRequests = await require('vault-pam-premium').getActiveRequests(req);
+        }
 
         console.log(`Listing secrets from ${chalk.yellow.bold(apiUrl)}.`);
-        // Get Secret Requests from Database
-        const databaseRequestMap = toObject(await RequestController.findAll(), 'requestData');
+
+        // Get Standard Requests
+        let standardRequests;
+        try {
+            const isApprover = await checkIfApprover(req, entityId);
+            if (isApprover) {
+                standardRequests = await RequestController.findAll();
+            } else {
+                standardRequests = await RequestController.findAllByRequester(entityId);
+            }
+        } catch (err) {
+            console.log(`No standard requests found: ${err}`);
+        }
+
         request(initApiRequest(token, apiUrl), (error, response, body) => {
             if (error) {
                 sendError(url, res, error);
@@ -124,7 +138,17 @@ const router = require('express').Router()
                             const secret = {
                                 name: lastPath === '' ? `${keySplit[keySplit.length - 2]}/` : lastPath,
                                 capabilities: capabilities[key] || [],
-                                databaseRequestData: databaseRequestMap[key]
+                                // return most recently created standardRequest if available
+                                ...standardRequests && {
+                                    standardRequestData: standardRequests.reduce((result, currentRequest) => {
+                                        if ((currentRequest.dataValues || {}).requestData === key &&
+                                            (!result.createdAt ||
+                                            (currentRequest.dataValues || {}).createdAt > result.createdAt)) {
+                                            result = {...currentRequest.dataValues};
+                                        }
+                                        return result;
+                                    }, {})
+                                }
                             };
                             const canRead = (capabilities[key] || []).includes('read');
                             if (canRead && !key.endsWith('/')) {
@@ -141,8 +165,12 @@ const router = require('express').Router()
                                                 secret.data = secretBody;
                                                 const {wrap_info: wrapInfo} = secretBody;
                                                 if (wrapInfo) {
-                                                    // Just immediately revoke the accessor. A new one will be generated upon a user requesting access. The initial wrap_info accessor is only to inform the user that this secret is wrapped.
-                                                    revokeAccessor(req, wrapInfo.accessor);
+                                                    try {
+                                                        // Just immediately revoke the accessor. A new one will be generated upon a user requesting access. The initial wrap_info accessor is only to inform the user that this secret is wrapped.
+                                                        require('vault-pam-premium').revokeAccessor(req, wrapInfo.accessor);
+                                                    } catch (err) {
+                                                        console.error(`Error occurred. The package vault-pam-premium possibly unavailable: ${err.toString()}`);
+                                                    }
                                                 }
                                                 secretResolve();
                                             }
@@ -199,12 +227,7 @@ const router = require('express').Router()
      */
     .get('/get/*', async (req, res) => {
         const {entityId, token} = req.session.user;
-        let controlGroupSupport = false;
-        try {
-            controlGroupSupport = await checkControlGroupSupport();
-        } catch (err) {
-            sendError(req.originalUrl, res, err);
-        }
+        const controlGroupSupport = !!req.app.locals.features['control-groups'];
         const {VAULT_API_TOKEN: apiToken} = process.env;
         const {params = {}, query} = req;
         const isAccessAllowed = !controlGroupSupport ? await getUserSecretsAccess(req, {

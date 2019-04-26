@@ -47,3 +47,4 @@ const getUpdateRequestStatusEmailContent = emailData => {
 module.exports = {
     getUpdateRequestStatusEmailContent
 };
+

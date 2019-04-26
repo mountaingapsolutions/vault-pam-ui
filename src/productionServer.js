@@ -21,7 +21,7 @@ const {api, config, login, logout, authenticatedRoutes} = require('services/rout
 // Overcome the DEPTH_ZERO_SELF_SIGNED_CERT error.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-const {getSessionMiddleware, validateDomain} = require('services/utils');
+const {checkPremiumFeatures, getSessionMiddleware, validateDomain} = require('services/utils');
 if (!process.env.VAULT_DOMAIN) {
     console.error('No Vault domain configured.');
     process.exit(9);
@@ -119,42 +119,5 @@ const _startServer = () => {
                 });
         });
 
-    const bitbucketUser = process.env.BITBUCKET_USER;
-    const bitbucketAccessToken = process.env.BITBUCKET_ACCESS_TOKEN;
-    if (bitbucketUser && bitbucketAccessToken) {
-        console.log('Configuration for premium features detected. Attempting to install vault-pam-premium...');
-        require('child_process').exec(`npm install git+https://${bitbucketUser}:${bitbucketAccessToken}@bitbucket.org/mountaingapsolutions/vault-pam-premium.git --no-save`, (error, stdout, stderr) => {
-            if (error) {
-                console.error(error);
-            } else {
-                console.log(stdout);
-                console.warn(stderr);
-                console.log('Successfully installed vault-pam-premium!');
-            }
-            _checkPremiumFeatures(app);
-        });
-    } else {
-        _checkPremiumFeatures(app);
-    }
-};
-
-/**
- * Checks and initializes premium features.
- *
- * @private
- * @param {Object} app The Express app reference.
- */
-const _checkPremiumFeatures = (app) => {
-    try {
-        const {validate} = require('vault-pam-premium');
-        console.log('Premium features available.');
-        validate().then((results) => {
-            app.locals.features = results ? {
-                ...results
-            } : {};
-        });
-    } catch (err) {
-        console.log('Premium features unavailable.');
-        app.locals.features = {};
-    }
+    checkPremiumFeatures(app);
 };

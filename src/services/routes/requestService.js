@@ -1,11 +1,6 @@
 /* eslint-disable no-console */
-const {
-    authorizeControlGroupRequest,
-    createControlGroupRequest,
-    deleteControlGroupRequest,
-    getControlGroupRequests,
-    getSelfActiveRequests
-} = require('services/routes/controlGroupService');
+const {safeWrap, unwrap} = require('@mountaingapsolutions/objectutil');
+const notificationsManager = require('services/notificationsManager');
 const {
     createOrGetStandardRequest,
     getStandardRequestsByUserType,
@@ -13,26 +8,14 @@ const {
     updateStandardRequestByApprover,
     updateStandardRequestById
 } = require('services/routes/standardRequestService');
-const {checkControlGroupSupport, checkStandardRequestSupport, sendError, setSessionData} = require('services/utils');
+const {checkStandardRequestSupport, sendError, setSessionData} = require('services/utils');
 const {REQUEST_STATUS} = require('services/constants');
 
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
     .use(async (req, res, next) => {
-        const {controlGroupSupported, standardRequestSupported} = req.session.user;
-        if (controlGroupSupported === undefined) {
-            try {
-                let controlGroupSupport = await checkControlGroupSupport();
-                setSessionData(req, {
-                    controlGroupSupported: controlGroupSupport
-                });
-                console.log('Setting Control Group support in session user data: ', controlGroupSupport);
-            } catch (err) {
-                sendError(req.originalUrl, res, err);
-                return;
-            }
-        }
+        const {standardRequestSupported} = req.session.user;
         if (standardRequestSupported === undefined) {
             try {
                 let standardRequestSupport = await checkStandardRequestSupport();
@@ -62,10 +45,10 @@ const router = require('express').Router()
      */
     .get('/list', async (req, res) => {
         let requests = [];
-        const {controlGroupSupported, standardRequestSupported} = req.session.user;
-        if (controlGroupSupported === true) {
+        const {standardRequestSupported} = req.session.user;
+        if (req.app.locals.features['control-groups']) {
             try {
-                const controlGroupRequests = await getControlGroupRequests(req);
+                const controlGroupRequests = await require('vault-pam-premium').getRequests(req);
                 requests = requests.concat(controlGroupRequests);
             } catch (err) {
                 sendError(req.originalUrl, res, err);
@@ -98,10 +81,10 @@ const router = require('express').Router()
      */
     .get('/self', async (req, res) => {
         let requests = [];
-        const {controlGroupSupported, standardRequestSupported} = req.session.user;
-        if (controlGroupSupported === true) {
+        const {standardRequestSupported} = req.session.user;
+        if (req.app.locals.features['control-groups']) {
             try {
-                const controlGroupSelfRequests = await getSelfActiveRequests(req);
+                const controlGroupSelfRequests = await require('vault-pam-premium').getActiveRequests(req);
                 requests = requests.concat(controlGroupSelfRequests);
             } catch (err) {
                 sendError(req.originalUrl, res, err);
@@ -152,12 +135,27 @@ const router = require('express').Router()
      *         description: Request not found.
      */
     .delete('/request', async (req, res) => {
-        const {id, path} = req.query;
+        const {entityId, id, path} = req.query;
         let result;
-        const {controlGroupSupported, standardRequestSupported} = req.session.user;
+        const {standardRequestSupported} = req.session.user;
         try {
-            if (controlGroupSupported === true && path) {
-                result = await deleteControlGroupRequest(req);
+            if (req.app.locals.features['control-groups'] && path) {
+                const {accessor, groups = []} = await require('vault-pam-premium').deleteRequest(req);
+                // If entity id provided, it means it was a request rejection.
+                if (entityId) {
+                    // Notify the user of the request rejection.
+                    console.warn(`Emit reject-request of accessor ${accessor} to ${entityId}.`);
+                    notificationsManager.getInstance().to(entityId).emit('reject-request', accessor);
+                }
+                groups.forEach(group => {
+                    const requestType = entityId ? 'reject-request' : 'cancel-request';
+                    // Notify the group of the cancellation or rejection.
+                    console.warn(`Emit ${requestType} of accessor ${accessor} to ${group.data.name}.`);
+                    notificationsManager.getInstance().to(group.data.name).emit(requestType, accessor);
+                });
+                result = {
+                    status: 'ok'
+                };
             } else if (standardRequestSupported && id) {
                 req.body = {id, status: REQUEST_STATUS.CANCELED};
                 result = await updateStandardRequestById(req);
@@ -208,10 +206,17 @@ const router = require('express').Router()
     .post('/request', async (req, res) => {
         const {path, requestData} = req.body;
         let result;
-        const {controlGroupSupported, standardRequestSupported} = req.session.user;
+        const {standardRequestSupported} = req.session.user;
         try {
-            if (controlGroupSupported === true && path) {
-                result = await createControlGroupRequest(req);
+            if (req.app.locals.features['control-groups'] && path) {
+                const {groups = [], data} = await require('vault-pam-premium').createRequest(req);
+                groups.forEach((groupName) => {
+                    console.warn('Emit create-request data ', data, ' to ', groupName);
+                    notificationsManager.getInstance().in(groupName).emit('create-request', data);
+                });
+                result = {
+                    status: 'ok'
+                };
                 //TODO add engineType checking - engineType
             } else if (standardRequestSupported && requestData) {
                 result = await createOrGetStandardRequest(req);
@@ -227,7 +232,7 @@ const router = require('express').Router()
     })
     /**
      * @swagger
-     * /rest/requests/authorize:
+     * /rest/requests/request/authorize:
      *   post:
      *     tags:
      *       - Requests
@@ -256,10 +261,21 @@ const router = require('express').Router()
     .post('/request/authorize', async (req, res) => {
         const {accessor, id} = req.body;
         let result;
-        const {controlGroupSupported, standardRequestSupported} = req.session.user;
+        const {groups, standardRequestSupported} = req.session.user;
         try {
-            if (controlGroupSupported === true && accessor) {
-                result = await authorizeControlGroupRequest(req);
+            if (req.app.locals.features['control-groups'] && accessor) {
+                const {data} = await require('vault-pam-premium').authorizeRequest(req);
+                const requester = unwrap(safeWrap(data).request_info.data.request_entity.id);
+                if (requester) {
+                    console.warn('Emit approve-request data ', data, ' to ', requester, ' and the following groups: ', groups.join(', '));
+                    notificationsManager.getInstance().to(requester).emit('approve-request', data);
+                    groups.forEach((groupName) => {
+                        notificationsManager.getInstance().to(groupName).emit('approve-request', data);
+                    });
+                }
+                result = {
+                    status: 'ok'
+                };
             } else if (standardRequestSupported && id) {
                 req.body.status = REQUEST_STATUS.APPROVED;
                 result = await updateStandardRequestByApprover(req);
@@ -272,6 +288,46 @@ const router = require('express').Router()
             return;
         }
         res.json(result);
+    })
+    /**
+     * @swagger
+     * /rest/requests/request/unwrap:
+     *   post:
+     *     tags:
+     *       - Requests
+     *     summary: Unwraps an authorized Control Group request.
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               token:
+     *                 type: string
+     *               required:
+     *                 - token
+     *     responses:
+     *       200:
+     *         description: The unwrapped secret.
+     *       400:
+     *         description: Wrapping token is not valid, does not exist, or needs further authorization.
+     *       403:
+     *         description: Unauthorized.
+     */
+    .post('/request/unwrap', async (req, res) => {
+        let result;
+        try {
+            result = await require('vault-pam-premium').unwrapRequest(req);
+            (result.groups || []).forEach((groupName) => {
+                console.warn(`Emit read-approved-request accessor ${result.accessor} to ${groupName}.`);
+                notificationsManager.getInstance().to(groupName).emit('read-approved-request', result.accessor);
+            });
+            res.status(result.statusCode).json(result.body);
+        } catch (err) {
+            sendError(req.originalUrl, res, err.message, err.statusCode);
+            return;
+        }
     });
 
 module.exports = {

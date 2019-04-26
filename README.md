@@ -61,3 +61,13 @@ $ USE_HSTS=false PORT=8080 npm run startprod
 - Prior to delivering _any_ code changes, be sure to run:
     - `npm run lint`
     - `npm test`
+
+## Docker Images
+- To pull the latest docker image:
+```docker pull mountaingapsolutions/vault-pam-ui:latest```
+
+## Installation
+- The command below will use Docker to spin up a Vault PAM UI container. There are two options, using .env file inside the project and using user defined configurations.
+```./install.sh```
+
+

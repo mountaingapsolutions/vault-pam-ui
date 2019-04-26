@@ -37,6 +37,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     authorizeRequest(accessor, id) {
+        // TODO - Rename endpoint. Too redundant.
         return this._dispatchPost(this.ACTION_TYPES.AUTHORIZE_REQUEST, '/rest/requests/request/authorize', {
             accessor,
             id
@@ -48,14 +49,15 @@ class KvAction extends _Actions {
      *
      * @param {string} path Specifies the path of the request to delete.
      * @param {string} [entityId] The user entity id. If not provided, the request will default to the current session user.
-     * @param {string} id The request id in database.
+     * @param {string} [id] The request id in database.
      * @returns {function} Redux dispatch function.
      */
     deleteRequest(path, entityId = '', id) {
+        // TODO - Rename endpoint. Too redundant.
         return this._dispatchDelete(this.ACTION_TYPES.DELETE_REQUEST, '/rest/requests/request', {
             path,
-            entityId,
-            id
+            ...entityId && {entityId},
+            ...id && {id}
         });
     }
 
@@ -108,6 +110,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     requestSecret(requestData) {
+        // TODO - Rename endpoint. Too redundant.
         return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/requests/request', {
             ...requestData
         });
@@ -171,7 +174,8 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     unwrapSecret(name, token) {
-        return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/control-group/request/unwrap', {
+        // TODO - Rename endpoint. Too redundant.
+        return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/requests/request/unwrap', {
             token
         });
     }
