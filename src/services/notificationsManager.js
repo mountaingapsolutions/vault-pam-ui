@@ -2,6 +2,7 @@ const base64id = require('base64id');
 const chalk = require('chalk');
 const cookie = require('cookie');
 const {getSessionMiddleware} = require('services/utils');
+const logger = require('services/logger');
 
 /**
  * Generates the id for the socket connection.
@@ -14,7 +15,7 @@ const _generateId = (req) => {
     const generatedId = `generated-${base64id.generateId()}`;
     const entityId = cookie.parse(req.headers.cookie || '').entity_id;
     if (!entityId) {
-        console.warn(chalk.bold.red(`No entity id found in session. Returning generated id ${generatedId}.`));
+        logger.warn(chalk.bold.red(`No entity id found in session. Returning generated id ${generatedId}.`));
     }
     return entityId || generatedId;
 };
@@ -36,22 +37,22 @@ const start = (server) => {
             getSessionMiddleware(socket.request, socket.request.res, next);
         })
         .on('connection', (socket) => {
-            console.log('User connected: ', socket.id);
+            logger.info('User connected: ', socket.id);
             socket.on('disconnect', () => {
-                console.log('User disconnected ', socket.id);
+                logger.info('User disconnected ', socket.id);
             });
 
             if (socket.request.session.user && !socket.id.startsWith('generated')) {
                 const {entityId, groups = []} = socket.request.session.user;
                 if (groups.length === 0) {
-                    console.info(`${entityId} is not in an assigned group.`);
+                    logger.info(`${entityId} is not in an assigned group.`);
                 }
                 groups.forEach(group => {
-                    console.log(`Joining ${entityId} to ${group}.`);
+                    logger.info(`Joining ${entityId} to ${group}.`);
                     socket.join(group);
                 });
             } else {
-                console.log(chalk.bold.red('No session user found: '), socket.request.session, chalk.bold.red(' ...disconnecting...'));
+                logger.info(chalk.bold.red('No session user found: '), socket.request.session, chalk.bold.red(' ...disconnecting...'));
                 socket.disconnect();
             }
         });

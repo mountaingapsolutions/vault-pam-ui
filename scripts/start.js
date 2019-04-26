@@ -47,21 +47,22 @@ if (!checkRequiredFiles([paths.appHtml, paths.appIndexJs])) {
 }
 
 const {validateDomain} = require('services/utils');
+const logger = require('services/logger');
 if (!process.env.VAULT_DOMAIN) {
-    console.error('No Vault domain configured.');
+    logger.error('No Vault domain configured.');
     process.exit(9);
 }
 validateDomain(process.env.VAULT_DOMAIN)
     .then((isValid) => {
         if (!isValid) {
-            console.error(`Invalid Vault domain "${process.env.VAULT_DOMAIN}".`);
+            logger.error(`Invalid Vault domain "${process.env.VAULT_DOMAIN}".`);
             process.exit(9);
         } else {
             _startServer();
         }
     })
     .catch((err) => {
-        console.error(`Invalid Vault domain "${process.env.VAULT_DOMAIN}": `, err);
+        logger.error(`Invalid Vault domain "${process.env.VAULT_DOMAIN}": `, err);
         process.exit(9);
     });
 
@@ -70,10 +71,10 @@ const DEFAULT_PORT = parseInt(process.env.PORT, 10) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
 if (process.env.HOST) {
-    console.log(chalk.cyan(`Attempting to bind to HOST environment variable: ${chalk.yellow(chalk.bold(process.env.HOST))}`));
-    console.log('If this was unintentional, check that you haven\'t mistakenly set it in your shell.');
-    console.log(`Learn more here: ${chalk.yellow('https://bit.ly/CRA-advanced-config')}`);
-    console.log();
+    logger.log(chalk.cyan(`Attempting to bind to HOST environment variable: ${chalk.yellow(chalk.bold(process.env.HOST))}`));
+    logger.log('If this was unintentional, check that you haven\'t mistakenly set it in your shell.');
+    logger.log(`Learn more here: ${chalk.yellow('https://bit.ly/CRA-advanced-config')}`);
+    logger.log();
 }
 
 /**
@@ -131,24 +132,24 @@ const _startServer = () => {
             // Launch WebpackDevServer.
             devServer.listen(port, HOST, err => {
                 if (err) {
-                    return console.log(err);
+                    return logger.error(err);
                 }
                 if (isInteractive) {
                     clearConsole();
                 }
-                console.log(chalk.cyan('Starting the development server...\n'));
+                logger.log(chalk.cyan('Starting the development server...\n'));
                 openBrowser(urls.localUrlForBrowser);
 
                 const connection = require('services/db/connection');
                 connection.start()
                     .then(() => {
-                        console.info('DB connection successful. ᕕ( ᐛ )ᕗ\r\n');
+                        logger.info('DB connection successful. ᕕ( ᐛ )ᕗ\r\n');
                         // DB migrations
                         // const {migrate} = require('services/db/migrate');
                         // migrate('up');
                     })
                     .catch((error) => {
-                        console.error(error);
+                        logger.error(error);
                         process.exit(1);
                     });
 
@@ -164,7 +165,7 @@ const _startServer = () => {
         })
         .catch(err => {
             if (err && err.message) {
-                console.log(err.message);
+                logger.error(err.message);
             }
             process.exit(1);
         });

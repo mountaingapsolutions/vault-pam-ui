@@ -6,6 +6,7 @@ import io from 'socket.io-client';
 
 import kvAction from 'app/core/actions/kvAction';
 import Constants from 'app/util/Constants';
+import Logger from 'app/util/Logger';
 
 /**
  * Notifications manager class. Note: this is a renderless component (https://kyleshevlin.com/renderless-components).
@@ -37,7 +38,7 @@ class NotificationsManager extends Component {
             path: '/notifications'
         });
         socket.on('connect', () => {
-            console.info('Connected ', socket);
+            Logger.info('Connected ', socket);
             socket.on(Constants.NOTIFICATION_EVENTS.REQUEST.APPROVE, (data) => approveRequestData(data));
             socket.on(Constants.NOTIFICATION_EVENTS.REQUEST.CREATE, (data) => createRequestData(data));
             socket.on(Constants.NOTIFICATION_EVENTS.REQUEST.REJECT, (data) => removeRequestData(data));
@@ -56,10 +57,10 @@ class NotificationsManager extends Component {
     componentDidMount() {
         const socket = this._connect();
         socket.on('disconnect', () => {
-            console.info('Disconnected. Attempt to reconnect in 3 seconds...');
+            Logger.info('Disconnected. Attempt to reconnect in 3 seconds...');
             socket.disconnect();
             setTimeout(() => {
-                console.info('Connecting again...');
+                Logger.info('Connecting again...');
                 this._connect();
             }, 3000);
         });
