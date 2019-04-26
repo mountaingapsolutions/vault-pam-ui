@@ -105,9 +105,14 @@ questions_db() {
         ask "Enter database user: " PAM_DATABASE_USER
         ask "Enter database password: " PAM_DATABASE_PASSWORD
     else
-        print_raw $NL
-        show_err "We only support EXTERNAL DB for now."
-        exit 1
+        show_warn "We will now install and create a database."
+        ask "Enter database name: " PAM_DATABASE
+        ask "Enter database user: " PAM_DATABASE_USER
+        ask "Enter database password: " PAM_DATABASE_PASSWORD
+        # setting the default internal database data
+        INSTALL_DB=yes
+        PAM_DATABASE_URL=host.docker.internal
+        PAM_DATABASE_PORT=5432
     fi
 }
 
@@ -122,6 +127,7 @@ questions_pam() {
         # If userInput is not empty show what the user typed in and run ls -l
         show_warn "Using port $PORT"
     fi
+    # default
     USE_HSTS=false
 }
 
@@ -150,21 +156,27 @@ build_dist() {
 # Build docker container
 build_docker() {
     print_raw $NL
-    show_info "Building docker image..."
-    docker build -t $APP_NAME .
+    show_info "Building docker image."
+    if [ -n "$1" ]; then
+        show_info "Preparing internal DB."
+        DOCKER_BUILD_ARGS=" --build-arg WITH_DB=yes --build-arg PAM_DATABASE=${PAM_DATABASE} --build-arg PAM_DATABASE_USER=${PAM_DATABASE_USER} --build-arg PAM_DATABASE_PASSWORD=${PAM_DATABASE_PASSWORD}"
+    fi
+    show_info "$DOCKER_BUILD_ARGS"
+    docker build -t $APP_NAME . $DOCKER_BUILD_ARGS
 }
 
 # Run docker container
 run_docker() {
     # check for param
-    PARAMS="-e PORT=$PORT -e USE_HSTS=$USE_HSTS "
+    DOCKER_RUN_ARGS="-e PORT=$PORT -e USE_HSTS=$USE_HSTS "
 
+    # append the env vars if USE_ENV is set.
     if [ -z "$1" ]
     then
         for ENV_KEY in "${ENV_VARS[@]}"
         do
             ENV_VAL="${!ENV_KEY}"
-            PARAMS="${PARAMS}-e ${ENV_KEY}=${ENV_VAL} "
+            DOCKER_RUN_ARGS="${DOCKER_RUN_ARGS}-e ${ENV_KEY}=${ENV_VAL} "
         done
     fi
 
@@ -175,10 +187,10 @@ run_docker() {
         docker stop $OLD_CONTAINER
     fi
 
-    show_info "Running docker with these parameters: ${PARAMS}"
+    show_info "Running docker with these arguments: ${DOCKER_RUN_ARGS}"
     DOCKER_FLAGS="-itd \
         -p $PORT:$PORT \
-        $PARAMS \
+        $DOCKER_RUN_ARGS \
         --name $APP_NAME \
         --rm $APP_NAME"
     docker run $DOCKER_FLAGS
@@ -210,7 +222,7 @@ main() {
 
     fi
     build_dist
-    build_docker
+    build_docker $INSTALL_DB
     run_docker $USE_ENV
     finish
 }
