@@ -184,6 +184,11 @@ const getStandardRequestsByUserType = (req) => {
     });
 };
 
+/**
+ * Get all standard requests.
+ *
+ * @returns {Promise}
+ */
 const getStandardRequests = () => {
     return new Promise((resolve, reject) => {
         RequestController.findAll().then(requests => {
@@ -227,6 +232,12 @@ const getStandardRequestsByRequester = async (req) => {
     });
 };
 
+/**
+ * Update standard request by Id.
+ *
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
 const updateStandardRequestById = async req => {
     const {id, status} = req.body;
     return new Promise((resolve, reject) => {

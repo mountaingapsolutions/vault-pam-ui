@@ -1,5 +1,5 @@
-/* eslint-disable no-console */
 const {safeWrap, unwrap} = require('@mountaingapsolutions/objectutil');
+const logger = require('services/logger');
 const notificationsManager = require('services/notificationsManager');
 const {sendMailFromTemplate} = require('services/mail/smtpClient');
 const {
@@ -51,7 +51,7 @@ const router = require('express').Router()
                 setSessionData(req, {
                     standardRequestSupported: standardRequestSupport
                 });
-                console.log('Setting Standard Request support in session user data: ', standardRequestSupport);
+                logger.log('Setting Standard Request support in session user data: ', standardRequestSupport);
             } catch (err) {
                 sendError(req.originalUrl, res, err);
                 return;
@@ -173,13 +173,13 @@ const router = require('express').Router()
                 // If entity id provided, it means it was a request rejection.
                 if (entityId) {
                     // Notify the user of the request rejection.
-                    console.warn(`Emit reject-request of accessor ${accessor} to ${entityId}.`);
+                    logger.info(`Emit reject-request of accessor ${accessor} to ${entityId}.`);
                     notificationsManager.getInstance().to(entityId).emit('reject-request', accessor);
                 }
                 groups.forEach(group => {
                     const requestType = entityId ? 'reject-request' : 'cancel-request';
                     // Notify the group of the cancellation or rejection.
-                    console.warn(`Emit ${requestType} of accessor ${accessor} to ${group.data.name}.`);
+                    logger.info(`Emit ${requestType} of accessor ${accessor} to ${group.data.name}.`);
                     notificationsManager.getInstance().to(group.data.name).emit(requestType, accessor);
                 });
                 result = {
@@ -242,7 +242,7 @@ const router = require('express').Router()
             if (req.app.locals.features['control-groups'] && path) {
                 const {groups = [], data} = await require('vault-pam-premium').createRequest(req);
                 groups.forEach((groupName) => {
-                    console.warn('Emit create-request data ', data, ' to ', groupName);
+                    logger.info('Emit create-request data ', data, ' to ', groupName);
                     notificationsManager.getInstance().in(groupName).emit('create-request', data);
                     approverGroupPromises.push(_getUsersByGroupName(req, groupName));
                 });
@@ -318,7 +318,7 @@ const router = require('express').Router()
                 const {data} = await require('vault-pam-premium').authorizeRequest(req);
                 const requester = unwrap(safeWrap(data).request_info.data.request_entity.id);
                 if (requester) {
-                    console.warn('Emit approve-request data ', data, ' to ', requester, ' and the following groups: ', groups.join(', '));
+                    logger.info('Emit approve-request data ', data, ' to ', requester, ' and the following groups: ', groups.join(', '));
                     notificationsManager.getInstance().to(requester).emit('approve-request', data);
                     groups.forEach((groupName) => {
                         notificationsManager.getInstance().to(groupName).emit('approve-request', data);
@@ -372,13 +372,12 @@ const router = require('express').Router()
         try {
             result = await require('vault-pam-premium').unwrapRequest(req);
             (result.groups || []).forEach((groupName) => {
-                console.warn(`Emit read-approved-request accessor ${result.accessor} to ${groupName}.`);
+                logger.info(`Emit read-approved-request accessor ${result.accessor} to ${groupName}.`);
                 notificationsManager.getInstance().to(groupName).emit('read-approved-request', result.accessor);
             });
             res.status(result.statusCode).json(result.body);
         } catch (err) {
             sendError(req.originalUrl, res, err.message, err.statusCode);
-            return;
         }
     });
 

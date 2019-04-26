@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const logger = require('services/logger');
 const templates = require('services/mail/templates');
 
 const {SMTP_PORT, SMTP_HOST, SMTP_SERVICE, SMTP_USER, SMTP_PASS, SMTP_SECURE, SMTP_DEBUG_MODE} = process.env;
@@ -32,7 +33,7 @@ const sendMailFromTemplate = (templateName, emailData) => {
     const fromTemplate = templates[templateName];
     if (fromTemplate) {
         const contents = fromTemplate(emailData);
-        _smtpTransport.sendMail(contents).then(console.log).catch(console.error);
+        _smtpTransport.sendMail(contents).then(logger.log).catch(logger.error);
     } else {
         throw new Error(`${templateName} is not a valid email template.`);
     }
