@@ -61,7 +61,7 @@ const _initializeEntity = async (req, username, password) => {
  * @param {string} password The userpass password.
  * @returns {Promise}
  */
-const _login = async (req, username, password) => {
+const _login = (req, username, password) => {
     return new Promise((resolve, reject) => {
         const apiUrl = `${getDomain()}/v1/auth/userpass/login/${username}`;
         request({
@@ -70,7 +70,7 @@ const _login = async (req, username, password) => {
             json: {
                 password
             }
-        }, async (error, response) => {
+        }, (error, response) => {
             if (error) {
                 reject(error);
             } else if (response.statusCode === 200) {
@@ -89,8 +89,8 @@ const _login = async (req, username, password) => {
  * @param {string} [id] The entity id.
  * @returns {Promise}
  */
-const getUser = async (req, id) => {
-    return await new Promise((resolve, reject) => {
+const getUser = (req, id) => {
+    return new Promise((resolve, reject) => {
         const {VAULT_API_TOKEN: apiToken} = process.env;
         const domain = getDomain();
         const {entityId: sessionUserEntityId, token: sessionUserToken} = req.session.user;
@@ -137,8 +137,8 @@ const getUserIds = () => {
  * @param {string} name The user name.
  * @returns {Promise}
  */
-const getUserByName = async (req, name) => {
-    return await new Promise((resolve, reject) => {
+const getUserByName = (req, name) => {
+    return new Promise((resolve, reject) => {
         const {token} = req.session.user;
         request(initApiRequest(token, `${getDomain()}/v1/identity/entity/name/${name}`), (error, response) => {
             if (error) {
@@ -157,8 +157,8 @@ const getUserByName = async (req, name) => {
  * @param {Object} userData The user data to save.
  * @returns {Promise}
  */
-const updateUser = async (req, userData) => {
-    return await new Promise(async (resolve, reject) => {
+const updateUser = (req, userData) => {
+    return new Promise(async (resolve, reject) => {
         try {
             const getUserResponse = await getUser(req, userData.id);
             if (getUserResponse.statusCode !== 200) {
@@ -214,8 +214,8 @@ const updateUser = async (req, userData) => {
  * @param {Object} userData The user data to save.
  * @returns {Promise}
  */
-const saveUser = async (req, userData) => {
-    return await new Promise((resolve, reject) => {
+const saveUser = (req, userData) => {
+    return new Promise((resolve, reject) => {
         const {VAULT_API_TOKEN: apiToken} = process.env;
         const {entityId: id, token} = req.session.user;
         const isSelf = id === userData.id;
@@ -241,8 +241,8 @@ const saveUser = async (req, userData) => {
  * @param {string} name The user data to save.
  * @returns {Promise}
  */
-const getUserpass = async (req, name) => {
-    return await new Promise((resolve, reject) => {
+const getUserpass = (req, name) => {
+    return new Promise((resolve, reject) => {
         const {token} = req.session.user;
         request(initApiRequest(token, `${getDomain()}/v1/auth/userpass/users/${name}`), (error, response) => {
             if (error) {
@@ -261,8 +261,8 @@ const getUserpass = async (req, name) => {
  * @param {string} name The user data to delete.
  * @returns {Promise}
  */
-const deleteUserpass = async (req, name) => {
-    return await new Promise((resolve, reject) => {
+const deleteUserpass = (req, name) => {
+    return new Promise((resolve, reject) => {
         const {token} = req.session.user;
         const apiUrl = `${getDomain()}/v1/auth/userpass/users/${name}`;
         request({
@@ -288,8 +288,8 @@ const deleteUserpass = async (req, name) => {
  * @param {Object} userData The user data to save.
  * @returns {Promise}
  */
-const saveUserpass = async (req, userData) => {
-    return await new Promise((resolve, reject) => {
+const saveUserpass = (req, userData) => {
+    return new Promise((resolve, reject) => {
         const {VAULT_API_TOKEN: apiToken} = process.env;
         const {entityId: id, token} = req.session.user;
         const isSelf = id === userData.id;
@@ -323,8 +323,8 @@ const saveUserpass = async (req, userData) => {
  * @param {string} id The id of the user to delete.
  * @returns {Promise<void>}
  */
-const deleteUser = async (req, id) => {
-    return await new Promise((resolve, reject) => {
+const deleteUser = (req, id) => {
+    return new Promise((resolve, reject) => {
         const {token} = req.session.user;
         const apiUrl = `${getDomain()}/v1/identity/entity/id/${id}`;
         request({
