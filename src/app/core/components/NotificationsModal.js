@@ -313,7 +313,7 @@ class NotificationsModal extends Component {
                                                                 onClick={() => {
                                                                     /* eslint-disable no-alert */
                                                                     if (window.confirm(`Are you sure you want to ${cancelText.toLowerCase()} ${isOwnRequest ? 'your' : `${entityName}'s`} request to ${requestPath}?`)) {
-                                                                        rejectRequest(requestPath, entityId, requestData.wrap_info && !isOwnRequest ? undefined: requestId);
+                                                                        rejectRequest(requestPath, entityId, requestData.wrap_info && !isOwnRequest ? undefined : requestId);
                                                                     }
                                                                     /* eslint-enable no-alert */
                                                                 }}>
