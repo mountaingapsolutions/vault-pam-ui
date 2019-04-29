@@ -1,10 +1,12 @@
 /* eslint-disable no-console */
 const chalk = require('chalk');
 const session = require('express-session');
-const nodemailer = require('nodemailer');
 const request = require('request');
 const {filter} = require('@mountaingapsolutions/objectutil');
-const {getUpdateRequestStatusEmailContent} = require('services/mail/templates');
+
+/**
+ * Just a collection of service utility methods.
+ */
 
 const getSessionMiddleware = session({
     secret: process.env.SESSION_SECRET || 'correct horse battery staple',
@@ -16,30 +18,29 @@ const getSessionMiddleware = session({
 });
 
 /**
- * Just a collection of service utility methods.
- */
-
-/**
  * Validation map of what is allowed to be stored in a session user. If new data needs to be added, add the key to this map.
  *
  * @type {Object}
  */
 const SESSION_USER_DATA_MAP = {
-    CONTROL_GROUP_PATHS: 'controlGroupPaths',
+    EMAIL: 'email',
     ENTITY_ID: 'entityId',
+    FIRST_NAME: 'firstName',
     GROUPS: 'groups',
+    LAST_NAME: 'lastName',
     STANDARD_REQUEST_SUPPORTED: 'standardRequestSupported',
+    USERNAME: 'username',
     TOKEN: 'token'
 };
 
 /**
- * Wraps a request in an Promise for async/await support.
+ * Wraps a request in a Promise for async/await support.
  *
  * @param {Object} options The request options.
  * @returns {Promise}
  */
-const asyncRequest = async (options) => {
-    return await new Promise((resolve, reject) => {
+const asyncRequest = (options) => {
+    return new Promise((resolve, reject) => {
         request(options, (error, response) => {
             if (error) {
                 reject(error);
@@ -172,62 +173,6 @@ const setSessionData = (req, sessionUserData) => {
 };
 
 /**
- * Setup email notification for requests.
- *
- * @param {Object} data Requests data.
- */
-const sendNotificationEmail = data => {
-    const {approvers, userSession, requestData, requesterData} = data;
-    const {data: requester} = requesterData.body;
-    const {engineType, requestData: secret, status, type} = requestData;
-    const {entityId} = userSession;
-    const emailData = {
-        domain: getDomain(),
-        requester,
-        secret,
-        type,
-        status,
-        engineType,
-        approver: entityId
-    };
-    const emailContents = getUpdateRequestStatusEmailContent(emailData);
-    const recipients = [...approvers, requester.metadata.email];
-    sendEmail(recipients, emailContents.subject, emailContents.body);
-};
-
-/**
- * Sends email.
- *
- * @param {Array} recipients The email recipients.
- * @param {string} subject The email subject.
- * @param {string} body The email message.
- */
-const sendEmail = (recipients, subject, body) => {
-    const {PAM_MAIL_SMTP_PORT, PAM_MAIL_SMTP_HOST, PAM_MAIL_SERVICE, PAM_MAIL_USER, PAM_MAIL_PASS} = process.env;
-    const smtpTransport = nodemailer.createTransport({
-        service: PAM_MAIL_SERVICE,
-        port: PAM_MAIL_SMTP_PORT,
-        host: PAM_MAIL_SMTP_HOST,
-        secure: true,
-        auth: {
-            user: PAM_MAIL_USER,
-            pass: PAM_MAIL_PASS,
-        },
-        debug: true
-    });
-    const mailOptions = {
-        to: recipients,
-        subject: subject,
-        html: body
-    };
-    smtpTransport.sendMail(mailOptions).then((info) => {
-        console.log('Email sent.', info);
-    }).catch((err) => {
-        console.error(err);
-    });
-};
-
-/**
  * Validates the Vault domain.
  *
  * @param {string} domain The domain to validate
@@ -246,13 +191,13 @@ const validateDomain = async (domain) => {
 };
 
 module.exports = {
+    asyncRequest,
     checkPremiumFeatures,
     checkStandardRequestSupport,
     initApiRequest,
     getDomain,
     getSessionMiddleware,
     sendError,
-    sendNotificationEmail,
     setSessionData,
     validateDomain
 };

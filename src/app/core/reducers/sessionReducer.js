@@ -15,12 +15,11 @@ import sessionAction from 'app/core/actions/sessionAction';
  */
 export default (previousState = {
     vaultLookupSelf: {},
-    sealStatus: {},
     vaultToken: {}
 }, action) => {
     switch (action.type) {
         case sessionAction.ACTION_TYPES.SET_TOKEN:
-            return {...previousState, sealStatus: action};
+            return {...previousState, vaultToken: action};
         case sessionAction.ACTION_TYPES.LOGIN:
         case sessionAction.ACTION_TYPES.VALIDATE_TOKEN:
             // Massage the error message with proper grammar.
