@@ -21,6 +21,7 @@ import AddIcon from '@material-ui/icons/Add';
 import DeleteIcon from '@material-ui/icons/Delete';
 import FileCopyIcon from '@material-ui/icons/FileCopy';
 import FolderIcon from '@material-ui/icons/Folder';
+import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
 import ListIcon from '@material-ui/icons/List';
 import LockIcon from '@material-ui/icons/Lock';
 import LockOpenIcon from '@material-ui/icons/LockOpen';
@@ -193,7 +194,7 @@ class SecretsList extends Component {
                 onClose: (confirm) => {
                     if (confirm) {
                         const {requestSecret} = this.props;
-                        requestSecret(name, this._getVersionFromMount(mount));
+                        requestSecret(name, this._getVersionFromMount(mount), isWrapped ? 'control-groups' : 'standard-request');
                     }
                     this.setState({
                         showConfirmationModal: false
@@ -355,6 +356,62 @@ class SecretsList extends Component {
     }
 
     /**
+     * Renders the secondary action area for a secrets row.
+     *
+     * @private
+     * @param {Object} secret The secrets data object.
+     * @returns {React.ReactElement}
+     */
+    _renderSecondaryIcon(secret) {
+        const {match} = this.props;
+        const {params} = match;
+        const {mount, path = ''} = params;
+        const {capabilities = [], data = {}, name} = secret;
+        const {request_info: requestInfo = {}, wrap_info: wrapInfo} = data;
+        const isWrapped = !!wrapInfo;
+        const isApproved = isWrapped && requestInfo.approved;
+        const requiresRequest = !capabilities.includes('read') && !name.endsWith('/') || isWrapped;
+        const canDelete = capabilities.includes('delete');
+        const currentPath = path ? `${path}/${name}` : name;
+        const isFolderPath = name.endsWith('/');
+        if (isFolderPath) {
+            return <IconButton>
+                <KeyboardArrowRightIcon/>
+            </IconButton>;
+        } else if (requiresRequest) {
+            if (isApproved) {
+                const openLabel = 'Open';
+                return <Tooltip aria-label={openLabel} title={openLabel}>
+                    <IconButton
+                        aria-label={openLabel}
+                        onClick={() => this._openApprovedRequestModal(mount, currentPath, name, wrapInfo.token)}>
+                        <LockOpenIcon/>
+                    </IconButton>
+                </Tooltip>;
+            } else {
+                const requestAccessLabel = 'Request Access';
+                return <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
+                    <IconButton
+                        aria-label={requestAccessLabel}
+                        onClick={() => data.request_info ? this._openRequestCancellationModal(mount, name) : this._openRequestModal(mount, name, isWrapped)}>
+                        <LockIcon/>
+                    </IconButton>
+                </Tooltip>;
+            }
+        } else if (canDelete) {
+            const deleteLabel = 'Delete';
+            return <Tooltip aria-label={deleteLabel} title={deleteLabel}>
+                <IconButton
+                    aria-label={deleteLabel}
+                    onClick={() => this._openDeleteSecretConfirmationModal(mount, name)}>
+                    <DeleteIcon/>
+                </IconButton>
+            </Tooltip>;
+        }
+        return null;
+    }
+
+    /**
      * Renders the secrets list area.
      *
      * @private
@@ -364,9 +421,6 @@ class SecretsList extends Component {
         const {classes, pageError, getSecrets, history, inProgress, listSecretsAndCapabilities, match, secretsPaths} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
-        const requestAccessLabel = 'Request Access';
-        const deleteLabel = 'Delete';
-        const openLabel = 'Open';
         if (inProgress) {
             return <Grid container justify='center'>
                 <Grid item>
@@ -392,10 +446,9 @@ class SecretsList extends Component {
                     const isWrapped = !!wrapInfo;
                     const canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped || status === Constants.REQUEST_STATUS.APPROVED;
                     const canUpdate = capabilities.some(capability => capability === 'update' || capability === 'root');
-                    const requiresRequest = capabilities.includes('deny') && !name.endsWith('/') || isWrapped;
+                    const requiresRequest = !capabilities.includes('read') && !name.endsWith('/') || isWrapped;
                     const isApproved = isWrapped && requestInfo.approved;
                     const authorizations = isWrapped && requestInfo.authorizations;
-                    const canDelete = capabilities.includes('delete');
                     const isPendingInDatabase = status === Constants.REQUEST_STATUS.PENDING;
                     const creationTime = data.request_info && isWrapped ? new Date(wrapInfo.creation_time) :
                         isPendingInDatabase ? new Date(createdAt).toLocaleString() :
@@ -441,28 +494,7 @@ class SecretsList extends Component {
                             </React.Fragment>
                         }/>
                         <ListItemSecondaryAction>
-                            {!isPendingInDatabase && requiresRequest && !isApproved &&
-                            <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
-                                <IconButton
-                                    aria-label={requestAccessLabel}
-                                    onClick={() => data.request_info ? this._openRequestCancellationModal(mount, name) : this._openRequestModal(mount, name, isWrapped)}>
-                                    <LockIcon/>
-                                </IconButton>
-                            </Tooltip>}
-                            {isApproved && <Tooltip aria-label={openLabel} title={openLabel}>
-                                <IconButton
-                                    aria-label={openLabel}
-                                    onClick={() => this._openApprovedRequestModal(mount, currentPath, name, wrapInfo.token)}>
-                                    <LockOpenIcon/>
-                                </IconButton>
-                            </Tooltip>}
-                            {!isPendingInDatabase && canDelete && <Tooltip aria-label={deleteLabel} title={deleteLabel}>
-                                <IconButton
-                                    aria-label={deleteLabel}
-                                    onClick={() => this._openDeleteSecretConfirmationModal(mount, name)}>
-                                    <DeleteIcon/>
-                                </IconButton>
-                            </Tooltip>}
+                            {this._renderSecondaryIcon(secret)}
                         </ListItemSecondaryAction>
                     </ListItem>;
                 })
@@ -625,7 +657,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                     .catch(reject);
             });
         },
-        requestSecret: (name, version) => {
+        requestSecret: (name, version, type = 'standard-request') => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
@@ -633,10 +665,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             return new Promise((resolve, reject) => {
                 let requestData = {
                     path: fullPath,
-                    requestData: fullPath,
-                    status: Constants.REQUEST_STATUS.PENDING,
-                    type: null, // nothing here yet.
-                    engineType: null // nothing here yet.
+                    type
                 };
                 dispatch(kvAction.requestSecret(requestData))
                     .then(() => {

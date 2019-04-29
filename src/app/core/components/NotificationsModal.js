@@ -306,7 +306,7 @@ class NotificationsModal extends Component {
                                                                 <IconButton
                                                                     color='primary'
                                                                     disabled={alreadyAuthorizedBySelf}
-                                                                    onClick={() => authorizeRequest(accessor, requestId)}>
+                                                                    onClick={() => authorizeRequest(accessor, requestData.wrap_info ? undefined : requestId)}>
                                                                     <CheckIcon/>
                                                                 </IconButton>
                                                             </Tooltip>}
@@ -315,7 +315,7 @@ class NotificationsModal extends Component {
                                                                 onClick={() => {
                                                                     /* eslint-disable no-alert */
                                                                     if (window.confirm(`Are you sure you want to reject ${entityName}'s request to ${requestPath}?`)) {
-                                                                        rejectRequest(requestPath, entityId, requestId);
+                                                                        rejectRequest(requestPath, entityId, requestData.wrap_info ? undefined : requestId);
                                                                     }
                                                                     /* eslint-enable no-alert */
                                                                 }}>

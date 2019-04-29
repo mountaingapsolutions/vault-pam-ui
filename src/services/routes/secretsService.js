@@ -1,9 +1,9 @@
-/* eslint-disable no-console */
 const chalk = require('chalk');
 const request = require('request');
 const {checkIfApprover} = require('services/routes/standardRequestService');
-const {initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
+const {initApiRequest, getDomain, sendError} = require('services/utils');
 const RequestController = require('services/controllers/Request');
+const logger = require('services/logger');
 const {
     getUserSecretsAccess
 } = require('services/routes/standardRequestService');
@@ -42,20 +42,6 @@ const router = require('express').Router()
  *         description: Not found.
  */
     .get('/list/*', async (req, res) => {
-        // Check for Control Group policies.
-        const {controlGroupPaths} = req.session.user;
-        if (!controlGroupPaths && req.app.locals.features['control-groups']) {
-            let paths = {};
-            try {
-                paths = await require('vault-pam-premium').getPaths(req);
-            } catch (err) {
-                console.error(err);
-            }
-            console.log('Setting Control Group paths in session user data: ', paths);
-            setSessionData(req, {
-                controlGroupPaths: paths || {}
-            });
-        }
         const {params = {}, query, url} = req;
         const urlParts = (params[0] || '').split('/').filter(path => !!path);
         const listUrlParts = [...urlParts];
@@ -73,7 +59,7 @@ const router = require('express').Router()
             activeRequests = await require('vault-pam-premium').getActiveRequests(req);
         }
 
-        console.log(`Listing secrets from ${chalk.yellow.bold(apiUrl)}.`);
+        logger.log(`Listing secrets from ${chalk.yellow.bold(apiUrl)}.`);
 
         // Get Standard Requests
         let standardRequests;
@@ -85,7 +71,7 @@ const router = require('express').Router()
                 standardRequests = await RequestController.findAllByRequester(entityId);
             }
         } catch (err) {
-            console.log(`No standard requests found: ${err}`);
+            logger.log(`No standard requests found: ${err}`);
         }
 
         request(initApiRequest(token, apiUrl), (error, response, body) => {
@@ -117,7 +103,7 @@ const router = require('express').Router()
                 pathsMap[listingPath] = listingPath;
 
                 const capabilitiesUrl = `${domain}/v1/sys/capabilities-self`;
-                console.log(`Checking capabilities with paths ${chalk.yellow.bold(JSON.stringify(paths))}.`);
+                logger.log(`Checking capabilities with paths ${chalk.yellow.bold(JSON.stringify(paths))}.`);
                 request({
                     ...initApiRequest(token, capabilitiesUrl),
                     method: 'POST',
@@ -156,7 +142,6 @@ const router = require('express').Router()
                                     const getSecretApiUrl = `${domain}/v1/${key}`;
                                     const activeRequest = activeRequests[key];
                                     if (activeRequest) {
-                                        console.log(`Active request found for ${key}: `, activeRequest);
                                         secret.data = activeRequest;
                                         secretResolve();
                                     } else {
@@ -169,7 +154,7 @@ const router = require('express').Router()
                                                         // Just immediately revoke the accessor. A new one will be generated upon a user requesting access. The initial wrap_info accessor is only to inform the user that this secret is wrapped.
                                                         require('vault-pam-premium').revokeAccessor(req, wrapInfo.accessor);
                                                     } catch (err) {
-                                                        console.error(`Error occurred. The package vault-pam-premium possibly unavailable: ${err.toString()}`);
+                                                        logger.error(`Error occurred. The package vault-pam-premium possibly unavailable: ${err.toString()}`);
                                                     }
                                                 }
                                                 secretResolve();

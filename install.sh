@@ -11,9 +11,9 @@ readonly ENV_VARS=(PAM_DATABASE
                   PAM_DATABASE_PORT
                   VAULT_API_TOKEN
                   VAULT_DOMAIN
-                  PAM_MAIL_SERVICE
-                  PAM_MAIL_USER
-                  PAM_MAIL_PASS)
+                  SMTP_SERVICE
+                  SMTP_USER
+                  SMTP_PASS)
 # styles
 NL=$'\n'
 BOLD=$(tput bold)
@@ -135,9 +135,9 @@ questions_vault() {
 # Email questions
 questions_email() {
     print_title "Email"
-    ask "Enter email service(gmail for now): " PAM_MAIL_SERVICE
-    ask "Enter email username: " PAM_MAIL_USER
-    ask "Enter email password: " PAM_MAIL_PASS
+    ask "Enter email service(gmail for now): " SMTP_SERVICE
+    ask "Enter email username: " SMTP_USER
+    ask "Enter email password: " SMTP_PASS
 }
 
 # Build dist folder
