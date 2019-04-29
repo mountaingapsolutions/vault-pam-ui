@@ -26,13 +26,14 @@ const _smtpTransport = nodemailer.createTransport(mailConfig);
 /**
  * Sends an email from the specified template name.
  *
+ * @param {Object} req The HTTP request object.
  * @param {string} templateName The template name.
  * @param {Object} emailData The dynamic email data to send. Refer to templates.js for required key value pairs.
  */
-const sendMailFromTemplate = (templateName, emailData) => {
+const sendMailFromTemplate = (req, templateName, emailData) => {
     const fromTemplate = templates[templateName];
     if (fromTemplate) {
-        const contents = fromTemplate(emailData);
+        const contents = fromTemplate(req, emailData);
         _smtpTransport.sendMail(contents).then(logger.log).catch(logger.error);
     } else {
         throw new Error(`${templateName} is not a valid email template.`);

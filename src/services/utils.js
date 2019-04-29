@@ -23,10 +23,13 @@ const getSessionMiddleware = session({
  * @type {Object}
  */
 const SESSION_USER_DATA_MAP = {
-    CONTROL_GROUP_PATHS: 'controlGroupPaths',
+    EMAIL: 'email',
     ENTITY_ID: 'entityId',
+    FIRST_NAME: 'firstName',
     GROUPS: 'groups',
+    LAST_NAME: 'lastName',
     STANDARD_REQUEST_SUPPORTED: 'standardRequestSupported',
+    USERNAME: 'username',
     TOKEN: 'token'
 };
 

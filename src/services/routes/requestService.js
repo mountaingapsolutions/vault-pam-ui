@@ -13,6 +13,26 @@ const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sen
 const {REQUEST_STATUS} = require('services/constants');
 
 /**
+ * Retrieves user data by entity id.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @param {string} entityId The entity id.
+ * @returns {Promise}
+ */
+const _getUserByEntityId = (req, entityId) => {
+    const {VAULT_API_TOKEN: apiToken} = process.env;
+    return new Promise((resolve) => {
+        asyncRequest(initApiRequest(apiToken, `${getDomain()}/v1/identity/entity/id/${entityId}`))
+            .then((response) => {
+                const responseBody = response.body;
+                resolve(responseBody && responseBody.data ? responseBody.data : responseBody);
+            })
+            .catch((error) => resolve(error));
+    });
+};
+
+/**
  * Retrieves users associated to the provided group name.
  *
  * @private
@@ -37,7 +57,6 @@ const _getUsersByGroupName = async (req, groupName) => {
                 resolve(responses.filter((response) => response.data).map((response) => response.data));
             });
     });
-
 };
 
 /* eslint-disable new-cap */
@@ -168,7 +187,8 @@ const router = require('express').Router()
         let result;
         const {standardRequestSupported} = req.session.user;
         try {
-            if (req.app.locals.features['control-groups'] && path) {
+            const approverGroupPromises = [];
+            if (req.app.locals.features['control-groups'] && path && !id) {
                 const {accessor, groups = []} = await require('vault-pam-premium').deleteRequest(req);
                 // If entity id provided, it means it was a request rejection.
                 if (entityId) {
@@ -177,10 +197,12 @@ const router = require('express').Router()
                     notificationsManager.getInstance().to(entityId).emit('reject-request', accessor);
                 }
                 groups.forEach(group => {
+                    const {name} = group.data;
                     const requestType = entityId ? 'reject-request' : 'cancel-request';
                     // Notify the group of the cancellation or rejection.
-                    logger.info(`Emit ${requestType} of accessor ${accessor} to ${group.data.name}.`);
-                    notificationsManager.getInstance().to(group.data.name).emit(requestType, accessor);
+                    logger.info(`Emit ${requestType} of accessor ${accessor} to ${name}.`);
+                    notificationsManager.getInstance().to(name).emit(requestType, accessor);
+                    approverGroupPromises.push(_getUsersByGroupName(req, name));
                 });
                 result = {
                     status: 'ok'
@@ -188,10 +210,38 @@ const router = require('express').Router()
             } else if (standardRequestSupported && id) {
                 req.body = {id, status: REQUEST_STATUS.CANCELED};
                 result = await updateStandardRequestById(req);
-                // TODO - Send canceled email.
+                approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             } else {
                 sendError(req.originalUrl, res, 'Invalid request', 400);
                 return;
+            }
+            // Given entity id, send the rejection email.
+            if (entityId) {
+                _getUserByEntityId(req, entityId).then((user) => {
+                    if (user.metadata && user.metadata.email) {
+                        sendMailFromTemplate(req, 'reject-request', {
+                            to: user.metadata.email,
+                            secretsPath: path
+                        });
+                    }
+                });
+            }
+            // If no entity id, send the request cancellation email to would-be approvers.
+            else {
+                const approvers = {};
+                Promise.all(approverGroupPromises).then((groups) => {
+                    groups.forEach((users) => {
+                        users.forEach((user) => {
+                            if (user.metadata && user.metadata.email) {
+                                approvers[user.metadata.email] = user;
+                            }
+                        });
+                    });
+                    sendMailFromTemplate(req, 'cancel-request', {
+                        to: Object.keys(approvers).join(', '),
+                        secretsPath: path
+                    });
+                });
             }
         } catch (err) {
             sendError(req.originalUrl, res, err.message, err.statusCode);
@@ -234,12 +284,12 @@ const router = require('express').Router()
      *         description: No approval group has been configured.
      */
     .post('/request', async (req, res) => {
-        const {path, requestData} = req.body;
+        const {path, type} = req.body;
         let result;
         const {standardRequestSupported} = req.session.user;
         try {
             const approverGroupPromises = [];
-            if (req.app.locals.features['control-groups'] && path) {
+            if (req.app.locals.features['control-groups'] && type === 'control-groups') {
                 const {groups = [], data} = await require('vault-pam-premium').createRequest(req);
                 groups.forEach((groupName) => {
                     logger.info('Emit create-request data ', data, ' to ', groupName);
@@ -249,8 +299,12 @@ const router = require('express').Router()
                 result = {
                     status: 'ok'
                 };
-                //TODO add engineType checking - engineType
-            } else if (standardRequestSupported && requestData) {
+            } else if (standardRequestSupported && path) {
+                // Set status to PENDING.
+                // TODO - Refactor so we are not overriding req.body.
+                req.body.status = 'PENDING';
+                req.body.requestData = path;
+                req.body.engineType = ''; // TODO - Workaround. This needs to be reviewed.
                 result = await createOrGetStandardRequest(req);
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             } else {
@@ -266,15 +320,11 @@ const router = require('express').Router()
                         }
                     });
                 });
-                sendMailFromTemplate('create-request', {
-                    url: `${req.protocol}://${req.get('host')}`,
-                    from: 'John Ho <john.ho@mountaingapsolutions.com>',
+                sendMailFromTemplate(req, 'create-request', {
                     to: Object.keys(approvers).join(', '),
                     secretsPath: path
                 });
             });
-            //smtpClient
-
         } catch (err) {
             sendError(req.originalUrl, res, err.message, err.statusCode);
             return;
@@ -314,12 +364,15 @@ const router = require('express').Router()
         let result;
         const {groups, standardRequestSupported} = req.session.user;
         try {
-            if (req.app.locals.features['control-groups'] && accessor) {
+            let entityId;
+            let path;
+            if (req.app.locals.features['control-groups'] && accessor && !id) {
                 const {data} = await require('vault-pam-premium').authorizeRequest(req);
-                const requester = unwrap(safeWrap(data).request_info.data.request_entity.id);
-                if (requester) {
-                    logger.info('Emit approve-request data ', data, ' to ', requester, ' and the following groups: ', groups.join(', '));
-                    notificationsManager.getInstance().to(requester).emit('approve-request', data);
+                path = unwrap(safeWrap(data).request_info.data.request_path);
+                entityId = unwrap(safeWrap(data).request_info.data.request_entity.id);
+                if (entityId) {
+                    logger.info(`Emit approve-request data ${JSON.stringify(data)} to ${entityId} and the following groups: ${groups.join(', ')}.`);
+                    notificationsManager.getInstance().to(entityId).emit('approve-request', data);
                     groups.forEach((groupName) => {
                         notificationsManager.getInstance().to(groupName).emit('approve-request', data);
                     });
@@ -329,11 +382,25 @@ const router = require('express').Router()
                 };
             } else if (standardRequestSupported && id) {
                 req.body.status = REQUEST_STATUS.APPROVED;
-                result = await updateStandardRequestByApprover(req);
-                // TODO - Send approved email.
+                const {dataValues = {}} = (await updateStandardRequestByApprover(req) || [])[1] || {};
+                path = dataValues.requestData;
+                entityId = dataValues.requesterEntityId;
+                result = {
+                    status: 'ok'
+                };
             } else {
                 sendError(req.originalUrl, res, 'Invalid request', 400);
                 return;
+            }
+            if (entityId && path) {
+                _getUserByEntityId(req, entityId).then((user) => {
+                    if (user.metadata && user.metadata.email) {
+                        sendMailFromTemplate(req, 'approve-request', {
+                            to: user.metadata.email,
+                            secretsPath: path.replace('/data/', '/')
+                        });
+                    }
+                });
             }
         } catch (err) {
             sendError(req.originalUrl, res, err.message, err.statusCode);

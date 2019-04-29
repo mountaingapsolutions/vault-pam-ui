@@ -85,7 +85,6 @@ const _login = async (req, username, password) => {
 /**
  * Gets a user by optional entity id. If no entity id is provided, defaults to current session user's entity id.
  *
- * @TODO - HVU-89 - Yikes... this is gonna need to be reverted. Passing userType doesn't pass the sniff test. This makes my eyes hurt.
  * @param {Object} req The HTTP request object.
  * @param {string} [id] The entity id.
  * @returns {Promise}
