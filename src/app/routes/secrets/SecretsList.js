@@ -385,7 +385,7 @@ class SecretsList extends Component {
                 (secretsPaths.secrets || []).map((secret, i) => {
                     const {capabilities, standardRequestData, data = {}, name} = secret;
                     const {createdAt, id, status} = standardRequestData || {};
-                    const {request_info: requestInfo = {}, wrap_info: wrapInfo} = data;
+                    const {request_info: requestInfo, wrap_info: wrapInfo} = data;
                     const currentPath = path ? `${path}/${name}` : name;
                     const mountPath = `${mount}/${currentPath}`;
                     const url = `/secrets/${mountPath}`;
@@ -393,11 +393,11 @@ class SecretsList extends Component {
                     const canOpen = capabilities.includes('read') && !name.endsWith('/') && !isWrapped || status === Constants.REQUEST_STATUS.APPROVED;
                     const canUpdate = capabilities.some(capability => capability === 'update' || capability === 'root');
                     const requiresRequest = capabilities.includes('deny') && !name.endsWith('/') || isWrapped;
-                    const isApproved = isWrapped && requestInfo.approved;
-                    const authorizations = isWrapped && requestInfo.authorizations;
+                    const isApproved = isWrapped && (requestInfo || {}).approved;
+                    const authorizations = isWrapped && (requestInfo || {}).authorizations;
                     const canDelete = capabilities.includes('delete');
                     const isPendingInDatabase = status === Constants.REQUEST_STATUS.PENDING;
-                    const creationTime = data.request_info && isWrapped ? new Date(wrapInfo.creation_time) :
+                    const creationTime = requestInfo && isWrapped ? new Date(wrapInfo.creation_time) :
                         isPendingInDatabase ? new Date(createdAt).toLocaleString() :
                             null;
                     const secondaryText = `${requiresRequest && isWrapped ? 'Request type: Control Groups' : requiresRequest || isPendingInDatabase ? 'Request type: Standard Request' : ''}${creationTime ? ` (Requested at ${creationTime.toLocaleString()})` : ''}`;
@@ -417,7 +417,7 @@ class SecretsList extends Component {
                             } else if (isApproved) {
                                 this._openApprovedRequestModal(mount, currentPath, name, wrapInfo.token);
                             } else {
-                                if (data.request_info) {
+                                if (requestInfo) {
                                     this._openRequestCancellationModal(mount, name);
                                 } else if (status === Constants.REQUEST_STATUS.PENDING) {
                                     this._openRequestCancellationModal(mount, name, id);
@@ -445,7 +445,7 @@ class SecretsList extends Component {
                             <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
                                 <IconButton
                                     aria-label={requestAccessLabel}
-                                    onClick={() => data.request_info ? this._openRequestCancellationModal(mount, name) : this._openRequestModal(mount, name, isWrapped)}>
+                                    onClick={() => requestInfo ? this._openRequestCancellationModal(mount, name) : this._openRequestModal(mount, name, isWrapped)}>
                                     <LockIcon/>
                                 </IconButton>
                             </Tooltip>}

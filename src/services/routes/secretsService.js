@@ -154,7 +154,7 @@ const router = require('express').Router()
                             if (canRead && !key.endsWith('/')) {
                                 promises.push(new Promise((secretResolve) => {
                                     const getSecretApiUrl = `${domain}/v1/${key}`;
-                                    const activeRequest = activeRequests.find(activeReq => (activeReq.request_info || {}).request_path === key);
+                                    const activeRequest = activeRequests.find(activeReq => ((activeReq.request_info || {}).data || {}).request_path === key);
                                     if (activeRequest) {
                                         console.log(`Active request found for ${key}: `, activeRequest);
                                         secret.data = activeRequest;
