@@ -203,15 +203,15 @@ const sendNotificationEmail = data => {
  * @param {string} body The email message.
  */
 const sendEmail = (recipients, subject, body) => {
-    const {PAM_MAIL_SMTP_PORT, PAM_MAIL_SMTP_HOST, PAM_MAIL_SERVICE, PAM_MAIL_USER, PAM_MAIL_PASS} = process.env;
+    const {SMTP_PORT, SMTP_HOST, SMTP_SERVICE, SMTP_USER, SMTP_PASS} = process.env;
     const smtpTransport = nodemailer.createTransport({
-        service: PAM_MAIL_SERVICE,
-        port: PAM_MAIL_SMTP_PORT,
-        host: PAM_MAIL_SMTP_HOST,
+        service: SMTP_SERVICE,
+        port: SMTP_PORT,
+        host: SMTP_HOST,
         secure: true,
         auth: {
-            user: PAM_MAIL_USER,
-            pass: PAM_MAIL_PASS,
+            user: SMTP_USER,
+            pass: SMTP_PASS
         },
         debug: true
     });

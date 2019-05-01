@@ -11,9 +11,9 @@ readonly ENV_VARS=(PAM_DATABASE
                   PAM_DATABASE_PORT
                   VAULT_API_TOKEN
                   VAULT_DOMAIN
-                  PAM_MAIL_SERVICE
-                  PAM_MAIL_USER
-                  PAM_MAIL_PASS)
+                  SMTP_SERVICE
+                  SMTP_USER
+                  SMTP_PASS)
 # styles
 NL=$'\n'
 BOLD=$(tput bold)
@@ -106,13 +106,13 @@ questions_db() {
         ask "Enter database password: " PAM_DATABASE_PASSWORD
     else
         show_warn "We will now install and create a database."
-        ask "Enter database name: " PAM_DATABASE
-        ask "Enter database user: " PAM_DATABASE_USER
-        ask "Enter database password: " PAM_DATABASE_PASSWORD
         # setting the default internal database data
+        ask "Enter database password: " PAM_DATABASE_PASSWORD
         INSTALL_DB=yes
-        PAM_DATABASE_URL=host.docker.internal
-        PAM_DATABASE_PORT=5432
+        PAM_DATABASE_URL=localhost
+        PAM_DATABASE_PORT=5434
+        PAM_DATABASE=pam-db
+        PAM_DATABASE_USER=hashi_vault_pam_db_user
     fi
 }
 
@@ -141,9 +141,9 @@ questions_vault() {
 # Email questions
 questions_email() {
     print_title "Email"
-    ask "Enter email service(gmail for now): " PAM_MAIL_SERVICE
-    ask "Enter email username: " PAM_MAIL_USER
-    ask "Enter email password: " PAM_MAIL_PASS
+    ask "Enter email service(gmail for now): " SMTP_SERVICE
+    ask "Enter email username: " SMTP_USER
+    ask "Enter email password: " SMTP_PASS
 }
 
 # Build dist folder
@@ -153,16 +153,35 @@ build_dist() {
     npm run build
 }
 
+clean_docker() {
+    show_info "Cleaning docker images and containers..."
+    # stop running container if any
+    OLD_CONTAINER="$(docker ps --all --quiet --filter=name="$APP_NAME")"
+    if [ -n "$OLD_CONTAINER" ]; then
+        show_warn "An existing $APP_NAME container is running. Stopping..."
+        docker stop $OLD_CONTAINER
+    fi
+    # purge old images (base)
+    docker images -a | grep "mhart/alpine-node" | awk '{print $3}' | xargs docker rmi
+    # purge old images (app)
+    docker images -a | grep "${APP_NAME}" | awk '{print $3}' | xargs docker rmi
+
+}
+
 # Build docker container
 build_docker() {
     print_raw $NL
     show_info "Building docker image."
-    if [ -n "$1" ]; then
+    if [ -n "$INSTALL_DB" ]; then
         show_info "Preparing internal DB."
-        DOCKER_BUILD_ARGS=" --build-arg WITH_DB=yes --build-arg PAM_DATABASE=${PAM_DATABASE} --build-arg PAM_DATABASE_USER=${PAM_DATABASE_USER} --build-arg PAM_DATABASE_PASSWORD=${PAM_DATABASE_PASSWORD}"
+        DOCKER_BUILD_ARGS=" --build-arg WITH_DB=yes \
+            --build-arg PAM_DATABASE=${PAM_DATABASE} \
+            --build-arg PAM_DATABASE_PORT=${PAM_DATABASE_PORT} \
+            --build-arg PAM_DATABASE_USER=${PAM_DATABASE_USER} \
+            --build-arg PAM_DATABASE_PASSWORD=${PAM_DATABASE_PASSWORD}"
     fi
     show_info "$DOCKER_BUILD_ARGS"
-    docker build -t $APP_NAME . $DOCKER_BUILD_ARGS
+    docker build --no-cache -t $APP_NAME . $DOCKER_BUILD_ARGS
 }
 
 # Run docker container
@@ -180,19 +199,15 @@ run_docker() {
         done
     fi
 
-    # stop running container if any
-    OLD_CONTAINER="$(docker ps --all --quiet --filter=name="$APP_NAME")"
-    if [ -n "$OLD_CONTAINER" ]; then
-        show_warn "An existing $APP_NAME container is running. Stopping..."
-        docker stop $OLD_CONTAINER
-    fi
-
     show_info "Running docker with these arguments: ${DOCKER_RUN_ARGS}"
     DOCKER_FLAGS="-itd \
-        -p $PORT:$PORT \
+        -p ${PORT}:${PORT} \
+        -p ${PAM_DATABASE_PORT}:${PAM_DATABASE_PORT} \
+        --net=host
         $DOCKER_RUN_ARGS \
-        --name $APP_NAME \
-        --rm $APP_NAME"
+        --name ${APP_NAME} \
+        --rm ${APP_NAME}"
+    show_warn $DOCKER_FLAGS
     docker run $DOCKER_FLAGS
 }
 
@@ -200,7 +215,7 @@ run_docker() {
 finish() {
     show_info "Listing all running docker containers."
     docker ps
-    show_info "Sweet! The application will be up soon at https://localhost:$PORT"
+    show_info "Sweet! The application will be up soon at https://localhost:${PORT}"
     print_raw $NL
 }
 
@@ -222,7 +237,14 @@ main() {
 
     fi
     build_dist
-    build_docker $INSTALL_DB
+    clean_docker
+    PAM_DATABASE_PASSWORD=test1234
+    VAULT_API_TOKEN=s.UEcsthEyqEnQSBBjUIjAIP6W
+    VAULT_DOMAIN=https://hashicorp-vault-2092648714.us-east-1.elb.amazonaws.com
+    SMTP_PASS=gmail
+    SMTP_PASS=notifier@mountaingapsolutions.com
+    SMTP_PASS=Eueldx33@mgs
+    build_docker
     run_docker $USE_ENV
     finish
 }
