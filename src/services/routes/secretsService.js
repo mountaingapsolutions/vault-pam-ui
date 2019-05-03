@@ -1,13 +1,69 @@
+const {toObject} = require('@mountaingapsolutions/objectutil/objectutil');
 const chalk = require('chalk');
 const request = require('request');
-const {checkIfApprover} = require('services/routes/standardRequestService');
 const {initApiRequest, getDomain, sendError} = require('services/utils');
-const RequestController = require('services/controllers/Request');
 const logger = require('services/logger');
 const {
-    getUserSecretsAccess
+    getApprovedRequests
 } = require('services/routes/standardRequestService');
-const {REQUEST_STATUS} = require('services/constants');
+
+/**
+ * Helper method to retrieve secrets by the provided URL path.
+ *
+ * @private
+ * @param {string} token The user session token.
+ * @param {string} apiUrl The API url to fetch secrets from.
+ * @returns {Promise}
+ */
+const _getSecretsByPath = (token, apiUrl) => {
+    logger.log(`Listing secrets from ${chalk.yellow.bold(apiUrl)}.`);
+    return new Promise((resolve) => {
+        request(initApiRequest(token, apiUrl), async (error, response, body) => {
+            if (error) {
+                logger.error(`Error in retrieving secrets (${apiUrl}): ${error.toString()}`);
+                resolve([]);
+                return;
+            }
+            const {statusCode} = response;
+            if (statusCode !== 200 && statusCode !== 404) {
+                logger.error(`Error in retrieving secrets (${apiUrl}) (status code: ${statusCode}): ${body && JSON.stringify(body)}`);
+                resolve([]);
+                return;
+            }
+            resolve(((body || {}).data || {}).keys || []);
+        });
+    });
+};
+
+/**
+ * Helper method to retrieve capabilities for the provided paths.
+ *
+ * @private
+ * @param {string} token The user session token.
+ * @param {Array} paths The array of paths to check.
+ * @returns {Promise}
+ */
+const _getCapabilities = (token, paths) => {
+    const apiUrl = `${getDomain()}/v1/sys/capabilities-self`;
+    logger.log(`Checking capabilities with paths ${chalk.yellow.bold(JSON.stringify(paths))}.`);
+    return new Promise((resolve) => {
+        request({
+            ...initApiRequest(token, apiUrl),
+            method: 'POST',
+            json: {
+                paths
+            }
+        }, (error, response, capabilities) => {
+            if (error) {
+                logger.error(`Error in retrieving capabilities (${apiUrl}): ${error.toString()}`);
+                resolve({});
+                return;
+            }
+            resolve(capabilities || {});
+        });
+    });
+};
+
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
@@ -42,142 +98,101 @@ const router = require('express').Router()
  *         description: Not found.
  */
     .get('/list/*', async (req, res) => {
-        const {params = {}, query, url} = req;
-        const urlParts = (params[0] || '').split('/').filter(path => !!path);
+        const {params = {}, query} = req;
+        const urlParts = (params['0'] || '').split('/').filter(path => !!path);
         const listUrlParts = [...urlParts];
         const isV2 = String(query.version) === '2';
         if (isV2) {
             listUrlParts.splice(1, 0, 'metadata');
         }
         const domain = getDomain();
-        const {entityId, token} = req.session.user;
+        const {entityId: requesterEntityId, token} = req.session.user;
         const apiUrl = `${domain}/v1/${listUrlParts.join('/')}?list=true`;
 
-        // Get current user's active Control Group requests.
-        let activeRequests = [];
-        if (req.app.locals.features['control-groups']) {
-            activeRequests = await require('vault-pam-premium').getActiveRequests(req);
-        }
+        const approvedRequests = await getApprovedRequests(requesterEntityId);
+        const approvedRequestsMap = toObject(approvedRequests.map(result => result.dataValues), 'requestData');
+        console.warn('approvedRequestsMap: ', approvedRequestsMap);
 
-        logger.log(`Listing secrets from ${chalk.yellow.bold(apiUrl)}.`);
-
-        // Get Standard Requests
-        let standardRequests;
-        try {
-            const isApprover = await checkIfApprover(req, entityId);
-            if (isApprover) {
-                standardRequests = await RequestController.findAll();
-            } else {
-                standardRequests = await RequestController.findAllByRequester(entityId);
+        // Maintain the list of paths as a key/value map as well for easier access later.
+        const pathsMap = {};
+        const paths = (await _getSecretsByPath(token, apiUrl)).map((key) => {
+            const getUrlParts = [...urlParts];
+            if (isV2) {
+                getUrlParts.splice(1, 0, key.endsWith('/') ? 'metadata' : 'data');
             }
-        } catch (err) {
-            logger.log(`No standard requests found: ${err}`);
-        }
+            const path = `${getUrlParts.join('/')}/${key}`;
+            pathsMap[path] = path;
+            return path;
+        });
 
-        request(initApiRequest(token, apiUrl), (error, response, body) => {
-            if (error) {
-                sendError(url, res, error);
-                return;
-            }
-            try {
-                const {statusCode} = response;
-                if (statusCode !== 200 && statusCode !== 404) {
-                    res.status(statusCode).json(body);
-                    return;
-                }
-                // Maintain the list of paths as a key/value map as well for easier access later.
-                const pathsMap = {};
-                const paths = (((body || {}).data || {}).keys || []).map(key => {
-                    const getUrlParts = [...urlParts];
-                    if (isV2) {
-                        getUrlParts.splice(1, 0, key.endsWith('/') ? 'metadata' : 'data');
-                    }
-                    const path = `${getUrlParts.join('/')}/${key}`;
-                    pathsMap[path] = path;
-                    return path;
-                });
-
-                // Make sure to include listing path.
-                const listingPath = listUrlParts.join('/');
-                paths.push(listingPath);
-                pathsMap[listingPath] = listingPath;
-
-                const capabilitiesUrl = `${domain}/v1/sys/capabilities-self`;
-                logger.log(`Checking capabilities with paths ${chalk.yellow.bold(JSON.stringify(paths))}.`);
-                request({
-                    ...initApiRequest(token, capabilitiesUrl),
-                    method: 'POST',
-                    json: {
-                        paths
-                    }
-                }, (capErr, capRes, capabilities) => {
-                    if (capErr) {
-                        sendError(capabilitiesUrl, capRes, error);
-                        return;
-                    }
-                    const promises = [];
-                    const secrets = Object.keys(pathsMap)
-                        .filter(key => key !== listingPath) // Exclude the listing path.
-                        .map(key => {
-                            const keySplit = key.split('/');
-                            const lastPath = keySplit[keySplit.length - 1];
-                            const secret = {
-                                name: lastPath === '' ? `${keySplit[keySplit.length - 2]}/` : lastPath,
-                                capabilities: capabilities[key] || [],
-                                // return most recently created standardRequest if available
-                                ...standardRequests && {
-                                    standardRequestData: standardRequests.reduce((result, currentRequest) => {
-                                        if ((currentRequest.dataValues || {}).requestData === key &&
-                                            (!result.createdAt ||
-                                            (currentRequest.dataValues || {}).createdAt > result.createdAt)) {
-                                            result = {...currentRequest.dataValues};
-                                        }
-                                        return result;
-                                    }, {})
-                                }
-                            };
-                            const canRead = (capabilities[key] || []).includes('read');
-                            if (canRead && !key.endsWith('/')) {
-                                promises.push(new Promise((secretResolve) => {
-                                    const getSecretApiUrl = `${domain}/v1/${key}`;
-                                    const activeRequest = activeRequests.find(activeReq => ((activeReq.request_info || {}).data || {}).request_path === key);
-                                    if (activeRequest) {
-                                        secret.data = activeRequest;
-                                        secretResolve();
-                                    } else {
-                                        request(initApiRequest(token, getSecretApiUrl), (secretErr, secretRes, secretBody) => {
-                                            if (secretBody) {
-                                                secret.data = secretBody;
-                                                const {wrap_info: wrapInfo} = secretBody;
-                                                if (wrapInfo) {
-                                                    try {
-                                                        // Just immediately revoke the accessor. A new one will be generated upon a user requesting access. The initial wrap_info accessor is only to inform the user that this secret is wrapped.
-                                                        require('vault-pam-premium').revokeAccessor(req, wrapInfo.accessor);
-                                                    } catch (err) {
-                                                        logger.error(`Error occurred. The package vault-pam-premium possibly unavailable: ${err.toString()}`);
-                                                    }
-                                                }
-                                                secretResolve();
-                                            }
-                                        });
+        // Make sure to include listing path.
+        const listingPath = listUrlParts.join('/');
+        paths.push(listingPath);
+        pathsMap[listingPath] = listingPath;
+        const capabilities = await _getCapabilities(token, paths);
+        const promises = [];
+        const secrets = Object.keys(pathsMap)
+            .filter(key => key !== listingPath) // Exclude the listing path.
+            .map(key => {
+                const keySplit = key.split('/');
+                const lastPath = keySplit[keySplit.length - 1];
+                const secret = {
+                    name: lastPath === '' ? `${keySplit[keySplit.length - 2]}/` : lastPath,
+                    capabilities: capabilities[key] || []
+                };
+                const canRead = (capabilities[key] || []).includes('read');
+                if (canRead && !key.endsWith('/')) {
+                    promises.push(new Promise((secretResolve) => {
+                        const getSecretApiUrl = `${domain}/v1/${key}`;
+                        request(initApiRequest(token, getSecretApiUrl), (error, response, body) => {
+                            if (error) {
+                                logger.error(error);
+                            }
+                            if (body) {
+                                secret.data = body;
+                                const {wrap_info: wrapInfo} = body;
+                                if (wrapInfo) {
+                                    try {
+                                        // Just immediately revoke the accessor. A new one will be generated upon a user requesting access. The initial wrap_info accessor is only to inform the user that this secret is wrapped.
+                                        require('vault-pam-premium').revokeAccessor(req, wrapInfo.accessor);
+                                    } catch (err) {
+                                        logger.error(`Error occurred. The package vault-pam-premium possibly unavailable: ${err.toString()}`);
                                     }
-                                }));
+                                }
+                            } else {
+                                logger.error(`No response body returned from ${getSecretApiUrl}`);
+                                secret.data = {};
                             }
-                            return secret;
+                            secretResolve();
                         });
-                    Promise.all(promises).then(() => {
-                        res.json({
-                            ...body,
-                            data: {
-                                capabilities: capabilities[listingPath] || [], // Add the capabilities of the listing path to the top level of the response data.
-                                secrets
+                    }));
+                } else if (!canRead && approvedRequestsMap[key]) {
+                    // If approved from Standard Request, fetch the data and add "read" to capabilities.
+                    const {VAULT_API_TOKEN: apiToken} = process.env;
+                    promises.push(new Promise((secretResolve) => {
+                        const getSecretApiUrl = `${domain}/v1/${key}`;
+                        request(initApiRequest(apiToken, getSecretApiUrl), (error, response, body) => {
+                            if (error) {
+                                logger.error(error);
                             }
+                            if (!body) {
+                                logger.error(`No response body returned from ${getSecretApiUrl} using API token.`);
+                            }
+                            secret.capabilities.push('read');
+                            secret.data = body || {};
+                            secretResolve();
                         });
-                    });
-                });
-            } catch (err) {
-                sendError(url, res, err);
-            }
+                    }));
+                }
+                return secret;
+            });
+        Promise.all(promises).then(() => {
+            res.json({
+                data: {
+                    capabilities: capabilities[listingPath] || [], // Add the capabilities of the listing path to the top level of the response data.
+                    secrets
+                }
+            });
         });
     })
     /**
@@ -211,34 +226,22 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .get('/get/*', async (req, res) => {
-        const {entityId, token} = req.session.user;
-        const controlGroupSupport = !!req.app.locals.features['control-groups'];
-        const {VAULT_API_TOKEN: apiToken} = process.env;
+        const {token} = req.session.user;
         const {params = {}, query} = req;
-        const isAccessAllowed = !controlGroupSupport ? await getUserSecretsAccess(req, {
-            requesterEntityId: entityId || null,
-            status: REQUEST_STATUS.APPROVED,
-            requestData: params[0]
-        }) : true;
-
-        if (isAccessAllowed) {
-            const urlParts = (params[0] || '').split('/').filter(path => !!path);
-            const listUrlParts = [...urlParts];
-            const isV2 = String(query.version) === '2';
-            if (isV2) {
-                listUrlParts.splice(1, 0, 'metadata');
-            }
-            const apiUrl = `${getDomain()}/v1/${listUrlParts.join('/')}`;
-            request(initApiRequest(controlGroupSupport ? token : apiToken, apiUrl), (error, response, body) => {
-                if (error) {
-                    sendError(error, response, body);
-                    return;
-                }
-                res.json({...body});
-            });
-        } else {
-            sendError(req.originalUrl, res, 'Access Denied');
+        const urlParts = (params[0] || '').split('/').filter(path => !!path);
+        const listUrlParts = [...urlParts];
+        const isV2 = String(query.version) === '2';
+        if (isV2) {
+            listUrlParts.splice(1, 0, 'metadata');
         }
+        const apiUrl = `${getDomain()}/v1/${listUrlParts.join('/')}`;
+        request(initApiRequest(token, apiUrl), (error, response, body) => {
+            if (error) {
+                sendError(error, response, body);
+                return;
+            }
+            res.json({...body});
+        });
     });
 
 module.exports = {

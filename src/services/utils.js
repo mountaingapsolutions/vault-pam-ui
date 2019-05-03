@@ -1,8 +1,8 @@
-/* eslint-disable no-console */
 const chalk = require('chalk');
 const session = require('express-session');
 const request = require('request');
 const {filter} = require('@mountaingapsolutions/objectutil');
+const logger = require('services/logger');
 
 /**
  * Just a collection of service utility methods.
@@ -29,8 +29,8 @@ const SESSION_USER_DATA_MAP = {
     GROUPS: 'groups',
     LAST_NAME: 'lastName',
     STANDARD_REQUEST_SUPPORTED: 'standardRequestSupported',
-    USERNAME: 'username',
-    TOKEN: 'token'
+    TOKEN: 'token',
+    USERNAME: 'username'
 };
 
 /**
@@ -62,7 +62,7 @@ const checkPremiumFeatures = (app) => {
     } : {};
     try {
         const {validate} = require('vault-pam-premium');
-        console.log(chalk.bold.green('Premium features available.'));
+        logger.log(chalk.bold.green('Premium features available.'));
         validate().then((results) => {
             app.locals.features = results ? {
                 ...features,
@@ -70,7 +70,7 @@ const checkPremiumFeatures = (app) => {
             } : features;
         });
     } catch (err) {
-        console.log(chalk.bold.red('Premium features unavailable.'));
+        logger.log(chalk.bold.red('Premium features unavailable.'));
         app.locals.features = features;
     }
 };
@@ -134,7 +134,7 @@ const getDomain = () => {
  * @param {number} [statusCode] The HTTP status code.
  */
 const sendError = (url, res, error, statusCode = 400) => {
-    console.warn(`Error in retrieving url "${url}": `, error);
+    logger.warn(`Error in retrieving url "${url}": `, error);
     let errors = [];
     if (typeof error === 'string') {
         errors.push(error);
@@ -161,7 +161,7 @@ const setSessionData = (req, sessionUserData) => {
     const filteredSessionUserData = filter(sessionUserData, key => {
         const isValid = validValues.includes(key);
         if (!isValid) {
-            console.warn(`Ignored property ${chalk.bold.yellow(key)}. If this property is intended to be stored, update utils.SESSION_USER_DATA_MAP.`);
+            logger.warn(`Ignored property ${chalk.bold.yellow(key)}. If this property is intended to be stored, update utils.SESSION_USER_DATA_MAP.`);
         }
         return isValid;
     });
@@ -180,7 +180,7 @@ const setSessionData = (req, sessionUserData) => {
  */
 const validateDomain = async (domain) => {
     const url = `${domain.endsWith('/') ? domain.slice(0, -1) : domain}/v1/sys/seal-status`;
-    console.log(`Validating ${chalk.bold.yellow(url)}.`);
+    logger.log(`Validating ${chalk.bold.yellow(url)}.`);
     const vaultDomainResponse = await asyncRequest({
         url,
         json: true

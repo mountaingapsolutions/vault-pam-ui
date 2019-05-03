@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /* global process, __dirname */
 
 const port = process.env.PORT || 80;
@@ -16,6 +15,7 @@ require('dotenv').config();
 // Add the root project directory to the app module search path:
 require('app-module-path').addPath(path.join(__dirname));
 
+const logger = require('services/logger');
 const {api, config, login, logout, authenticatedRoutes} = require('services/routes');
 
 // Overcome the DEPTH_ZERO_SELF_SIGNED_CERT error.
@@ -23,20 +23,20 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const {checkPremiumFeatures, getSessionMiddleware, validateDomain} = require('services/utils');
 if (!process.env.VAULT_DOMAIN) {
-    console.error('No Vault domain configured.');
+    logger.error('No Vault domain configured.');
     process.exit(9);
 }
 validateDomain(process.env.VAULT_DOMAIN)
     .then((isValid) => {
         if (!isValid) {
-            console.error(`Invalid Vault domain "${process.env.VAULT_DOMAIN}".`);
+            logger.error(`Invalid Vault domain "${process.env.VAULT_DOMAIN}".`);
             process.exit(9);
         } else {
             _startServer();
         }
     })
     .catch((err) => {
-        console.error(`Invalid Vault domain "${process.env.VAULT_DOMAIN}": `, err);
+        logger.error(`Invalid Vault domain "${process.env.VAULT_DOMAIN}": ${err.toString()}`);
         process.exit(9);
     });
 
@@ -47,7 +47,7 @@ validateDomain(process.env.VAULT_DOMAIN)
  */
 const _startServer = () => {
     const useHsts = process.env.USE_HSTS !== null && process.env.USE_HSTS !== undefined ? !!process.env.USE_HSTS && process.env.USE_HSTS !== 'false' : true;
-    console.log(`Starting server on port ${chalk.yellow(port)}...`);
+    logger.log(`Starting server on port ${chalk.yellow(port)}...`);
 
     const noCacheUrls = ['/'];
     const app = express();
@@ -62,7 +62,7 @@ const _startServer = () => {
             //     reqSecure: req.secure,
             //     reqProtocol: req.protocol
             // };
-            // console.log(logObject);
+            // logger.log(logObject);
 
             // If requesting http, forward to https.
             if (useHsts && req.headers['x-forwarded-proto'] !== 'https') {
@@ -95,10 +95,10 @@ const _startServer = () => {
             res.sendFile(path.join(__dirname, 'build', 'index.html'));
         })
         .listen(port, () => {
-            console.log(`Server is now listening on port ${chalk.yellow(port)}...`);
+            logger.log(`Server is now listening on port ${chalk.yellow(port)}...`);
 
             if (!process.env.SESSION_SECRET) {
-                console.warn(`The environment variable ${chalk.yellow.bold('SESSION_SECRET')} was not set. Defaulting to the classic xkcd password...`);
+                logger.warn(`The environment variable ${chalk.yellow.bold('SESSION_SECRET')} was not set. Defaulting to the classic xkcd password...`);
             }
 
             // Notification manager startup.
@@ -108,13 +108,13 @@ const _startServer = () => {
             const connection = require('services/db/connection');
             connection.start()
                 .then(() => {
-                    console.info('DB connection successful. ᕕ( ᐛ )ᕗ\r\n');
+                    logger.info('DB connection successful. ᕕ( ᐛ )ᕗ\r\n');
                     // DB migrations
                     // const {migrate} = require('services/db/migrate');
                     // migrate('up');
                 })
                 .catch((error) => {
-                    console.error(error);
+                    logger.error(error);
                     process.exit(1);
                 });
         });

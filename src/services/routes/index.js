@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 const chalk = require('chalk');
 const request = require('request');
 const swaggerUi = require('swagger-ui-express');
@@ -6,7 +5,6 @@ const {options, swaggerDoc} = require('services/Swagger');
 const {router: secretsServiceRouter} = require('services/routes/secretsService');
 const {router: userServiceRouter} = require('services/routes/userService');
 const {router: requestServiceRouter} = require('services/routes/requestService');
-const {router: standardRequestServiceRouter} = require('services/routes/standardRequestService');
 const {initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
 const logger = require('services/logger');
 
@@ -20,7 +18,7 @@ const api = (req, res) => {
     _disableCache(res);
     const {'x-vault-token': token} = req.headers;
     const apiUrl = `${getDomain()}${req.url}`;
-    console.log(`Proxy the request from ${_yellowBold(req.originalUrl)} to ${_yellowBold(apiUrl)}.`);
+    logger.log(`Proxy the request from ${_yellowBold(req.originalUrl)} to ${_yellowBold(apiUrl)}.`);
     req.pipe(request(initApiRequest(token, apiUrl), (err) => {
         if (err) {
             res.status(500).json({errors: [err]});
@@ -175,8 +173,7 @@ const authenticatedRoutes = require('express').Router()
         }
     })
     .use('/user', userServiceRouter)
-    .use('/requests', requestServiceRouter)
-    .use('/request', standardRequestServiceRouter)
+    .use('/secret', requestServiceRouter)
     .use('/secrets', secretsServiceRouter)
     .use('/log', logger.router)
     .get('/session', (req, res) => {
