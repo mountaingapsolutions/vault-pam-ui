@@ -134,15 +134,10 @@ const createOrUpdateStatusByRequester = (requesterEntityId, path, status) => {
         RequestController.updateStatusByRequester(requesterEntityId, path, status)
             .then(async (results) => {
                 if (results && Array.isArray(results)) {
-                    if (results[0] === 0) {
-                        logger.info(`Creating new request for ${requesterEntityId} for the path ${path}.`);
-                        resolve(await RequestController.create(requesterEntityId, path, 'standard-request', REQUEST_STATUS.PENDING));
-                        return;
-                    }
                     if (results[0] > 1) {
                         logger.warn(`More than 1 record was updated for ${requesterEntityId} for the path ${path}...`);
                     }
-                    resolve(results);
+                    resolve(results[1]);
                 } else {
                     reject({
                         message: 'Unexpected response',
@@ -150,7 +145,26 @@ const createOrUpdateStatusByRequester = (requesterEntityId, path, status) => {
                     });
                 }
             })
-            .catch(reject);
+            .catch(async (err) => {
+                logger.info(`No existing status request: ${err.message}`);
+                if (status === REQUEST_STATUS.CANCELED) {
+                    reject({
+                        message: 'Request not found',
+                        status: 404
+                    });
+                } else {
+                    logger.info(`Creating new request for ${requesterEntityId} for the path ${path}.`);
+                    Promise.all([RequestController.create(requesterEntityId, path, 'standard-request', REQUEST_STATUS.PENDING), _getUserIds()]).then((results) => {
+                        const standardRequest = results[0];
+                        const userIdMap = results[1];
+                        // Inject the requester name into the data value.
+                        if (standardRequest.dataValues) {
+                            standardRequest.dataValues.requesterName = (userIdMap[requesterEntityId] || {}).name || `<${requesterEntityId}>`;
+                        }
+                        resolve(standardRequest);
+                    });
+                }
+            });
     });
 };
 

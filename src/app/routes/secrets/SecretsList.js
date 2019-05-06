@@ -36,7 +36,6 @@ import Button from 'app/core/components/Button';
 import CreateUpdateSecretModal from 'app/core/components/CreateUpdateSecretModal';
 import ConfirmationModal from 'app/core/components/ConfirmationModal';
 import SnackbarContent from 'app/core/components/SnackbarContent';
-import Constants from 'app/util/Constants';
 
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 
@@ -561,8 +560,8 @@ const _mapStateToProps = (state, ownProps) => {
         const mountPath = `${mount}/${currentPath}`;
         const isWrapped = !!wrapInfo;
         let isApproved = false;
-        let isPending = false;
         const requiresRequest = !capabilities.includes('read') && !name.endsWith('/') || isWrapped;
+        let activeRequest;
         let secondaryText;
         let authorizationsText;
         let wrapInfoToken;
@@ -570,22 +569,15 @@ const _mapStateToProps = (state, ownProps) => {
             secondaryText = `Request type: ${isWrapped ? 'Control Groups' : 'Standard Request'}`;
             // Check for any active requests.
             const requestPath = `${mount}${isV2 ? '/data/' : '/'}${currentPath}`;
-            const activeRequest = secretsRequests.find((request) => request.request_info.data.request_path === requestPath);
+            activeRequest = secretsRequests.find((request) => request.requestPath === requestPath);
             if (activeRequest) {
-                const {approved, authorizations} = activeRequest.request_info.data;
-                if (isWrapped) {
-                    isApproved = approved;
-                    isPending = !approved;
-                    wrapInfoToken = activeRequest.wrap_info.token;
-                } else {
-                    isApproved = approved === Constants.REQUEST_STATUS.APPROVED;
-                    isPending = approved === Constants.REQUEST_STATUS.PENDING;
-                }
-                if (authorizations) {
-                    const namesList = authorizations.map((authorization) => authorization.entity_name);
+                const {approved, authorizations, creationTime, token} = activeRequest;
+                isApproved = approved;
+                wrapInfoToken = token;
+                if (approved) {
+                    const namesList = authorizations.map((authorization) => authorization.name);
                     authorizationsText = `Approved by ${namesList.join(', ')}.`;
                 }
-                const creationTime = isWrapped ? activeRequest.wrap_info.creation_time : activeRequest.request_info.creation_time;
                 if (creationTime) {
                     secondaryText += ` (Requested at ${new Date(creationTime).toLocaleString()})`;
                 }
@@ -598,7 +590,7 @@ const _mapStateToProps = (state, ownProps) => {
             canOpen: capabilities.includes('read') && !name.endsWith('/') && !isWrapped,
             canUpdate: capabilities.some(capability => capability === 'update' || capability === 'root'),
             isApproved,
-            isPending,
+            isPending: !!activeRequest && !isApproved,
             isWrapped,
             name,
             requiresRequest,
@@ -621,8 +613,7 @@ const _mapStateToProps = (state, ownProps) => {
         inProgress: createInProgressSelector([
             kvAction.ACTION_TYPES.DELETE_SECRETS,
             kvAction.ACTION_TYPES.LIST_MOUNTS,
-            kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES,
-            kvAction.ACTION_TYPES.LIST_REQUESTS
+            kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES
         ])(state.actionStatusReducer),
         ...state.localStorageReducer,
         ...state.kvReducer,
@@ -650,11 +641,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
             return new Promise((resolve, reject) => {
                 dispatch(kvAction.deleteRequest(fullPath, '', type))
-                    .then(() => {
-                        dispatch(kvAction.listRequests())
-                            .then(resolve)
-                            .catch(reject);
-                    })
+                    .then(resolve)
                     .catch(reject);
             });
         },
@@ -712,11 +699,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                     type
                 };
                 dispatch(kvAction.requestSecret(requestData))
-                    .then(() => {
-                        dispatch(kvAction.listRequests())
-                            .then(resolve)
-                            .catch(reject);
-                    })
+                    .then(resolve)
                     .catch(reject);
             });
         },

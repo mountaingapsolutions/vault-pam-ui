@@ -90,7 +90,6 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     setSecretsData(data) {
-        console.warn('SET ME', data);
         return this._createResourceData(this.ACTION_TYPES.GET_SECRETS, undefined, data, false);
     }
 
@@ -151,11 +150,11 @@ class KvAction extends _Actions {
     /**
      * Removes the request data in the client data model.
      *
-     * @param {string} accessor The accessor data to remove.
+     * @param {string} requestPath The request path to remove.
      * @returns {function} Redux dispatch function.
      */
-    removeRequestData(accessor) {
-        return this._createResourceData(this.ACTION_TYPES.REMOVE_REQUEST_DATA, undefined, accessor, false);
+    removeRequestData(requestPath) {
+        return this._createResourceData(this.ACTION_TYPES.REMOVE_REQUEST_DATA, undefined, requestPath, false);
     }
 
     /**

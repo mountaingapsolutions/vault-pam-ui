@@ -171,7 +171,7 @@ export default class _Actions {
      * @protected
      * @param {string} type Specified action type from the ACTION_TYPES constant.
      * @param {Array} errors The error data field of the REST call returned with an array of errors.
-     * @param {Object} data The response data field if the REST call was successful.
+     * @param {*} data The response data field if the REST call was successful.
      * @param {boolean} inProgress Indicator if the REST call is in-flight.
      * @returns {Object} Resource data.
      */

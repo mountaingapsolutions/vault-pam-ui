@@ -111,7 +111,6 @@ const router = require('express').Router()
 
         const approvedRequests = await getApprovedRequests(requesterEntityId);
         const approvedRequestsMap = toObject(approvedRequests.map(result => result.dataValues), 'requestData');
-        console.warn('approvedRequestsMap: ', approvedRequestsMap);
 
         // Maintain the list of paths as a key/value map as well for easier access later.
         const pathsMap = {};

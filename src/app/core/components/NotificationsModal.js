@@ -31,7 +31,6 @@ import kvAction from 'app/core/actions/kvAction';
 import Button from 'app/core/components/Button';
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 import {connect} from 'react-redux';
-import Constants from 'app/util/Constants';
 
 /**
  * Notifications modal.
@@ -48,7 +47,7 @@ class NotificationsModal extends Component {
         super(props);
 
         this.state = {
-            selectedRequestId: null
+            selectedRequestPath: null
         };
 
         this._onRequestDetails = this._onRequestDetails.bind(this);
@@ -59,12 +58,12 @@ class NotificationsModal extends Component {
      *
      * @private
      * @param {SyntheticMouseEvent} event The event.
-     * @param {string} requestId Therequest id.
+     * @param {string} requestPath The request path.
      */
-    _onRequestDetails(event, requestId) {
+    _onRequestDetails(event, requestPath) {
         event.preventDefault();
         this.setState({
-            selectedRequestId: requestId
+            selectedRequestPath: requestPath
         });
     }
 
@@ -79,8 +78,8 @@ class NotificationsModal extends Component {
         const {classes, vaultLookupSelf} = this.props;
         const {entity_id: entityIdSelf} = unwrap(safeWrap(vaultLookupSelf).data.data) || {};
         // Exclude self from names list. If the user did approve the request, then that user will be listed first.
-        const namesList = authorizations.filter((authorization) => authorization.entity_id !== entityIdSelf).map((authorization) => authorization.entity_name);
-        const alreadyAuthorizedBySelf = authorizations && authorizations.some((authorization) => authorization.entity_id === entityIdSelf);
+        const namesList = authorizations.filter((authorization) => authorization.id !== entityIdSelf).map((authorization) => authorization.name);
+        const alreadyAuthorizedBySelf = authorizations && authorizations.some((authorization) => authorization.id === entityIdSelf);
         if (alreadyAuthorizedBySelf) {
             namesList.unshift('you');
         }
@@ -93,15 +92,13 @@ class NotificationsModal extends Component {
      * Renders request details
      *
      * @private
-     * @param {Object} selectedRequest selected request object
+     * @param {Object} selectedRequest The selected request object.
      * @returns {React.ReactElement}
      */
     _renderRequestDetails(selectedRequest) {
         const {classes} = this.props;
-        const {data = {}} = selectedRequest.request_info;
-        const {accessor, creation_time: creationTime} = selectedRequest.wrap_info || selectedRequest.request_info;
-        const {approved, request_entity: requestEntity, request_path: requestPath} = data;
-        const {id: entityId, name: entityName} = requestEntity || {};
+        const {accessor, approved, creationTime, requestEntity = {}, requestPath} = selectedRequest;
+        const {id, name} = requestEntity;
         return <GridList cellHeight={'auto'} className={classes.listContainer} cols={2}>
             <ListItem alignItems='flex-start'>
                 <ListItemText
@@ -112,7 +109,7 @@ class NotificationsModal extends Component {
                                 className={classes.block}
                                 color='textSecondary'
                                 component='span'>
-                                {entityName}
+                                {name}
                             </Typography>
                         </React.Fragment>
                     }
@@ -127,7 +124,7 @@ class NotificationsModal extends Component {
                                 className={classes.block}
                                 color='textSecondary'
                                 component='span'>
-                                {entityId}
+                                {id}
                             </Typography>
                         </React.Fragment>
                     }
@@ -138,10 +135,7 @@ class NotificationsModal extends Component {
                     primary={'Approval Status:'}
                     secondary={
                         <React.Fragment>
-                            <Typography
-                                className={classes.block}
-                                color='textSecondary'
-                                component='span'>
+                            <Typography className={classes.block} color='textSecondary' component='span'>
                                 {typeof approved === 'string' ? approved : approved.toString()}
                             </Typography>
                         </React.Fragment>
@@ -153,10 +147,7 @@ class NotificationsModal extends Component {
                     primary={'Request Creation Time:'}
                     secondary={
                         <React.Fragment>
-                            <Typography
-                                className={classes.block}
-                                color='textSecondary'
-                                component='span'>
+                            <Typography className={classes.block} color='textSecondary' component='span'>
                                 {new Date(creationTime).toLocaleString()}
                             </Typography>
                         </React.Fragment>
@@ -168,10 +159,7 @@ class NotificationsModal extends Component {
                     primary={'Requested Path:'}
                     secondary={
                         <React.Fragment>
-                            <Typography
-                                className={classes.block}
-                                color='textSecondary'
-                                component='span'>
+                            <Typography className={classes.block} color='textSecondary' component='span'>
                                 {requestPath}
                             </Typography>
                         </React.Fragment>
@@ -183,10 +171,7 @@ class NotificationsModal extends Component {
                     primary={'Accessor:'}
                     secondary={
                         <React.Fragment>
-                            <Typography
-                                className={classes.block}
-                                color='textSecondary'
-                                component='span'>
+                            <Typography className={classes.block} color='textSecondary' component='span'>
                                 {accessor}
                             </Typography>
                         </React.Fragment>
@@ -204,22 +189,27 @@ class NotificationsModal extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {authorizeRequest, classes, inProgress, onClose, open, rejectRequest, secretsRequests = [], vaultLookupSelf} = this.props;
-        const {selectedRequestId} = this.state;
+        const {authorizeRequest, classes, inProgress, onClose, open, deleteRequest, secretsRequests = [], vaultLookupSelf} = this.props;
+        const {selectedRequestPath} = this.state;
         const {entity_id: entityIdSelf} = unwrap(safeWrap(vaultLookupSelf).data.data) || {};
-        const selectedRequest = secretsRequests.length > 0 ? secretsRequests.find(request => (request.request_info || {}).request_id === selectedRequestId) : undefined;
+        const selectedRequest = secretsRequests.length > 0 ? secretsRequests.find((request) => request.requestPath === selectedRequestPath) : undefined;
         return <Dialog
             fullWidth
             aria-describedby='notifications-dialog-description'
             aria-labelledby='notifications-dialog-title'
             maxWidth='md'
             open={open}
-            onClose={() => onClose(false)}>
+            onClose={() => onClose(false)}
+            onExit={() => {
+                this.setState({
+                    selectedRequestPath: undefined
+                });
+            }}>
             <DialogTitle id='notifications-dialog-title'>{selectedRequest ?
                 <div>
                     <IconButton onClick={() => {
                         this.setState({
-                            selectedRequestId: undefined
+                            selectedRequestPath: undefined
                         });
                     }}>
                         <KeyboardArrowLeftIcon/>
@@ -241,16 +231,13 @@ class NotificationsModal extends Component {
                         {
                             secretsRequests.length > 0 ?
                                 secretsRequests.map(requestData => {
-                                    const {data = {}, request_id: requestId} = requestData.request_info;
-                                    const {accessor, creation_time: creationTime} = requestData.wrap_info || requestData.request_info;
-                                    const {approved, approver_entity: approverEntity, authorizations, request_entity: requestEntity, request_path: requestPath} = data;
-                                    const {id: entityId, name: entityName} = requestEntity || {};
-                                    const requestType = requestData.wrap_info ? 'Control Groups' : 'Standard Request';
-                                    const isOwnRequest = entityId === entityIdSelf;
-                                    const cancelText = isOwnRequest ? 'Cancel' : 'Reject';
-                                    const alreadyAuthorizedBySelf = requestData.wrap_info ? authorizations && authorizations.some((authorization) => authorization.entity_id === entityIdSelf) :
-                                        approverEntity === entityIdSelf && approved === Constants.REQUEST_STATUS.APPROVED;
-                                    return <React.Fragment key={requestId}>
+                                    const {accessor, approved, authorizations, creationTime, isWrapped, requestEntity = {}, requestPath} = requestData;
+                                    const {id, name} = requestEntity;
+                                    const requestType = isWrapped ? 'Control Groups' : 'Standard Request';
+                                    const isOwnRequest = id === entityIdSelf;
+                                    const deleteText = isOwnRequest ? 'Cancel' : 'Reject';
+                                    const alreadyApprovedBySelf = authorizations && authorizations.some((authorization) => authorization.id === entityIdSelf);
+                                    return <React.Fragment key={requestPath}>
                                         <ListItem alignItems='flex-start'>
                                             <ListItemAvatar>
                                                 <Avatar>
@@ -258,7 +245,7 @@ class NotificationsModal extends Component {
                                                 </Avatar>
                                             </ListItemAvatar>
                                             <ListItemText
-                                                primary={entityName}
+                                                primary={name}
                                                 secondary={
                                                     <React.Fragment>
                                                         <Typography
@@ -273,15 +260,15 @@ class NotificationsModal extends Component {
                                                             component='span'>
                                                             {`Requested at ${new Date(creationTime).toLocaleString()} via ${requestType}`}
                                                         </Typography>
-                                                        {authorizations && this._renderAuthorizations(authorizations)}
+                                                        {authorizations && authorizations.length > 0 && this._renderAuthorizations(authorizations)}
                                                     </React.Fragment>
                                                 }
                                             />
                                             {
-                                                alreadyAuthorizedBySelf ?
+                                                alreadyApprovedBySelf ?
                                                     <ListItemSecondaryAction>
                                                         <Button variant='text' onClick={(e) => {
-                                                            this._onRequestDetails(e, requestId);
+                                                            this._onRequestDetails(e, requestPath);
                                                         }}>
                                                             Details
                                                         </Button>
@@ -295,7 +282,7 @@ class NotificationsModal extends Component {
                                                     :
                                                     <ListItemSecondaryAction>
                                                         <Button variant='text' onClick={(e) => {
-                                                            this._onRequestDetails(e, requestId);
+                                                            this._onRequestDetails(e, requestPath);
                                                         }}>
                                                             Details
                                                         </Button>
@@ -303,17 +290,16 @@ class NotificationsModal extends Component {
                                                             <Tooltip aria-label='Approve' title='Approve'>
                                                                 <IconButton
                                                                     color='primary'
-                                                                    disabled={alreadyAuthorizedBySelf}
-                                                                    onClick={() => authorizeRequest(accessor, requestPath, entityId, requestData.wrap_info ? 'control-group' : 'standard-request')}>
+                                                                    onClick={() => authorizeRequest(accessor, requestPath, id, isWrapped ? 'control-group' : 'standard-request')}>
                                                                     <CheckIcon/>
                                                                 </IconButton>
                                                             </Tooltip>}
-                                                        <Tooltip aria-label={cancelText} title={cancelText}>
-                                                            <IconButton disabled={alreadyAuthorizedBySelf}
+                                                        <Tooltip aria-label={deleteText} title={deleteText}>
+                                                            <IconButton disabled={approved}
                                                                 onClick={() => {
                                                                     /* eslint-disable no-alert */
-                                                                    if (window.confirm(`Are you sure you want to ${cancelText.toLowerCase()} ${isOwnRequest ? 'your' : `${entityName}'s`} request to ${requestPath}?`)) {
-                                                                        rejectRequest(requestPath, entityId, requestData.wrap_info ? 'control-group' : 'standard-request');
+                                                                    if (window.confirm(`Are you sure you want to ${isOwnRequest ? 'cancel your' : `reject ${name}'s`} request to ${requestPath}?`)) {
+                                                                        deleteRequest(requestPath, id, isWrapped ? 'control-group' : 'standard-request');
                                                                     }
                                                                     /* eslint-enable no-alert */
                                                                 }}>
@@ -362,11 +348,11 @@ NotificationsModal.defaultProps = {
 NotificationsModal.propTypes = {
     authorizeRequest: PropTypes.func.isRequired,
     classes: PropTypes.object.isRequired,
+    deleteRequest: PropTypes.func.isRequired,
     errors: PropTypes.string,
     inProgress: PropTypes.bool,
     onClose: PropTypes.func.isRequired,
     open: PropTypes.bool,
-    rejectRequest: PropTypes.func.isRequired,
     secretsRequests: PropTypes.array,
     vaultLookupSelf: PropTypes.object.isRequired
 };
@@ -400,28 +386,8 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        authorizeRequest: (path, entityId, requestId, type) => {
-            return new Promise((resolve, reject) => {
-                dispatch(kvAction.authorizeRequest(path, entityId, requestId, type))
-                    .then(() => {
-                        dispatch(kvAction.listRequests())
-                            .then(resolve)
-                            .catch(reject);
-                    })
-                    .catch(reject);
-            });
-        },
-        rejectRequest: (path, entityId, type = 'standard-request') => {
-            return new Promise((resolve, reject) => {
-                dispatch(kvAction.deleteRequest(path, entityId, type))
-                    .then(() => {
-                        dispatch(kvAction.listRequests())
-                            .then(resolve)
-                            .catch(reject);
-                    })
-                    .catch(reject);
-            });
-        }
+        authorizeRequest: (path, entityId, requestId, type) => dispatch(kvAction.authorizeRequest(path, entityId, requestId, type)),
+        deleteRequest: (path, entityId, type = 'standard-request') => dispatch(kvAction.deleteRequest(path, entityId, type))
     };
 };
 
