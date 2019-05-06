@@ -173,7 +173,7 @@ class Main extends Component {
      * @override
      */
     componentDidMount() {
-        const {checkSession, listRequests} = this.props;
+        const {checkSession, listRequests, logout} = this.props;
         checkSession().then(() => {
             const {listMounts, getSealStatus, user, vaultLookupSelf} = this.props;
 
@@ -195,8 +195,8 @@ class Main extends Component {
             }
             getSealStatus();
             listMounts();
-        });
-        listRequests();
+            listRequests();
+        }).catch(logout);
     }
 
     /**

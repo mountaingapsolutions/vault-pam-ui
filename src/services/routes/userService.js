@@ -1,4 +1,5 @@
 const request = require('request');
+const logger = require('services/logger');
 const {initApiRequest, getDomain, sendError} = require('services/utils');
 
 /**
@@ -46,9 +47,7 @@ const _initializeEntity = async (req, username, password) => {
         id,
         name: username
     });
-    /* eslint-disable no-console */
-    console.log(`Updating entity ${id} with the name ${username}. Status code: ${saveUserResponse.statusCode}`);
-    /* eslint-enable no-console */
+    logger.log(`Updating entity ${id} with the name ${username}. Status code: ${saveUserResponse.statusCode}`);
     return saveUserResponse;
 };
 
@@ -102,25 +101,6 @@ const getUser = (req, id) => {
             apiRequest = initApiRequest(apiToken, `${domain}/v1/identity/entity/id/${sessionUserEntityId}`);
         }
         request(apiRequest, (error, response) => {
-            if (error) {
-                reject(error);
-            } else {
-                resolve(response);
-            }
-        });
-    });
-};
-
-/**
- * Gets available user entity ids
- *
- * @param {Object} req The HTTP request object.
- * @returns {Promise}
- */
-const getUserIds = () => {
-    return new Promise((resolve, reject) => {
-        const {VAULT_API_TOKEN: apiToken} = process.env;
-        request(initApiRequest(apiToken, `${getDomain()}/v1/identity/entity/id?list=true`), (error, response) => {
             if (error) {
                 reject(error);
             } else {
@@ -272,9 +252,7 @@ const deleteUserpass = (req, name) => {
             if (error) {
                 reject(error);
             } else {
-                /* eslint-disable no-console */
-                console.log(`Deleted userpass ${apiUrl}.`);
-                /* eslint-enable no-console */
+                logger.log(`Deleted userpass ${apiUrl}.`);
                 resolve(response);
             }
         });
@@ -488,9 +466,7 @@ const router = require('express').Router()
     .put('/', async (req, res) => {
         // Delete the id from the request body in case it's erroneously added.
         if (req.body.id) {
-            /* eslint-disable no-console */
-            console.log(`Ignoring user id ${req.body.id} in user PUT request.`);
-            /* eslint-enable no-console */
+            logger.log(`Ignoring user id ${req.body.id} in user PUT request.`);
             delete req.body.id;
         }
         try {
@@ -581,6 +557,5 @@ const router = require('express').Router()
 
 module.exports = {
     router,
-    getUser,
-    getUserIds
+    getUser
 };

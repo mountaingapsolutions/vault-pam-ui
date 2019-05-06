@@ -1,4 +1,5 @@
 /* global localStorage */
+import Logger from 'app/util/Logger';
 
 /**
  * Utility class to handle localStorage operations.
@@ -72,9 +73,7 @@ class LocalStorageUtil {
     _validate(keyName) {
         if (!this._keyValues.includes(keyName)) {
             const message = `Invalid key: ${keyName}.`;
-            /* eslint-disable no-console */
-            console.error(message);
-            /* eslint-enable no-console */
+            Logger.error(message);
             throw new Error(message);
         }
     }
