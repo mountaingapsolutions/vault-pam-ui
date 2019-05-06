@@ -186,7 +186,6 @@ run_docker() {
         for ENV_KEY in "${ENV_VARS[@]}"
         do
             ENV_VAL="${!ENV_KEY}"
-            #DOCKER_RUN_ARGS="${DOCKER_RUN_ARGS}-e ${ENV_KEY}=${ENV_VAL} "
             export $ENV_KEY=$ENV_VAL
         done
     fi
