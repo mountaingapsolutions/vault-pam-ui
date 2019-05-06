@@ -19,9 +19,9 @@ const {REQUEST_STATUS} = require('services/constants');
  * @returns {Promise}
  */
 const _getUserByEntityId = (req, entityId) => {
-    const {VAULT_API_TOKEN: apiToken} = process.env;
+    const {entityId: sessionEntityId, token} = req.session.user;
     return new Promise((resolve) => {
-        asyncRequest(initApiRequest(apiToken, `${getDomain()}/v1/identity/entity/id/${entityId}`))
+        asyncRequest(initApiRequest(token, `${getDomain()}/v1/identity/entity/id/${entityId}`, sessionEntityId, true))
             .then((response) => {
                 const responseBody = response.body;
                 resolve(responseBody && responseBody.data ? responseBody.data : responseBody);
@@ -39,14 +39,14 @@ const _getUserByEntityId = (req, entityId) => {
  * @returns {Promise}
  */
 const _getUsersByGroupName = async (req, groupName) => {
-    const {VAULT_API_TOKEN: apiToken} = process.env;
+    const {entityId: sessionEntityId, token} = req.session.user;
     const domain = getDomain();
 
-    const groupRequest = initApiRequest(apiToken, `${domain}/v1/identity/group/name/${groupName}`);
+    const groupRequest = initApiRequest(token, `${domain}/v1/identity/group/name/${groupName}`, sessionEntityId, true);
     const {member_entity_ids: entityIds = []} = ((await asyncRequest(groupRequest)).body || {}).data || {};
     return new Promise((resolve) => {
         Promise.all(entityIds.map((entityId) => new Promise((userResolve) => {
-            const userRequest = initApiRequest(apiToken, `${domain}/v1/identity/entity/id/${entityId}`);
+            const userRequest = initApiRequest(token, `${domain}/v1/identity/entity/id/${entityId}`, sessionEntityId, true);
             asyncRequest(userRequest)
                 .then((response) => userResolve(response.body))
                 .catch((error) => userResolve(error));
@@ -150,8 +150,8 @@ const _rejectRequest = (req) => {
             }
             // Standard Request rejection.
             else if (type === 'standard-request') {
-                const {entityId: entityIdSelf} = req.session.user;
-                await updateStandardRequestByApprover(entityIdSelf, entityId, path, 'REJECTED');
+                const {entityId: entityIdSelf, token} = req.session.user;
+                await updateStandardRequestByApprover(entityIdSelf, token, entityId, path, 'REJECTED');
             }
             // Invalid type provided.
             else {
@@ -188,7 +188,7 @@ const router = require('express').Router()
         const {standardRequestSupported} = req.session.user;
         if (standardRequestSupported === undefined) {
             try {
-                let standardRequestSupport = await checkStandardRequestSupport();
+                let standardRequestSupport = await checkStandardRequestSupport(req);
                 setSessionData(req, {
                     standardRequestSupported: standardRequestSupport
                 });
@@ -433,8 +433,8 @@ const router = require('express').Router()
                     });
                 }
             } else if (type === 'standard-request') {
-                const {entityId: entityIdSelf} = req.session.user;
-                const {dataValues = {}} = (await updateStandardRequestByApprover(entityIdSelf, entityId, path, REQUEST_STATUS.APPROVED) || [])[1] || {};
+                const {entityId: entityIdSelf, token} = req.session.user;
+                const {dataValues = {}} = (await updateStandardRequestByApprover(entityIdSelf, token, entityId, path, REQUEST_STATUS.APPROVED) || [])[1] || {};
                 path = dataValues.requestData;
                 entityId = dataValues.requesterEntityId;
             } else {

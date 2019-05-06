@@ -90,15 +90,14 @@ const _login = (req, username, password) => {
  */
 const getUser = (req, id) => {
     return new Promise((resolve, reject) => {
-        const {VAULT_API_TOKEN: apiToken} = process.env;
         const domain = getDomain();
         const {entityId: sessionUserEntityId, token: sessionUserToken} = req.session.user;
         let apiRequest;
         // If entity id is provided, use the session user token to handle proper permissions. Otherwise, use the admin token to fetch the session user data.
         if (id) {
-            apiRequest = initApiRequest(sessionUserToken, `${domain}/v1/identity/entity/id/${id}`);
+            apiRequest = initApiRequest(sessionUserToken, `${domain}/v1/identity/entity/id/${id}`, sessionUserEntityId);
         } else {
-            apiRequest = initApiRequest(apiToken, `${domain}/v1/identity/entity/id/${sessionUserEntityId}`);
+            apiRequest = initApiRequest(sessionUserToken, `${domain}/v1/identity/entity/id/${sessionUserEntityId}`, sessionUserEntityId, true);
         }
         request(apiRequest, (error, response) => {
             if (error) {
@@ -119,8 +118,8 @@ const getUser = (req, id) => {
  */
 const getUserByName = (req, name) => {
     return new Promise((resolve, reject) => {
-        const {token} = req.session.user;
-        request(initApiRequest(token, `${getDomain()}/v1/identity/entity/name/${name}`), (error, response) => {
+        const {entityId, token} = req.session.user;
+        request(initApiRequest(token, `${getDomain()}/v1/identity/entity/name/${name}`, entityId), (error, response) => {
             if (error) {
                 reject(error);
             } else {
@@ -196,12 +195,11 @@ const updateUser = (req, userData) => {
  */
 const saveUser = (req, userData) => {
     return new Promise((resolve, reject) => {
-        const {VAULT_API_TOKEN: apiToken} = process.env;
         const {entityId: id, token} = req.session.user;
         const isSelf = id === userData.id;
         // Use the API token if saving/updating self.
         request({
-            ...initApiRequest(isSelf ? apiToken : token, `${getDomain()}/v1/identity/entity`),
+            ...initApiRequest(token, `${getDomain()}/v1/identity/entity`, id, isSelf),
             method: 'POST',
             json: userData
         }, (error, response) => {
@@ -223,8 +221,8 @@ const saveUser = (req, userData) => {
  */
 const getUserpass = (req, name) => {
     return new Promise((resolve, reject) => {
-        const {token} = req.session.user;
-        request(initApiRequest(token, `${getDomain()}/v1/auth/userpass/users/${name}`), (error, response) => {
+        const {entityId, token} = req.session.user;
+        request(initApiRequest(token, `${getDomain()}/v1/auth/userpass/users/${name}`, entityId), (error, response) => {
             if (error) {
                 reject(error);
             } else {
@@ -243,10 +241,10 @@ const getUserpass = (req, name) => {
  */
 const deleteUserpass = (req, name) => {
     return new Promise((resolve, reject) => {
-        const {token} = req.session.user;
+        const {entityId, token} = req.session.user;
         const apiUrl = `${getDomain()}/v1/auth/userpass/users/${name}`;
         request({
-            ...initApiRequest(token, apiUrl),
+            ...initApiRequest(token, apiUrl, entityId),
             method: 'DELETE'
         }, (error, response) => {
             if (error) {
@@ -268,7 +266,6 @@ const deleteUserpass = (req, name) => {
  */
 const saveUserpass = (req, userData) => {
     return new Promise((resolve, reject) => {
-        const {VAULT_API_TOKEN: apiToken} = process.env;
         const {entityId: id, token} = req.session.user;
         const isSelf = id === userData.id;
         const {name, password, policies} = userData;
@@ -281,7 +278,7 @@ const saveUserpass = (req, userData) => {
             postData.policies = policies.join(',');
         }
         request({
-            ...initApiRequest(isSelf ? apiToken : token, `${getDomain()}/v1/auth/userpass/users/${name}`),
+            ...initApiRequest(token, `${getDomain()}/v1/auth/userpass/users/${name}`, id, isSelf),
             method: 'POST',
             json: postData
         }, (error, response) => {
@@ -303,10 +300,10 @@ const saveUserpass = (req, userData) => {
  */
 const deleteUser = (req, id) => {
     return new Promise((resolve, reject) => {
-        const {token} = req.session.user;
+        const {entityId, token} = req.session.user;
         const apiUrl = `${getDomain()}/v1/identity/entity/id/${id}`;
         request({
-            ...initApiRequest(token, apiUrl),
+            ...initApiRequest(token, apiUrl, entityId),
             method: 'DELETE'
         }, (error, response) => {
             if (error) {
