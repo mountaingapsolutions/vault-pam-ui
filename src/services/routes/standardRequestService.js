@@ -10,13 +10,13 @@ const {REQUEST_STATUS} = require('services/constants');
  * Retrieves all user entity ids.
  *
  * @private
- * @param {Object} req The HTTP request object.
+ * @param {string} entityId the user's entity id
+ * @param {string} token the user's Vault token.
  * @returns {Promise}
  */
-const _getUserIds = () => {
+const _getUserIds = (entityId, token) => {
     return new Promise((resolve) => {
-        const {VAULT_API_TOKEN: apiToken} = process.env;
-        request(initApiRequest(apiToken, `${getDomain()}/v1/identity/entity/id?list=true`), (error, response, body) => {
+        request(initApiRequest(token, `${getDomain()}/v1/identity/entity/id?list=true`, entityId, true), (error, response, body) => {
             const entityIdMap = ((body || {}).data || {}).key_info || {};
             resolve(entityIdMap);
         });
@@ -28,18 +28,13 @@ const _getUserIds = () => {
  *
  * @private
  * @param {string} entityId user's entityId.
+ * @param {string} token the user's Vault token.
  * @returns {Promise}
  */
-const _checkIfApprover = (entityId) => {
-    return new Promise((resolve, reject) => {
-        const {VAULT_API_TOKEN: apiToken} = process.env;
-
-        if (!apiToken) {
-            reject('No API token configured.');
-        }
-
+const _checkIfApprover = (entityId, token) => {
+    return new Promise((resolve) => {
         const groupName = 'pam-approver';
-        requestLib(initApiRequest(apiToken, `${getDomain()}/v1/identity/group/name/${groupName}`), (error, response, body) => {
+        requestLib(initApiRequest(token, `${getDomain()}/v1/identity/group/name/${groupName}`, entityId, true), (error, response, body) => {
             if (body && body.data) {
                 const {member_entity_ids = []} = body.data || {};
                 resolve(member_entity_ids.includes(entityId));
@@ -56,12 +51,13 @@ const _checkIfApprover = (entityId) => {
  *
  * @privtae
  * @param {string} entityId The entity id of the user in session.
+ * @param {string} token the user's Vault token.
  * @param {string} status The request status in database.
  * @returns {Promise}
  */
-const _getRequestsByStatus = (entityId, status) => {
+const _getRequestsByStatus = (entityId, token, status) => {
     return new Promise(async (resolve, reject) => {
-        const isApprover = await _checkIfApprover(entityId);
+        const isApprover = await _checkIfApprover(entityId, token);
         const params = {
             status
         };
@@ -69,7 +65,7 @@ const _getRequestsByStatus = (entityId, status) => {
         if (!isApprover) {
             params.requesterEntityId = entityId;
         }
-        Promise.all([RequestController.findByParams(params), _getUserIds()]).then((results) => {
+        Promise.all([RequestController.findByParams(params), _getUserIds(entityId, token)]).then((results) => {
             const standardRequests = Array.isArray(results) && results[0] ? results[0] : [];
             const userIdMap = results[1];
             // Inject the requester name into each data value row.
@@ -108,8 +104,8 @@ const getRequests = (req) => {
     return new Promise(async (resolve, reject) => {
         let result = [];
         try {
-            const {entityId} = req.session.user;
-            const data = await _getRequestsByStatus(entityId, REQUEST_STATUS.PENDING);
+            const {entityId, token} = req.session.user;
+            const data = await _getRequestsByStatus(entityId, token, REQUEST_STATUS.PENDING);
             result = result.concat(data);
         } catch (err) {
             reject({
@@ -172,14 +168,15 @@ const createOrUpdateStatusByRequester = (requesterEntityId, path, status) => {
  * Updates standard requests by approver.
  *
  * @param {string} approverEntityId The approver entity id.
+ * @param {string} approverToken The approver Vault token
  * @param {string} requesterEntityId The requester entity id.
  * @param {string} path The request path.
  * @param {string} status The request status.
  * @returns {Promise}
  */
-const updateStandardRequestByApprover = (approverEntityId, requesterEntityId, path, status) => {
+const updateStandardRequestByApprover = (approverEntityId, approverToken, requesterEntityId, path, status) => {
     return new Promise(async (resolve, reject) => {
-        const isApprover = await _checkIfApprover(approverEntityId);
+        const isApprover = await _checkIfApprover(approverEntityId, approverToken);
         if (isApprover) {
             RequestController.updateStatusByApprover(approverEntityId, requesterEntityId, path, status)
                 .then(resolve)

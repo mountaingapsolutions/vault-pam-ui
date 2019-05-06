@@ -17,9 +17,10 @@ const logger = require('services/logger');
 const api = (req, res) => {
     _disableCache(res);
     const {'x-vault-token': token} = req.headers;
+    const {entityId} = req.session.user;
     const apiUrl = `${getDomain()}${req.url}`;
     logger.log(`Proxy the request from ${_yellowBold(req.originalUrl)} to ${_yellowBold(apiUrl)}.`);
-    req.pipe(request(initApiRequest(token, apiUrl), (err) => {
+    req.pipe(request(initApiRequest(token, apiUrl, entityId), (err) => {
         if (err) {
             res.status(500).json({errors: [err]});
         }
@@ -148,8 +149,7 @@ const authenticatedRoutes = require('express').Router()
                     res.cookie('entity_id', entityId, {
                         httpOnly: true
                     });
-                    const {VAULT_API_TOKEN: apiToken} = process.env;
-                    request(initApiRequest(apiToken, `${domain}/v1/identity/entity/id/${entityId}`), (entityErr, entityRes, entityBody) => {
+                    request(initApiRequest(token, `${domain}/v1/identity/entity/id/${entityId}`, entityId, true), (entityErr, entityRes, entityBody) => {
                         if (entityBody.data && entityBody.data.metadata) {
                             const {email, firstName, lastName} = entityBody.data.metadata;
                             setSessionData(req, {
@@ -206,12 +206,11 @@ const _disableCache = (res) => {
  * @returns {Promise}
  */
 const _getGroupsByUser = (req) => {
-    const {VAULT_API_TOKEN: apiToken} = process.env;
     const domain = getDomain();
-    const {entityId} = req.session.user;
+    const {entityId, token} = req.session.user;
     return new Promise((resolve) => {
         const groups = [];
-        request(initApiRequest(apiToken, `${domain}/v1/identity/group/id?list=true`), (error, response, body) => {
+        request(initApiRequest(token, `${domain}/v1/identity/group/id?list=true`, entityId, true), (error, response, body) => {
             if (error) {
                 logger.error(error);
                 resolve([]);
@@ -221,7 +220,7 @@ const _getGroupsByUser = (req) => {
             } else {
                 Promise.all((((body || {}).data || {}).keys || []).map(key => {
                     return new Promise((groupResolve) => {
-                        request(initApiRequest(apiToken, `${domain}/v1/identity/group/id/${key}`), (groupError, groupResponse, groupBody) => {
+                        request(initApiRequest(token, `${domain}/v1/identity/group/id/${key}`, entityId, true), (groupError, groupResponse, groupBody) => {
                             if (groupBody) {
                                 const {member_entity_ids: entityIds = []} = groupBody.data || {};
                                 if (entityIds.includes(entityId)) {
@@ -264,8 +263,7 @@ const _sendTokenValidationResponse = (token, req, res) => {
                 res.cookie('entity_id', entityId, {
                     httpOnly: true
                 });
-                const {VAULT_API_TOKEN: apiToken} = process.env;
-                request(initApiRequest(apiToken, `${domain}/v1/identity/entity/id/${entityId}`), (entityErr, entityRes, entityBody) => {
+                request(initApiRequest(token, `${domain}/v1/identity/entity/id/${entityId}`, entityId, true), (entityErr, entityRes, entityBody) => {
                     if (entityBody.data && entityBody.data.metadata) {
                         const {email, firstName, lastName} = entityBody.data.metadata;
                         setSessionData(req, {
