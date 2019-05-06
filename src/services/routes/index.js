@@ -8,6 +8,7 @@ const {router: userServiceRouter} = require('services/routes/userService');
 const {router: requestServiceRouter} = require('services/routes/requestService');
 const {router: standardRequestServiceRouter} = require('services/routes/standardRequestService');
 const {initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
+const logger = require('services/logger');
 
 /**
  * Pass-through to the designated Vault server API endpoint.
@@ -128,8 +129,9 @@ const authenticatedRoutes = require('express').Router()
 
             // Token mismatch, so need to verify through Vault again.
             if (token !== sessionToken) {
-                console.log(`Token mismatch for the API call ${_yellowBold(req.originalUrl)} between header and stored session. Re-verifying through Vault.`);
-                const apiUrl = `${getDomain()}/v1/auth/token/lookup-self`;
+                const domain = getDomain();
+                logger.log(`Token mismatch for the API call ${_yellowBold(req.originalUrl)} between header and stored session. Re-verifying through Vault.`);
+                const apiUrl = `${domain}/v1/auth/token/lookup-self`;
                 request(initApiRequest(token, apiUrl), (error, response, body) => {
                     if (error) {
                         sendError(req.originalUrl, res, error);
@@ -139,13 +141,25 @@ const authenticatedRoutes = require('express').Router()
                         res.status(response.statusCode).json(body);
                         return;
                     }
-                    const {entity_id: entityId, id: clientToken} = body.data || {};
+                    const {entity_id: entityId, id: clientToken, meta = {}} = body.data || {};
                     setSessionData(req, {
                         token: clientToken,
-                        entityId
+                        entityId,
+                        username: meta.username
                     });
                     res.cookie('entity_id', entityId, {
                         httpOnly: true
+                    });
+                    const {VAULT_API_TOKEN: apiToken} = process.env;
+                    request(initApiRequest(apiToken, `${domain}/v1/identity/entity/id/${entityId}`), (entityErr, entityRes, entityBody) => {
+                        if (entityBody.data && entityBody.data.metadata) {
+                            const {email, firstName, lastName} = entityBody.data.metadata;
+                            setSessionData(req, {
+                                email,
+                                firstName,
+                                lastName
+                            });
+                        }
                     });
                     _getGroupsByUser(req).then(groups => {
                         setSessionData(req, {
@@ -155,7 +169,7 @@ const authenticatedRoutes = require('express').Router()
                     });
                 });
             } else {
-                console.info('Move along. Nothing to see here.');
+                logger.info('Move along. Nothing to see here.');
                 next();
             }
         }
@@ -164,6 +178,7 @@ const authenticatedRoutes = require('express').Router()
     .use('/requests', requestServiceRouter)
     .use('/request', standardRequestServiceRouter)
     .use('/secrets', secretsServiceRouter)
+    .use('/log', logger.router)
     .get('/session', (req, res) => {
         const {'x-vault-token': token} = req.headers;
         _sendTokenValidationResponse(token, req, res);
@@ -193,17 +208,19 @@ const _disableCache = (res) => {
  * @param {Object} req The HTTP request object.
  * @returns {Promise}
  */
-const _getGroupsByUser = async (req) => {
+const _getGroupsByUser = (req) => {
     const {VAULT_API_TOKEN: apiToken} = process.env;
     const domain = getDomain();
     const {entityId} = req.session.user;
-    const result = await new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const groups = [];
         request(initApiRequest(apiToken, `${domain}/v1/identity/group/id?list=true`), (error, response, body) => {
             if (error) {
-                reject(error);
+                logger.error(error);
+                resolve([]);
             } else if (response.statusCode !== 200) {
-                reject(body.errors || body);
+                logger.error(body.errors || body);
+                resolve([]);
             } else {
                 Promise.all((((body || {}).data || {}).keys || []).map(key => {
                     return new Promise((groupResolve) => {
@@ -221,7 +238,6 @@ const _getGroupsByUser = async (req) => {
             }
         });
     });
-    return result;
 };
 
 /**
@@ -233,27 +249,44 @@ const _getGroupsByUser = async (req) => {
  * @param {Object} res The HTTP response object.
  */
 const _sendTokenValidationResponse = (token, req, res) => {
-    const apiUrl = `${getDomain()}/v1/auth/token/lookup-self`;
+    const domain = getDomain();
+    const apiUrl = `${domain}/v1/auth/token/lookup-self`;
     request(initApiRequest(token, apiUrl), (error, response, body) => {
         if (error) {
             sendError(apiUrl, res, error);
             return;
         }
         try {
-            const {entity_id: entityId} = body.data || {};
-            setSessionData(req, {
-                token,
-                entityId
-            });
-            res.cookie('entity_id', entityId, {
-                httpOnly: true
-            });
-            _getGroupsByUser(req).then(groups => {
+            if (!body.errors) {
+                const {entity_id: entityId, meta = {}} = body.data || {};
                 setSessionData(req, {
-                    groups: groups.map(group => group.data.name)
+                    token,
+                    entityId,
+                    username: meta.username
                 });
+                res.cookie('entity_id', entityId, {
+                    httpOnly: true
+                });
+                const {VAULT_API_TOKEN: apiToken} = process.env;
+                request(initApiRequest(apiToken, `${domain}/v1/identity/entity/id/${entityId}`), (entityErr, entityRes, entityBody) => {
+                    if (entityBody.data && entityBody.data.metadata) {
+                        const {email, firstName, lastName} = entityBody.data.metadata;
+                        setSessionData(req, {
+                            email,
+                            firstName,
+                            lastName
+                        });
+                    }
+                });
+                _getGroupsByUser(req).then(groups => {
+                    setSessionData(req, {
+                        groups: groups.map(group => group.data.name)
+                    });
+                    res.status(response.statusCode).json(body);
+                });
+            } else {
                 res.status(response.statusCode).json(body);
-            });
+            }
         } catch (err) {
             sendError(apiUrl, res, err);
         }

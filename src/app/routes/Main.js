@@ -67,6 +67,7 @@ class Main extends Component {
             firstTimeLoginMessage: null,
             isUserProfileModalOpen: false,
             notificationAnchorElement: null,
+            isRoot: false,
             showRootWarning: false,
             useDefaultImage: false
         };
@@ -174,23 +175,24 @@ class Main extends Component {
     componentDidMount() {
         const {checkSession, listRequests} = this.props;
         checkSession().then(() => {
-            const {listMounts, getGroupData, getSealStatus, user, vaultLookupSelf} = this.props;
+            const {listMounts, getSealStatus, user, vaultLookupSelf} = this.props;
 
             if (vaultLookupSelf.data.data.policies.includes('root')) {
                 localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
                 this.setState({
+                    isRoot: true,
                     showRootWarning: true
                 });
+            } else {
+                const metadata = (user.data || {}).metadata || {};
+                const isFirstTimeLogin = ['firstName', 'lastName', 'email'].some((field) => !metadata[field]);
+                if (isFirstTimeLogin) {
+                    this.setState({
+                        firstTimeLoginMessage: 'This appears to be your first time logging into Vault PAM UI. Please complete your user profile to continue. Updating your initial password is optional, although highly encouraged.',
+                        isUserProfileModalOpen: true
+                    });
+                }
             }
-            const metadata = (user.data || {}).metadata || {};
-            const isFirstTimeLogin = ['firstName', 'lastName', 'email'].some((field) => !metadata[field]);
-            if (isFirstTimeLogin) {
-                this.setState({
-                    firstTimeLoginMessage: 'This appears to be your first time logging into Vault PAM UI. Please complete your user profile to continue. Updating your initial password is optional, although highly encouraged.',
-                    isUserProfileModalOpen: true
-                });
-            }
-            getGroupData();
             getSealStatus();
             listMounts();
         });
@@ -223,7 +225,7 @@ class Main extends Component {
     render() {
         const {classes, logout, secretsMounts = {}, secretsRequests = [], sealStatus, user = {}} = this.props;
         const isVaultSealed = sealStatus && sealStatus.sealed;
-        const {accountAnchorElement, firstTimeLoginMessage, isUserProfileModalOpen, notificationAnchorElement, showRootWarning} = this.state;
+        const {accountAnchorElement, firstTimeLoginMessage, isRoot, isUserProfileModalOpen, notificationAnchorElement, showRootWarning} = this.state;
         const rootMessage = 'You have logged in with a root token. As a security precaution, this root token will not be stored by your browser and you will need to re-authenticate after the window is closed or refreshed.';
         return <div>
             <AppBar position='static'>
@@ -269,12 +271,12 @@ class Main extends Component {
                             onClose={this._toggleAccountMenu}>
                             <MenuItem disabled>
                                 {this._renderProfileIcon(classes.marginRight)}
-                                {unwrap(safeWrap(user).data.name)}
+                                {isRoot ? '<root>' : unwrap(safeWrap(user).data.name)}
                             </MenuItem>
-                            <MenuItem selected={false} onClick={() => this._openModal('isUserProfileModalOpen')}>
+                            {!isRoot && <MenuItem selected={false} onClick={() => this._openModal('isUserProfileModalOpen')}>
                                 <SettingsIcon className={classes.marginRight}/>
                                 Profile
-                            </MenuItem>
+                            </MenuItem>}
                             <MenuItem onClick={logout}>
                                 <PowerSettingsNewIcon className={classes.marginRight}/>
                                 Log Out
@@ -348,7 +350,6 @@ class Main extends Component {
 Main.propTypes = {
     checkSession: PropTypes.func.isRequired,
     classes: PropTypes.object.isRequired,
-    getGroupData: PropTypes.func.isRequired,
     getSealStatus: PropTypes.func.isRequired,
     group: PropTypes.object,
     isLoggedIn: PropTypes.bool,
@@ -390,17 +391,22 @@ const _mapDispatchToProps = (dispatch) => {
     return {
         checkSession: () => {
             return new Promise((resolve, reject) => {
-                dispatch(sessionAction.validateToken()).then(() => {
-                    dispatch(sessionAction.setToken(localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN)));
-                    dispatch(userAction.getUser())
-                        .then(resolve)
-                        .catch(reject);
+                dispatch(sessionAction.validateToken()).then((response) => {
+                    dispatch(sessionAction.setToken(unwrap(safeWrap(response).data.data.id)));
+                    const policies = unwrap(safeWrap(response).data.data.policies) || [];
+                    if (policies.includes('root')) {
+                        // If root user, just immediately resolve.
+                        resolve();
+                    } else {
+                        dispatch(userAction.getUser())
+                            .then(resolve)
+                            .catch(reject);
+                    }
                 }).catch(reject);
             });
         },
         listMounts: () => dispatch(kvAction.listMounts()),
         listRequests: () => dispatch(kvAction.listRequests()),
-        getGroupData: () => dispatch(systemAction.getGroupData()),
         getSealStatus: () => dispatch(systemAction.getSealStatus()),
         logout: () => dispatch(userAction.logout())
     };

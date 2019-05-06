@@ -128,12 +128,12 @@ class KvAction extends _Actions {
     }
 
     /**
-     * Lists the current secrets requests.
+     * Lists the user's secrets requests and requests to review if user is an approver.
      *
      * @returns {function} Redux dispatch function.
      */
     listRequests() {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_REQUESTS, '/rest/requests/list');
+        return this._dispatchGet(this.ACTION_TYPES.LIST_REQUESTS, '/rest/requests/all');
     }
 
     /**

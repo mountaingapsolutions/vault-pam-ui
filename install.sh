@@ -2,6 +2,7 @@
 #
 
 readonly APP_NAME=vault-pam-ui
+readonly DB_NAME=vault-pam-db
 readonly CURRENT_SCRIPT="$(basename -- ${BASH_SOURCE[0]})"
 readonly CURRENT_DIRECTORY="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly ENV_VARS=(PAM_DATABASE
@@ -105,12 +106,13 @@ questions_db() {
         ask "Enter database user: " PAM_DATABASE_USER
         ask "Enter database password: " PAM_DATABASE_PASSWORD
     else
+        print_raw $NL
         show_warn "We will now install and create a database."
         # setting the default internal database data
         ask "Enter database password: " PAM_DATABASE_PASSWORD
         INSTALL_DB=yes
-        PAM_DATABASE_URL=localhost
-        PAM_DATABASE_PORT=5434
+        PAM_DATABASE_URL=postgres
+        PAM_DATABASE_PORT=5432
         PAM_DATABASE=pam-db
         PAM_DATABASE_USER=hashi_vault_pam_db_user
     fi
@@ -159,56 +161,47 @@ clean_docker() {
     OLD_CONTAINER="$(docker ps --all --quiet --filter=name="$APP_NAME")"
     if [ -n "$OLD_CONTAINER" ]; then
         show_warn "An existing $APP_NAME container is running. Stopping..."
-        docker stop $OLD_CONTAINER
+        docker rm -f $OLD_CONTAINER
     fi
-    # purge old images (base)
-    docker images -a | grep "mhart/alpine-node" | awk '{print $3}' | xargs docker rmi
+    OLD_DB_CONTAINER="$(docker ps --all --quiet --filter=name="$DB_NAME")"
+    if [ -n "$OLD_DB_CONTAINER" ]; then
+        show_warn "An existing $DB_NAME container is running. Stopping..."
+        docker rm -f $OLD_DB_CONTAINER
+    fi
     # purge old images (app)
     docker images -a | grep "${APP_NAME}" | awk '{print $3}' | xargs docker rmi
-
-}
-
-# Build docker container
-build_docker() {
-    print_raw $NL
-    show_info "Building docker image."
-    if [ -n "$INSTALL_DB" ]; then
-        show_info "Preparing internal DB."
-        DOCKER_BUILD_ARGS=" --build-arg WITH_DB=yes \
-            --build-arg PAM_DATABASE=${PAM_DATABASE} \
-            --build-arg PAM_DATABASE_PORT=${PAM_DATABASE_PORT} \
-            --build-arg PAM_DATABASE_USER=${PAM_DATABASE_USER} \
-            --build-arg PAM_DATABASE_PASSWORD=${PAM_DATABASE_PASSWORD}"
-    fi
-    show_info "$DOCKER_BUILD_ARGS"
-    docker build --no-cache -t $APP_NAME . $DOCKER_BUILD_ARGS
 }
 
 # Run docker container
 run_docker() {
-    # check for param
-    DOCKER_RUN_ARGS="-e PORT=$PORT -e USE_HSTS=$USE_HSTS "
+    show_info "Running docker..."
 
-    # append the env vars if USE_ENV is set.
-    if [ -z "$1" ]
+    # set default dev env vars
+    export PORT=$PORT
+    export USE_HSTS=$USE_HSTS
+
+    # if not user .env set env vars based from the user input
+    if [ -z "${USE_ENV}" ]
     then
         for ENV_KEY in "${ENV_VARS[@]}"
         do
             ENV_VAL="${!ENV_KEY}"
-            DOCKER_RUN_ARGS="${DOCKER_RUN_ARGS}-e ${ENV_KEY}=${ENV_VAL} "
+            #DOCKER_RUN_ARGS="${DOCKER_RUN_ARGS}-e ${ENV_KEY}=${ENV_VAL} "
+            export $ENV_KEY=$ENV_VAL
         done
     fi
 
-    show_info "Running docker with these arguments: ${DOCKER_RUN_ARGS}"
-    DOCKER_FLAGS="-itd \
-        -p ${PORT}:${PORT} \
-        -p ${PAM_DATABASE_PORT}:${PAM_DATABASE_PORT} \
-        --net=host
-        $DOCKER_RUN_ARGS \
-        --name ${APP_NAME} \
-        --rm ${APP_NAME}"
-    show_warn $DOCKER_FLAGS
-    docker run $DOCKER_FLAGS
+    COMPOSE_FILE=docker-compose.yml
+    if [ -n "${INSTALL_DB}" ]; then
+        show_info "Preparing internal DB."
+        export POSTGRES_PORT=$PAM_DATABASE_PORT
+        export POSTGRES_DB=$PAM_DATABASE
+        export POSTGRES_USER=$PAM_DATABASE_USER
+        export POSTGRES_PASSWORD=$PAM_DATABASE_PASSWORD
+        COMPOSE_FILE=docker-compose-with-db.yml
+    fi
+    docker-compose -f $COMPOSE_FILE up -d --build
+
 }
 
 # Show running container
@@ -234,18 +227,10 @@ main() {
         questions_db
         questions_vault
         questions_email
-
     fi
     build_dist
     clean_docker
-    PAM_DATABASE_PASSWORD=test1234
-    VAULT_API_TOKEN=s.UEcsthEyqEnQSBBjUIjAIP6W
-    VAULT_DOMAIN=https://hashicorp-vault-2092648714.us-east-1.elb.amazonaws.com
-    SMTP_PASS=gmail
-    SMTP_PASS=notifier@mountaingapsolutions.com
-    SMTP_PASS=Eueldx33@mgs
-    build_docker
-    run_docker $USE_ENV
+    run_docker
     finish
 }
 

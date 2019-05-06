@@ -1,0 +1,39 @@
+version: '3'
+
+services:
+    postgres:
+        container_name: postgres
+        image: postgres:alpine
+        restart: always
+        environment:
+            POSTGRES_USER: ${POSTGRES_USER}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+            POSTGRES_DB: ${POSTGRES_DB}
+        volumes:
+            - dbdata:/var/lib/postgresql/data
+    app:
+        container_name: vault-pam-ui
+        build:
+            context: .
+            dockerfile: Dockerfile
+        ports:
+            - "${PORT}:${PORT}"
+        environment:
+            - PORT=${PORT}
+            - USE_HSTS=${USE_HSTS}
+            - PAM_DATABASE=${PAM_DATABASE}
+            - PAM_DATABASE_USER=${PAM_DATABASE_USER}
+            - PAM_DATABASE_PASSWORD=${PAM_DATABASE_PASSWORD}
+            - PAM_DATABASE_URL=${PAM_DATABASE_URL}
+            - PAM_DATABASE_PORT=${PAM_DATABASE_PORT}
+            - VAULT_API_TOKEN=${VAULT_API_TOKEN}
+            - VAULT_DOMAIN=${VAULT_DOMAIN}
+            - SMTP_SERVICE=${SMTP_SERVICE}
+            - SMTP_USER=${SMTP_USER}
+            - SMTP_PASS=${SMTP_PASS}
+        depends_on:
+            - postgres
+        links:
+            - postgres
+volumes:
+    dbdata:

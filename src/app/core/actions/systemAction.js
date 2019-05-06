@@ -49,16 +49,6 @@ class SystemAction extends _Actions {
     getSealStatus() {
         return this._dispatchGet(this.ACTION_TYPES.GET_SEAL_STATUS, '/api/v1/sys/seal-status');
     }
-
-    /**
-     * Returns the group data.
-     *
-     * @param {string} groupName The group name.
-     * @returns {function} Redux dispatch function.
-     */
-    getGroupData(groupName = 'pam-approver') {
-        return this._dispatchGet(this.ACTION_TYPES.GET_GROUP_DATA, `/api/v1/identity/group/name/${groupName}`);
-    }
 }
 
 export default new SystemAction();

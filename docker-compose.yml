@@ -1,0 +1,24 @@
+version: '3.4'
+
+services:
+    app:
+        container_name: vault-pam-ui
+        build:
+            context: .
+            dockerfile: Dockerfile
+        ports:
+            - "${PORT}:${PORT}"
+        environment:
+            - PORT=${PORT}
+            - USE_HSTS=${USE_HSTS}
+            - PAM_DATABASE=${PAM_DATABASE}
+            - PAM_DATABASE_USER=${PAM_DATABASE_USER}
+            - PAM_DATABASE_PASSWORD=${PAM_DATABASE_PASSWORD}
+            - PAM_DATABASE_URL=${PAM_DATABASE_URL}
+            - PAM_DATABASE_PORT=${PAM_DATABASE_PORT}
+            - VAULT_API_TOKEN=${VAULT_API_TOKEN}
+            - VAULT_DOMAIN=${VAULT_DOMAIN}
+            - SMTP_SERVICE=${SMTP_SERVICE}
+            - SMTP_USER=${SMTP_USER}
+            - SMTP_PASS=${SMTP_PASS}
+
