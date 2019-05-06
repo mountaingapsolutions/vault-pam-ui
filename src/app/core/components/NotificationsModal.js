@@ -304,7 +304,7 @@ class NotificationsModal extends Component {
                                                                 <IconButton
                                                                     color='primary'
                                                                     disabled={alreadyAuthorizedBySelf}
-                                                                    onClick={() => authorizeRequest(accessor, requestData.wrap_info ? undefined : requestId)}>
+                                                                    onClick={() => authorizeRequest(accessor, requestPath, entityId, requestData.wrap_info ? 'control-group' : 'standard-request')}>
                                                                     <CheckIcon/>
                                                                 </IconButton>
                                                             </Tooltip>}
@@ -313,7 +313,7 @@ class NotificationsModal extends Component {
                                                                 onClick={() => {
                                                                     /* eslint-disable no-alert */
                                                                     if (window.confirm(`Are you sure you want to ${cancelText.toLowerCase()} ${isOwnRequest ? 'your' : `${entityName}'s`} request to ${requestPath}?`)) {
-                                                                        rejectRequest(requestPath, entityId, requestData.wrap_info ? undefined : requestId);
+                                                                        rejectRequest(requestPath, entityId, requestData.wrap_info ? 'control-group' : 'standard-request');
                                                                     }
                                                                     /* eslint-enable no-alert */
                                                                 }}>
@@ -400,9 +400,9 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        authorizeRequest: (path, entityId, requestId) => {
+        authorizeRequest: (path, entityId, requestId, type) => {
             return new Promise((resolve, reject) => {
-                dispatch(kvAction.authorizeRequest(path, entityId, requestId))
+                dispatch(kvAction.authorizeRequest(path, entityId, requestId, type))
                     .then(() => {
                         dispatch(kvAction.listRequests())
                             .then(resolve)
@@ -411,9 +411,9 @@ const _mapDispatchToProps = (dispatch) => {
                     .catch(reject);
             });
         },
-        rejectRequest: (path, entityId, requestId) => {
+        rejectRequest: (path, entityId, type = 'standard-request') => {
             return new Promise((resolve, reject) => {
-                dispatch(kvAction.deleteRequest(path, entityId, requestId))
+                dispatch(kvAction.deleteRequest(path, entityId, type))
                     .then(() => {
                         dispatch(kvAction.listRequests())
                             .then(resolve)

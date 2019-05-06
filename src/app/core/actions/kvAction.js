@@ -33,14 +33,17 @@ class KvAction extends _Actions {
      * Authorizes a secrets request.
      *
      * @param {string} accessor The request accessor value.
-     * @param {string} id The request id in database.
+     * @param {string} path Specifies the path of the request to authorize.
+     * @param {string} entityId The user entity id.
+     * @param {string} [type] The request type.
      * @returns {function} Redux dispatch function.
      */
-    authorizeRequest(accessor, id) {
-        // TODO - Rename endpoint. Too redundant.
-        return this._dispatchPost(this.ACTION_TYPES.AUTHORIZE_REQUEST, '/rest/requests/request/authorize', {
+    authorizeRequest(accessor, path, entityId, type = 'standard-request') {
+        return this._dispatchPost(this.ACTION_TYPES.AUTHORIZE_REQUEST, '/rest/secret/request/authorize', {
             accessor,
-            id
+            path,
+            entityId,
+            type
         });
     }
 
@@ -49,15 +52,14 @@ class KvAction extends _Actions {
      *
      * @param {string} path Specifies the path of the request to delete.
      * @param {string} [entityId] The user entity id. If not provided, the request will default to the current session user.
-     * @param {string} [id] The request id in database.
+     * @param {string} [type] The request type.
      * @returns {function} Redux dispatch function.
      */
-    deleteRequest(path, entityId = '', id) {
-        // TODO - Rename endpoint. Too redundant.
-        return this._dispatchDelete(this.ACTION_TYPES.DELETE_REQUEST, '/rest/requests/request', {
+    deleteRequest(path, entityId = '', type = 'standard-request') {
+        return this._dispatchDelete(this.ACTION_TYPES.DELETE_REQUEST, '/rest/secret/request', {
             path,
-            ...entityId && {entityId},
-            ...id && {id}
+            entityId,
+            type
         });
     }
 
@@ -79,6 +81,17 @@ class KvAction extends _Actions {
      */
     getSecrets(path = '') {
         return this._dispatchGet(this.ACTION_TYPES.GET_SECRETS, `/rest/secrets/get/${this._encodePath(path)}`);
+    }
+
+    /**
+     * Sets secrets data within the client data model.
+     *
+     * @param {Object} data The secrets data to set.
+     * @returns {function} Redux dispatch function.
+     */
+    setSecretsData(data) {
+        console.warn('SET ME', data);
+        return this._createResourceData(this.ACTION_TYPES.GET_SECRETS, undefined, data, false);
     }
 
     /**
@@ -110,8 +123,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     requestSecret(requestData) {
-        // TODO - Rename endpoint. Too redundant.
-        return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/requests/request', {
+        return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/secret/request', {
             ...requestData
         });
     }
@@ -133,7 +145,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     listRequests() {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_REQUESTS, '/rest/requests/all');
+        return this._dispatchGet(this.ACTION_TYPES.LIST_REQUESTS, '/rest/secret/requests/all');
     }
 
     /**
@@ -174,8 +186,7 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     unwrapSecret(name, token) {
-        // TODO - Rename endpoint. Too redundant.
-        return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/requests/request/unwrap', {
+        return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/secret/unwrap', {
             token
         });
     }
