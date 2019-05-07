@@ -5,7 +5,7 @@ FROM mhart/alpine-node:latest
 RUN mkdir -p /usr/src/dist
 
 # bundle APP files
-ADD ./dist /usr/src/dist
+ADD dist /usr/src/dist
 
 # set working directory
 WORKDIR /usr/src/dist/
