@@ -23,7 +23,6 @@ COPY --from=build-stage /app/dist /usr/src/dist
 # set working directory
 WORKDIR /usr/src/dist/
 
-# add `/usr/src/app/node_modules/.bin` to $PATH
 ENV PATH /usr/src/dist/node_modules/.bin:$PATH
 
 RUN npm install --production
