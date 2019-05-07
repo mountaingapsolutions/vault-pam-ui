@@ -1,11 +1,7 @@
-const {toObject} = require('@mountaingapsolutions/objectutil/objectutil');
 const chalk = require('chalk');
 const request = require('request');
 const {initApiRequest, getDomain, sendError} = require('services/utils');
 const logger = require('services/logger');
-const {
-    getApprovedRequests
-} = require('services/routes/standardRequestService');
 
 /**
  * Helper method to retrieve secrets by the provided URL path.
@@ -111,9 +107,6 @@ const router = require('express').Router()
         const {entityId: requesterEntityId, token} = req.session.user;
         const apiUrl = `${domain}/v1/${listUrlParts.join('/')}?list=true`;
 
-        const approvedRequests = await getApprovedRequests(requesterEntityId);
-        const approvedRequestsMap = toObject(approvedRequests.map(result => result.dataValues), 'requestData');
-
         // Maintain the list of paths as a key/value map as well for easier access later.
         const pathsMap = {};
         const paths = (await _getSecretsByPath(token, apiUrl, requesterEntityId)).map((key) => {
@@ -164,22 +157,6 @@ const router = require('express').Router()
                                 logger.error(`No response body returned from ${getSecretApiUrl}`);
                                 secret.data = {};
                             }
-                            secretResolve();
-                        });
-                    }));
-                } else if (!canRead && approvedRequestsMap[key]) {
-                    // If approved from Standard Request, fetch the data and add "read" to capabilities.
-                    promises.push(new Promise((secretResolve) => {
-                        const getSecretApiUrl = `${domain}/v1/${key}`;
-                        request(initApiRequest(token, getSecretApiUrl, requesterEntityId, true), (error, response, body) => {
-                            if (error) {
-                                logger.error(error);
-                            }
-                            if (!body) {
-                                logger.error(`No response body returned from ${getSecretApiUrl} using API token.`);
-                            }
-                            secret.capabilities.push('read');
-                            secret.data = body || {};
                             secretResolve();
                         });
                     }));

@@ -17,7 +17,7 @@ const logger = require('services/logger');
 const api = (req, res) => {
     _disableCache(res);
     const {'x-vault-token': token} = req.headers;
-    const {entityId} = req.session.user;
+    const {entityId} = req.session.user || {};
     const apiUrl = `${getDomain()}${req.url}`;
     logger.log(`Proxy the request from ${_yellowBold(req.originalUrl)} to ${_yellowBold(apiUrl)}.`);
     req.pipe(request(initApiRequest(token, apiUrl, entityId), (err) => {

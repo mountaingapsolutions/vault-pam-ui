@@ -82,7 +82,7 @@ const _cancelRequest = (req) => {
             }
             // Standard Request cancellation.
             else if (type === 'standard-request') {
-                await createOrUpdateStatusByRequester(requesterEntityId, path, 'CANCELED');
+                await createOrUpdateStatusByRequester(req, requesterEntityId, path, 'CANCELED');
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             }
             // Invalid type provided.
@@ -150,8 +150,7 @@ const _rejectRequest = (req) => {
             }
             // Standard Request rejection.
             else if (type === 'standard-request') {
-                const {entityId: entityIdSelf} = req.session.user;
-                await updateStandardRequestByApprover(entityIdSelf, entityId, path, 'REJECTED');
+                await updateStandardRequestByApprover(req, entityId, path, REQUEST_STATUS.REJECTED);
                 // Notify the group of the rejection.
                 logger.info(`Emit ${requestType} of accessor ${path} to pam-approver.`);
                 notificationsManager.getInstance().to('pam-approver').emit(requestType, path);
@@ -215,11 +214,14 @@ const _remapSecretsRequest = (secretsRequest) => {
             token
         };
     } else if (secretsRequest.dataValues) {
-        const {createdAt: creationTime, requestData: requestPath, requesterEntityId: id, requesterName: name, status} = secretsRequest.dataValues;
+        const {approverEntityId, approverName, createdAt: creationTime, requestData: requestPath, requesterEntityId: id, requesterName: name, status} = secretsRequest.dataValues;
         return {
             approved: status === 'APPROVED',
             creationTime,
-            authorizations: [], // TODO - May need to fill this in later, but not needed for now.
+            authorizations: approverEntityId ? [{
+                id: approverEntityId,
+                name: approverName
+            }] : [],
             isWrapped: false,
             requestEntity: {
                 id,
@@ -416,7 +418,7 @@ const router = require('express').Router()
                     approverGroupPromises.push(_getUsersByGroupName(req, groupName));
                 });
             } else if (type === 'standard-request') {
-                requestData = _remapSecretsRequest(await createOrUpdateStatusByRequester(entityId, path, REQUEST_STATUS.PENDING));
+                requestData = _remapSecretsRequest(await createOrUpdateStatusByRequester(req, entityId, path, REQUEST_STATUS.PENDING));
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             } else {
                 sendError(req.originalUrl, res, 'Invalid request', 400);
@@ -494,8 +496,7 @@ const router = require('express').Router()
                     });
                 }
             } else if (type === 'standard-request') {
-                const {entityId: entityIdSelf} = req.session.user;
-                const data = (await updateStandardRequestByApprover(entityIdSelf, entityId, path, REQUEST_STATUS.APPROVED) || [])[1] || {};
+                const data = await updateStandardRequestByApprover(req, entityId, path, REQUEST_STATUS.APPROVED) || {};
                 const {dataValues = {}} = data;
                 path = dataValues.requestData;
                 entityId = dataValues.requesterEntityId;

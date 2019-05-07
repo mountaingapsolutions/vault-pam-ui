@@ -52,7 +52,6 @@ export default (previousState = {
                 secretsRequests
             };
         case kvAction.ACTION_TYPES.APPROVE_REQUEST_DATA:
-            console.warn('action.dataaction.data: ', action.data);
             return {
                 ...previousState,
                 secretsRequests: updateIn(previousState.secretsRequests, action.data, 'requestPath')
