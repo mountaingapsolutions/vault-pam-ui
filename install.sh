@@ -2,7 +2,6 @@
 #
 
 readonly APP_NAME=vault-pam-ui
-readonly DB_NAME=vault-pam-db
 readonly CURRENT_SCRIPT="$(basename -- ${BASH_SOURCE[0]})"
 readonly CURRENT_DIRECTORY="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly ENV_VARS=(PAM_DATABASE
@@ -148,13 +147,6 @@ questions_email() {
     ask "Enter email password: " SMTP_PASS
 }
 
-# Build dist folder
-build_dist() {
-    print_raw $NL
-    show_info "Building dist..."
-    npm run build
-}
-
 clean_docker() {
     show_info "Cleaning docker images and containers..."
     # stop running container if any
@@ -163,9 +155,9 @@ clean_docker() {
         show_warn "An existing $APP_NAME container is running. Stopping..."
         docker rm -f $OLD_CONTAINER
     fi
-    OLD_DB_CONTAINER="$(docker ps --all --quiet --filter=name="$DB_NAME")"
+    OLD_DB_CONTAINER="$(docker ps --all --quiet --filter=name="${PAM_DATABASE}")"
     if [ -n "$OLD_DB_CONTAINER" ]; then
-        show_warn "An existing $DB_NAME container is running. Stopping..."
+        show_warn "An existing ${PAM_DATABASE} container is running. Stopping..."
         docker rm -f $OLD_DB_CONTAINER
     fi
     # purge old images (app)
@@ -174,7 +166,7 @@ clean_docker() {
 
 # Run docker container
 run_docker() {
-    show_info "Running docker..."
+    show_info "Building and Running docker images..."
 
     # set default dev env vars
     export PORT=$PORT
@@ -227,7 +219,6 @@ main() {
         questions_vault
         questions_email
     fi
-    build_dist
     clean_docker
     run_docker
     finish
