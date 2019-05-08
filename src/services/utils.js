@@ -83,10 +83,9 @@ const checkPremiumFeatures = (app) => {
  */
 const checkStandardRequestSupport = async (req) => {
     const {entityId, token} = req.session.user;
-    const groupName = 'pam-approver';
     return await new Promise((resolve, reject) => {
         request({
-            ...initApiRequest(token, `${getDomain()}/v1/identity/group/name/${groupName}`, entityId, true),
+            ...initApiRequest(token, `${getDomain()}/v1/identity/group/name/pam-approver`, entityId, true),
             method: 'GET',
         }, (error, response, body) => {
             if (error) {

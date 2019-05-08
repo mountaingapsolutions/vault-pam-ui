@@ -16,9 +16,7 @@ const create = (requesterEntityId, requestData, type, status) => {
         requestData,
         type,
         status
-    }).then(request => request.get({
-        plain: true
-    }));
+    });
 };
 
 /**
@@ -32,7 +30,7 @@ const findAllByRequester = (entityId) => {
         where: {
             requesterEntityId: entityId
         }
-    }).then(requests => requests);
+    });
 };
 
 /**
@@ -46,7 +44,7 @@ const findByParams = (params) => {
         where: {
             ...params
         }
-    }).then(requests => requests);
+    });
 };
 
 /**
@@ -64,8 +62,9 @@ const updateStatusByRequester = (requesterEntityId, path, status) => {
                 requesterEntityId,
                 requestData: path
             },
+            returning: true,
             plain: true
-        }).then((request) => request);
+        });
 };
 
 /**
@@ -87,7 +86,7 @@ const updateStatusByApprover = (approverEntityId, requesterEntityId, path, statu
             returning: true,
             plain: true
         }
-    ).then((request) => request);
+    );
 };
 
 module.exports = {

@@ -1,11 +1,7 @@
-const {toObject} = require('@mountaingapsolutions/objectutil/objectutil');
 const chalk = require('chalk');
 const request = require('request');
 const {initApiRequest, getDomain, sendError} = require('services/utils');
 const logger = require('services/logger');
-const {
-    getApprovedRequests
-} = require('services/routes/standardRequestService');
 
 /**
  * Helper method to retrieve secrets by the provided URL path.
@@ -111,10 +107,6 @@ const router = require('express').Router()
         const {entityId: requesterEntityId, token} = req.session.user;
         const apiUrl = `${domain}/v1/${listUrlParts.join('/')}?list=true`;
 
-        const approvedRequests = await getApprovedRequests(requesterEntityId);
-        const approvedRequestsMap = toObject(approvedRequests.map(result => result.dataValues), 'requestData');
-        console.warn('approvedRequestsMap: ', approvedRequestsMap);
-
         // Maintain the list of paths as a key/value map as well for easier access later.
         const pathsMap = {};
         const paths = (await _getSecretsByPath(token, apiUrl, requesterEntityId)).map((key) => {
@@ -168,22 +160,6 @@ const router = require('express').Router()
                             secretResolve();
                         });
                     }));
-                } else if (!canRead && approvedRequestsMap[key]) {
-                    // If approved from Standard Request, fetch the data and add "read" to capabilities.
-                    promises.push(new Promise((secretResolve) => {
-                        const getSecretApiUrl = `${domain}/v1/${key}`;
-                        request(initApiRequest(token, getSecretApiUrl, requesterEntityId, true), (error, response, body) => {
-                            if (error) {
-                                logger.error(error);
-                            }
-                            if (!body) {
-                                logger.error(`No response body returned from ${getSecretApiUrl} using API token.`);
-                            }
-                            secret.capabilities.push('read');
-                            secret.data = body || {};
-                            secretResolve();
-                        });
-                    }));
                 }
                 return secret;
             });
@@ -202,23 +178,14 @@ const router = require('express').Router()
      *   get:
      *     tags:
      *       - Secrets
-     *     name: List secret values.
-     *     summary: Retrieves the list of secret values by path.
+     *     name: Get secret values.
+     *     summary: Retrieves the secret values by path.
      *     parameters:
      *       - name: path
      *         in: path
      *         description: The Vault secrets path.
      *         schema:
      *           type: string
-     *         required: true
-     *       - name: version
-     *         in: query
-     *         description: The version of the Vault KV secrets engine.
-     *         schema:
-     *           type: integer
-     *           minimum: 1
-     *           maximum: 2
-     *           default: 2
      *         required: true
      *     responses:
      *       200:
@@ -228,14 +195,7 @@ const router = require('express').Router()
      */
     .get('/get/*', async (req, res) => {
         const {entityId, token} = req.session.user;
-        const {params = {}, query} = req;
-        const urlParts = (params[0] || '').split('/').filter(path => !!path);
-        const listUrlParts = [...urlParts];
-        const isV2 = String(query.version) === '2';
-        if (isV2) {
-            listUrlParts.splice(1, 0, 'metadata');
-        }
-        const apiUrl = `${getDomain()}/v1/${listUrlParts.join('/')}`;
+        const apiUrl = `${getDomain()}/v1/${req.params[0]}`;
         request(initApiRequest(token, apiUrl, entityId), (error, response, body) => {
             if (error) {
                 sendError(error, response, body);

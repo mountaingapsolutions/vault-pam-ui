@@ -52,15 +52,27 @@ const _checkIfApprover = (entityId, token) => {
  * @privtae
  * @param {string} entityId The entity id of the user in session.
  * @param {string} token the user's Vault token.
- * @param {string} status The request status in database.
+ * @param {string|Array} status The request status in database.
  * @returns {Promise}
  */
 const _getRequestsByStatus = (entityId, token, status) => {
     return new Promise(async (resolve, reject) => {
         const isApprover = await _checkIfApprover(entityId, token);
-        const params = {
-            status
-        };
+        let params;
+        if (Array.isArray(status)) {
+            params = {
+                [Symbol.for('or')]: status.map(s => {
+                    return {
+                        status: s
+                    };
+                })
+            };
+        } else {
+            params = {
+                status,
+
+            };
+        }
         // If not an approver, only retrieve user's own requests.
         if (!isApprover) {
             params.requesterEntityId = entityId;
@@ -71,9 +83,11 @@ const _getRequestsByStatus = (entityId, token, status) => {
             // Inject the requester name into each data value row.
             standardRequests.forEach((standardRequest) => {
                 if (standardRequest.dataValues) {
-                    const {requesterEntityId} = standardRequest.dataValues;
-                    const name = (userIdMap[requesterEntityId] || {}).name || `<${requesterEntityId}>`;
-                    standardRequest.dataValues.requesterName = name;
+                    const {approverEntityId, requesterEntityId} = standardRequest.dataValues;
+                    standardRequest.dataValues.requesterName = (userIdMap[requesterEntityId] || {}).name || `<${requesterEntityId}>`;
+                    if (approverEntityId) {
+                        standardRequest.dataValues.approverName = (userIdMap[approverEntityId] || {}).name || `<${approverEntityId}>`;
+                    }
                 }
             });
             resolve(standardRequests);
@@ -95,7 +109,7 @@ const getApprovedRequests = (entityId) => {
 };
 
 /**
- * Get standard pending requests.
+ * Get standard pending and approved requests.
  *
  * @param {Object} req The HTTP request object.
  * @returns {Promise}
@@ -105,7 +119,7 @@ const getRequests = (req) => {
         let result = [];
         try {
             const {entityId, token} = req.session.user;
-            const data = await _getRequestsByStatus(entityId, token, REQUEST_STATUS.PENDING);
+            const data = await _getRequestsByStatus(entityId, token, [REQUEST_STATUS.PENDING, REQUEST_STATUS.APPROVED]);
             result = result.concat(data);
         } catch (err) {
             reject({
@@ -120,53 +134,112 @@ const getRequests = (req) => {
 /**
  * Create or update standard request by requester.
  *
+ * @param {Object} req The HTTP request object.
  * @param {string} requesterEntityId The requester entity id.
  * @param {string} path The request path.
  * @param {string} status The request status.
  * @returns {Promise}
  */
-const createOrUpdateStatusByRequester = (requesterEntityId, path, status) => {
+const createOrUpdateStatusByRequester = (req, requesterEntityId, path, status) => {
     return new Promise((resolve, reject) => {
-        RequestController.updateStatusByRequester(requesterEntityId, path, status)
-            .then(async (results) => {
-                if (results && Array.isArray(results)) {
-                    if (results[0] === 0) {
-                        logger.info(`Creating new request for ${requesterEntityId} for the path ${path}.`);
-                        resolve(await RequestController.create(requesterEntityId, path, 'standard-request', REQUEST_STATUS.PENDING));
-                        return;
-                    }
-                    if (results[0] > 1) {
-                        logger.warn(`More than 1 record was updated for ${requesterEntityId} for the path ${path}...`);
-                    }
-                    resolve(results);
-                } else {
-                    reject({
-                        message: 'Unexpected response',
-                        status: 400
+        const {entityId, token} = req.session.user;
+        let standardRequest;
+        let requestError;
+        let userIdMap;
+        // Get user id map and invoke update status in parallel.
+        const promises = [
+            _getUserIds(entityId, token)
+                .then((results) => {
+                    userIdMap = results;
+                }),
+            new Promise((updateResolve) => {
+                RequestController.updateStatusByRequester(requesterEntityId, path, status)
+                    .then((results) => {
+                        if (results && Array.isArray(results)) {
+                            if (results[0] > 1) {
+                                logger.warn(`More than 1 record was updated for ${requesterEntityId} for the path ${path}...`);
+                            }
+                            standardRequest = results[1];
+                            updateResolve();
+                        } else {
+                            requestError = {
+                                message: 'Unexpected response',
+                                status: 400
+                            };
+                        }
+                    })
+                    .catch((err) => {
+                        logger.info(`No existing status request: ${err.message}`);
+                        if (status === REQUEST_STATUS.CANCELED) {
+                            requestError = {
+                                message: 'Request not found',
+                                status: 404
+                            };
+                        } else {
+                            logger.info(`Creating new request for ${requesterEntityId} for the path ${path}.`);
+                            RequestController.create(requesterEntityId, path, 'standard-request', REQUEST_STATUS.PENDING).then((createResults) => {
+                                standardRequest = createResults;
+                                updateResolve();
+                            });
+                        }
                     });
-                }
             })
-            .catch(reject);
+        ];
+        Promise.all(promises)
+            .then(() => {
+                if (requestError) {
+                    reject(requestError);
+                } else {
+                    // Inject the requester name into the data value.
+                    if (standardRequest && standardRequest.dataValues && userIdMap) {
+                        standardRequest.dataValues.requesterName = (userIdMap[requesterEntityId] || {}).name || `<${requesterEntityId}>`;
+                    }
+                    resolve(standardRequest);
+                }
+            });
     });
 };
 
 /**
  * Updates standard requests by approver.
  *
- * @param {string} approverEntityId The approver entity id.
- * @param {string} approverToken The approver Vault token
+ * @param {Object} req The HTTP request object.
  * @param {string} requesterEntityId The requester entity id.
  * @param {string} path The request path.
  * @param {string} status The request status.
  * @returns {Promise}
  */
-const updateStandardRequestByApprover = (approverEntityId, approverToken, requesterEntityId, path, status) => {
+const updateStandardRequestByApprover = (req, requesterEntityId, path, status) => {
     return new Promise(async (resolve, reject) => {
-        const isApprover = await _checkIfApprover(approverEntityId, approverToken);
+        const {entityId: approverEntityId, token} = req.session.user;
+        const isApprover = await _checkIfApprover(approverEntityId, token);
         if (isApprover) {
-            RequestController.updateStatusByApprover(approverEntityId, requesterEntityId, path, status)
-                .then(resolve)
-                .catch(reject);
+            let standardRequest;
+            let requestError;
+            let userIdMap;
+            Promise.all([
+                _getUserIds(approverEntityId, token)
+                    .then((results) => {
+                        userIdMap = results;
+                    }),
+                RequestController.updateStatusByApprover(approverEntityId, requesterEntityId, path, status)
+                    .then((results) => {
+                        standardRequest = results[1];
+                    })
+                    .catch((error) => {
+                        requestError = error;
+                    })
+            ]).then(() => {
+                if (requestError) {
+                    reject(requestError);
+                } else {
+                    // Inject the requester name into the data value.
+                    if (standardRequest.dataValues && userIdMap) {
+                        standardRequest.dataValues.approverName = (userIdMap[approverEntityId] || {}).name || `<${approverEntityId}>`;
+                    }
+                    resolve(standardRequest);
+                }
+            });
         } else {
             reject({
                 message: 'Unauthorized',
