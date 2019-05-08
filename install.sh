@@ -106,14 +106,20 @@ questions_db() {
         ask "Enter database password: " PAM_DATABASE_PASSWORD
     else
         print_raw $NL
-        show_warn "We will now install and create a database."
-        # setting the default internal database data
-        ask "Enter database password: " PAM_DATABASE_PASSWORD
-        INSTALL_DB=yes
-        PAM_DATABASE_URL=postgres
-        PAM_DATABASE_PORT=5432
-        PAM_DATABASE=pam-db
-        PAM_DATABASE_USER=hashi_vault_pam_db_user
+        if [ -n "$WITH_BUILD" ]; then
+            show_warn "We will now install and create a database."
+            # setting the default internal database data
+            ask "Enter database password: " PAM_DATABASE_PASSWORD
+            INSTALL_DB=yes
+            PAM_DATABASE_URL=postgres
+            PAM_DATABASE_PORT=5432
+            PAM_DATABASE=pam-db
+            PAM_DATABASE_USER=hashi_vault_pam_db_user
+         else
+            show_err "Please run \"./install --build\" to install an internal database. The default image doesn't have any internal database or use and external database."
+            exit 1
+        fi
+
     fi
 }
 
@@ -169,6 +175,7 @@ run_docker() {
     show_info "Building and Running docker images..."
 
     # set default dev env vars
+    export COMPOSE_PROJECT_NAME=$APP_NAME
     export PORT=$PORT
     export USE_HSTS=$USE_HSTS
 
@@ -179,20 +186,30 @@ run_docker() {
         do
             ENV_VAL="${!ENV_KEY}"
             export $ENV_KEY=$ENV_VAL
+            DOCKER_RUN_ARGS="${DOCKER_RUN_ARGS}-e ${ENV_KEY}=${ENV_VAL} "
         done
+    else
+        DOCKER_RUN_ARGS="--env-file ./.env "
     fi
 
-    COMPOSE_FILE=docker-compose.yml
-    if [ -n "${INSTALL_DB}" ]; then
-        show_info "Preparing internal DB."
-        export POSTGRES_PORT=$PAM_DATABASE_PORT
-        export POSTGRES_DB=$PAM_DATABASE
-        export POSTGRES_USER=$PAM_DATABASE_USER
-        export POSTGRES_PASSWORD=$PAM_DATABASE_PASSWORD
-        COMPOSE_FILE=docker-compose-with-db.yml
+    if [ -n "$WITH_BUILD" ]; then
+        # if install --build
+        COMPOSE_FILE=docker-compose.yml
+        if [ -n "${INSTALL_DB}" ]; then
+            show_info "Preparing internal DB."
+            export POSTGRES_PORT=$PAM_DATABASE_PORT
+            export POSTGRES_DB=$PAM_DATABASE
+            export POSTGRES_USER=$PAM_DATABASE_USER
+            export POSTGRES_PASSWORD=$PAM_DATABASE_PASSWORD
+            COMPOSE_FILE=docker-compose-with-db.yml
+        fi
+        docker-compose -f $COMPOSE_FILE up -d --build
+    else
+        APP_CONTAINER_NAME="mountaingapsolutions/${APP_NAME}"
+        docker pull $APP_CONTAINER_NAME
+        DOCKER_RUN_ARGS="${DOCKER_RUN_ARGS}-e PORT=$PORT -e USE_HSTS=$USE_HSTS "
+        docker run --name $APP_NAME -itd -p $PORT:$PORT $DOCKER_RUN_ARGS --rm $APP_CONTAINER_NAME
     fi
-    docker-compose -f $COMPOSE_FILE up -d --build
-
 }
 
 # Show running container
@@ -209,6 +226,10 @@ main() {
     show_info "---- Welcome to Vault PAM installation script ----"
     show_info "--------------------------------------------------"
     print_raw $NL
+    if [ "${1}" = "--build" ]; then
+        WITH_BUILD=yes
+        show_info "Building the images..."
+    fi
     questions_pam
     if check_env_file
     then
