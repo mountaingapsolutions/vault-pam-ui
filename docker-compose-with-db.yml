@@ -12,7 +12,8 @@ services:
         volumes:
             - dbdata:/var/lib/postgresql/data
     app:
-        container_name: vault-pam-ui
+        container_name: ${COMPOSE_PROJECT_NAME}
+        image: ${COMPOSE_PROJECT_NAME}
         build:
             context: .
             dockerfile: Dockerfile
