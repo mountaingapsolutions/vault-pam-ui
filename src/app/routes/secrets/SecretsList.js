@@ -57,6 +57,7 @@ class SecretsList extends Component {
             confirmationModalData: {},
             deleteSecretConfirmation: '',
             newSecretAnchorElement: null,
+            refreshSecretsListOnClose: false,
             secretModalInitialPath: '',
             secretModalMode: '',
             showConfirmationModal: false,
@@ -114,7 +115,7 @@ class SecretsList extends Component {
                     }, () => {
                         if (confirm) {
                             const {unwrapSecret} = this.props;
-                            this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'read');
+                            this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'read', true);
                             unwrapSecret(name, token);
                         }
                     });
@@ -209,11 +210,13 @@ class SecretsList extends Component {
      * @private
      * @param {string} secretModalInitialPath The initial path for the secrets modal.
      * @param {string} [secretModalMode] The secret modal mode. Valid values are 'create', 'read', or 'update'. No value will hide the modal.
+     * @param {boolean} [refreshSecretsListOnClose] Whether to refresh the secrets list on modal close.
      */
-    _toggleCreateUpdateSecretModal(secretModalInitialPath = '', secretModalMode = '') {
+    _toggleCreateUpdateSecretModal(secretModalInitialPath = '', secretModalMode = '', refreshSecretsListOnClose = false) {
         this.setState({
             secretModalInitialPath,
-            secretModalMode
+            secretModalMode,
+            refreshSecretsListOnClose
         });
     }
 
@@ -223,21 +226,19 @@ class SecretsList extends Component {
      * @private
      * @param {boolean} refresh Whether or not to refresh the secrets list.
      */
-    _onCreateUpdateSecretModalClose(refresh) {
-        if (refresh) {
+    _onCreateUpdateSecretModalClose() {
+        const {refreshSecretsListOnClose} = this.state;
+        if (refreshSecretsListOnClose) {
             const {listRequests, listSecretsAndCapabilities, match} = this.props;
-            const {secretModalMode} = this.state;
-            if (secretModalMode === 'read') {
-                listRequests();
-            } else {
-                const {params} = match;
-                const {mount, path} = params;
-                listSecretsAndCapabilities(path, this._getVersionFromMount(mount));
-            }
+            const {params} = match;
+            const {mount, path} = params;
+            listRequests();
+            listSecretsAndCapabilities(path, this._getVersionFromMount(mount));
         }
         this.setState({
             secretModalInitialPath: '',
-            secretModalMode: ''
+            secretModalMode: '',
+            refreshSecretsListOnClose: false
         });
     }
 
@@ -327,7 +328,7 @@ class SecretsList extends Component {
                                 className={classes.fab}
                                 color='primary' size='medium'
                                 variant='extended'
-                                onClick={() => this._toggleCreateUpdateSecretModal(paths.join('/'), 'create')}
+                                onClick={() => this._toggleCreateUpdateSecretModal(paths.join('/'), 'create', true)}
                             >
                                 <AddIcon className={classes.marginRight}/>
                                 Create Secret
@@ -351,7 +352,7 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     _renderSecondaryIcon(secret) {
-        const {getSecrets, match, setSecretsData} = this.props;
+        const {match, openApprovedSecret, setSecretsData} = this.props;
         const {params} = match;
         const {mount} = params;
         const {isApproved, isPending, canOpen, canDelete, name, isWrapped, requiresRequest, secretsData, secretsPath, wrapInfoToken} = secret;
@@ -375,11 +376,11 @@ class SecretsList extends Component {
                 <IconButton
                     aria-label={openLabel}
                     onClick={() => {
-                        if (wrapInfoToken) {
+                        if (isWrapped) {
                             this._openApprovedRequestModal(mount, secretsPath, name, wrapInfoToken);
                         } else {
                             this._toggleCreateUpdateSecretModal(`${mount}/${secretsPath}`, 'read');
-                            secretsData ? setSecretsData(secretsData) : getSecrets(name, this._getVersionFromMount(mount));
+                            secretsData ? setSecretsData(secretsData) : openApprovedSecret(name, this._getVersionFromMount(mount));
                         }
                     }}>
                     <LockOpenIcon/>
@@ -406,7 +407,7 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     _renderSecretsListArea() {
-        const {classes, pageError, getSecrets, history, inProgress, listSecretsAndCapabilities, match, secretsList, setSecretsData} = this.props;
+        const {classes, pageError, getSecrets, history, inProgress, listSecretsAndCapabilities, match, openApprovedSecret, secretsList, setSecretsData} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
         if (inProgress) {
@@ -439,7 +440,12 @@ class SecretsList extends Component {
                                 this._toggleCreateUpdateSecretModal(`${mount}/${secretsPath}`, 'read');
                                 secretsData ? setSecretsData(secretsData) : getSecrets(name, this._getVersionFromMount(mount));
                             } else if (isApproved) {
-                                this._openApprovedRequestModal(mount, secretsPath, name, wrapInfoToken);
+                                if (isWrapped) {
+                                    this._openApprovedRequestModal(mount, secretsPath, name, wrapInfoToken);
+                                } else {
+                                    this._toggleCreateUpdateSecretModal(`${mount}/${secretsPath}`, 'read');
+                                    openApprovedSecret(name, this._getVersionFromMount(mount));
+                                }
                             } else if (requiresRequest) {
                                 if (isPending) {
                                     this._openRequestCancellationModal(mount, name, isWrapped ? 'control-group' : 'standard-request');
@@ -524,6 +530,7 @@ SecretsList.propTypes = {
     listRequests: PropTypes.func.isRequired,
     listSecretsAndCapabilities: PropTypes.func.isRequired,
     match: PropTypes.object.isRequired,
+    openApprovedSecret: PropTypes.func.isRequired,
     pageError: PropTypes.string,
     requestSecret: PropTypes.func.isRequired,
     secrets: PropTypes.object,
@@ -687,6 +694,13 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                     })
                     .catch(reject);
             });
+        },
+        openApprovedSecret: (name, version) => {
+            const {match} = ownProps;
+            const {params} = match;
+            const {mount, path} = params;
+            const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
+            return dispatch(kvAction.openApprovedSecret(fullPath));
         },
         requestSecret: (name, version, type = 'standard-request') => {
             const {match} = ownProps;

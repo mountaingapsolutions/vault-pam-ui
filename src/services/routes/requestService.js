@@ -4,6 +4,7 @@ const notificationsManager = require('services/notificationsManager');
 const {sendMailFromTemplate} = require('services/mail/smtpClient');
 const {
     createOrUpdateStatusByRequester,
+    getApprovedRequests,
     getRequests,
     updateStandardRequestByApprover
 } = require('services/routes/standardRequestService');
@@ -216,7 +217,7 @@ const _remapSecretsRequest = (secretsRequest) => {
     } else if (secretsRequest.dataValues) {
         const {approverEntityId, approverName, createdAt: creationTime, requestData: requestPath, requesterEntityId: id, requesterName: name, status} = secretsRequest.dataValues;
         return {
-            approved: status === 'APPROVED',
+            approved: status === REQUEST_STATUS.APPROVED,
             creationTime,
             authorizations: approverEntityId ? [{
                 id: approverEntityId,
@@ -525,6 +526,55 @@ const router = require('express').Router()
         res.json({
             status: 'ok'
         });
+    })
+    /**
+     * @swagger
+     * /rest/secret/open/{path}:
+     *   get:
+     *     tags:
+     *       - Requests
+     *     name: Open an approved secrets request.
+     *     summary: Retrieves the secret values by path.
+     *     parameters:
+     *       - name: path
+     *         in: path
+     *         description: The Vault secrets path.
+     *         schema:
+     *           type: string
+     *         required: true
+     *     responses:
+     *       200:
+     *         description: Success.
+     *       403:
+     *         description: Unauthorized.
+     *       404:
+     *         description: Not found.
+     */
+    .get('/open/*', async (req, res) => {
+        const {entityId, token} = req.session.user;
+        const path = req.params[0];
+        const apiUrl = `${getDomain()}/v1/${path}`;
+        // Request for approved requests and secrets data can be fetched in parallel.
+        Promise.all([getApprovedRequests(entityId),
+            asyncRequest(initApiRequest(token, apiUrl, entityId, true))
+        ])
+            .then((results) => {
+                const approvedRequests = results[0];
+                const secrets = (results[1] || {}).body;
+                if (Array.isArray(approvedRequests) && secrets) {
+                    const isApproved = approvedRequests.some((approvedRequest) => approvedRequest.dataValues.requestData === path);
+                    if (isApproved) {
+                        res.json(secrets);
+                    } else {
+                        sendError(apiUrl, res, 'Unauthorized', 403);
+                    }
+                } else {
+                    sendError(apiUrl, res, 'Unknown error');
+                }
+            })
+            .catch((err) => {
+                sendError(apiUrl, res, err);
+            });
     })
     /**
      * @swagger

@@ -178,23 +178,14 @@ const router = require('express').Router()
      *   get:
      *     tags:
      *       - Secrets
-     *     name: List secret values.
-     *     summary: Retrieves the list of secret values by path.
+     *     name: Get secret values.
+     *     summary: Retrieves the secret values by path.
      *     parameters:
      *       - name: path
      *         in: path
      *         description: The Vault secrets path.
      *         schema:
      *           type: string
-     *         required: true
-     *       - name: version
-     *         in: query
-     *         description: The version of the Vault KV secrets engine.
-     *         schema:
-     *           type: integer
-     *           minimum: 1
-     *           maximum: 2
-     *           default: 2
      *         required: true
      *     responses:
      *       200:
@@ -204,14 +195,7 @@ const router = require('express').Router()
      */
     .get('/get/*', async (req, res) => {
         const {entityId, token} = req.session.user;
-        const {params = {}, query} = req;
-        const urlParts = (params[0] || '').split('/').filter(path => !!path);
-        const listUrlParts = [...urlParts];
-        const isV2 = String(query.version) === '2';
-        if (isV2) {
-            listUrlParts.splice(1, 0, 'metadata');
-        }
-        const apiUrl = `${getDomain()}/v1/${listUrlParts.join('/')}`;
+        const apiUrl = `${getDomain()}/v1/${req.params[0]}`;
         request(initApiRequest(token, apiUrl, entityId), (error, response, body) => {
             if (error) {
                 sendError(error, response, body);
