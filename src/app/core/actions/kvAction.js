@@ -21,6 +21,7 @@ class KvAction extends _Actions {
             LIST_MOUNTS: 'LIST_MOUNTS',
             LIST_SECRETS_AND_CAPABILITIES: 'LIST_SECRETS_AND_CAPABILITIES',
             LIST_REQUESTS: 'LIST_REQUESTS',
+            OPEN_APPROVED_SECRET: 'OPEN_APPROVED_SECRET',
             REJECT_REQUEST: 'REJECT_REQUEST',
             REMOVE_REQUEST_DATA: 'REMOVE_REQUEST_DATA',
             REQUEST_SECRET: 'REQUEST_SECRET',
@@ -90,7 +91,6 @@ class KvAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     setSecretsData(data) {
-        console.warn('SET ME', data);
         return this._createResourceData(this.ACTION_TYPES.GET_SECRETS, undefined, data, false);
     }
 
@@ -151,11 +151,11 @@ class KvAction extends _Actions {
     /**
      * Removes the request data in the client data model.
      *
-     * @param {string} accessor The accessor data to remove.
+     * @param {string} requestPath The request path to remove.
      * @returns {function} Redux dispatch function.
      */
-    removeRequestData(accessor) {
-        return this._createResourceData(this.ACTION_TYPES.REMOVE_REQUEST_DATA, undefined, accessor, false);
+    removeRequestData(requestPath) {
+        return this._createResourceData(this.ACTION_TYPES.REMOVE_REQUEST_DATA, undefined, requestPath, false);
     }
 
     /**
@@ -176,6 +176,16 @@ class KvAction extends _Actions {
      */
     createRequestData(data) {
         return this._createResourceData(this.ACTION_TYPES.CREATE_REQUEST_DATA, undefined, data, false);
+    }
+
+    /**
+     * Opens an approved secret.
+     *
+     * @param {string} path Specifies the path of the secrets to get.
+     * @returns {function} Redux dispatch function.
+     */
+    openApprovedSecret(path) {
+        return this._dispatchGet(this.ACTION_TYPES.GET_SECRETS, `/rest/secret/open/${this._encodePath(path)}`);
     }
 
     /**

@@ -106,8 +106,20 @@ questions_db() {
         ask "Enter database password: " PAM_DATABASE_PASSWORD
     else
         print_raw $NL
-        show_err "We only support EXTERNAL DB for now."
-        exit 1
+        if [ -n "$WITH_BUILD" ]; then
+            show_warn "We will now install and create a database."
+            # setting the default internal database data
+            ask "Enter database password: " PAM_DATABASE_PASSWORD
+            INSTALL_DB=yes
+            PAM_DATABASE_URL=postgres
+            PAM_DATABASE_PORT=5432
+            PAM_DATABASE=pam-db
+            PAM_DATABASE_USER=hashi_vault_pam_db_user
+         else
+            show_err "Please run \"./install --build\" to install an internal database. The default image doesn't have any internal database or use and external database."
+            exit 1
+        fi
+
     fi
 }
 
@@ -122,6 +134,7 @@ questions_pam() {
         # If userInput is not empty show what the user typed in and run ls -l
         show_warn "Using port $PORT"
     fi
+    # default
     USE_HSTS=false
 }
 
@@ -140,55 +153,70 @@ questions_email() {
     ask "Enter email password: " SMTP_PASS
 }
 
-# Build dist folder
-build_dist() {
-    print_raw $NL
-    show_info "Building dist..."
-    npm run build
-}
-
-# Build docker container
-build_docker() {
-    print_raw $NL
-    show_info "Building docker image..."
-    docker build -t $APP_NAME .
-}
-
-# Run docker container
-run_docker() {
-    # check for param
-    PARAMS="-e PORT=$PORT -e USE_HSTS=$USE_HSTS "
-
-    if [ -z "$1" ]
-    then
-        for ENV_KEY in "${ENV_VARS[@]}"
-        do
-            ENV_VAL="${!ENV_KEY}"
-            PARAMS="${PARAMS}-e ${ENV_KEY}=${ENV_VAL} "
-        done
-    fi
-
+clean_docker() {
+    show_info "Cleaning docker images and containers..."
     # stop running container if any
     OLD_CONTAINER="$(docker ps --all --quiet --filter=name="$APP_NAME")"
     if [ -n "$OLD_CONTAINER" ]; then
         show_warn "An existing $APP_NAME container is running. Stopping..."
-        docker stop $OLD_CONTAINER
+        docker rm -f $OLD_CONTAINER
+    fi
+    OLD_DB_CONTAINER="$(docker ps --all --quiet --filter=name="${PAM_DATABASE}")"
+    if [ -n "$OLD_DB_CONTAINER" ]; then
+        show_warn "An existing ${PAM_DATABASE} container is running. Stopping..."
+        docker rm -f $OLD_DB_CONTAINER
+    fi
+    # purge old images (app)
+    docker images -a | grep "${APP_NAME}" | awk '{print $3}' | xargs docker rmi
+}
+
+# Run docker container
+run_docker() {
+    show_info "Building and Running docker images..."
+
+    # set default dev env vars
+    export COMPOSE_PROJECT_NAME=$APP_NAME
+    export PORT=$PORT
+    export USE_HSTS=$USE_HSTS
+
+    # if not user .env set env vars based from the user input
+    if [ -z "${USE_ENV}" ]
+    then
+        for ENV_KEY in "${ENV_VARS[@]}"
+        do
+            ENV_VAL="${!ENV_KEY}"
+            export $ENV_KEY=$ENV_VAL
+            DOCKER_RUN_ARGS="${DOCKER_RUN_ARGS}-e ${ENV_KEY}=${ENV_VAL} "
+        done
+    else
+        DOCKER_RUN_ARGS="--env-file ./.env "
     fi
 
-    show_info "Running docker with these parameters: ${PARAMS}"
-    DOCKER_FLAGS="-itd \
-        -p $PORT:$PORT \
-        $PARAMS \
-        --name $APP_NAME \
-        --rm $APP_NAME"
-    docker run $DOCKER_FLAGS
+    if [ -n "$WITH_BUILD" ]; then
+        # if install --build
+        COMPOSE_FILE=docker-compose.yml
+        if [ -n "${INSTALL_DB}" ]; then
+            show_info "Preparing internal DB."
+            export POSTGRES_PORT=$PAM_DATABASE_PORT
+            export POSTGRES_DB=$PAM_DATABASE
+            export POSTGRES_USER=$PAM_DATABASE_USER
+            export POSTGRES_PASSWORD=$PAM_DATABASE_PASSWORD
+            COMPOSE_FILE=docker-compose-with-db.yml
+        fi
+        docker-compose -f $COMPOSE_FILE up -d --build
+    else
+        APP_CONTAINER_NAME="mountaingapsolutions/${APP_NAME}"
+        docker pull $APP_CONTAINER_NAME
+        DOCKER_RUN_ARGS="${DOCKER_RUN_ARGS}-e PORT=$PORT -e USE_HSTS=$USE_HSTS "
+        docker run --name $APP_NAME -itd -p $PORT:$PORT $DOCKER_RUN_ARGS --rm $APP_CONTAINER_NAME
+    fi
 }
 
 # Show running container
 finish() {
     show_info "Listing all running docker containers."
     docker ps
-    show_info "Sweet! The application will be up soon at https://localhost:$PORT"
+    show_info "Sweet! The application will be up soon at https://localhost:${PORT}"
     print_raw $NL
 }
 
@@ -198,6 +226,10 @@ main() {
     show_info "---- Welcome to Vault PAM installation script ----"
     show_info "--------------------------------------------------"
     print_raw $NL
+    if [ "${1}" = "--build" ]; then
+        WITH_BUILD=yes
+        show_info "Building the images..."
+    fi
     questions_pam
     if check_env_file
     then
@@ -207,11 +239,9 @@ main() {
         questions_db
         questions_vault
         questions_email
-
     fi
-    build_dist
-    build_docker
-    run_docker $USE_ENV
+    clean_docker
+    run_docker
     finish
 }
 

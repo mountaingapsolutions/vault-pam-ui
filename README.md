@@ -67,7 +67,11 @@ $ USE_HSTS=false PORT=8080 npm run startprod
 ```docker pull mountaingapsolutions/vault-pam-ui:latest```
 
 ## Installation
-- The command below will use Docker to spin up a Vault PAM UI container. There are two options, using .env file inside the project and using user defined configurations.
-```./install.sh```
+The script will first look for the .env and validate the environment variables. There is an option not to use this file and fill up the custom values instead.
+### Pull the latest image from dockerhub. This is the very basic install option.
+- `./install.sh`
+### Build from base images
+- `./install.sh --build`
+
 
 

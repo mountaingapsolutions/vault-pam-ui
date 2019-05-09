@@ -78,14 +78,14 @@ const checkPremiumFeatures = (app) => {
 /**
  * Check if standard requests are supported
  *
+ * @param {Object} req The HTTP request object.
  * @returns {Promise}
  */
-const checkStandardRequestSupport = async () => {
-    const {VAULT_API_TOKEN: apiToken} = process.env;
-    const groupName = 'pam-approver';
+const checkStandardRequestSupport = async (req) => {
+    const {entityId, token} = req.session.user;
     return await new Promise((resolve, reject) => {
         request({
-            ...initApiRequest(apiToken, `${getDomain()}/v1/identity/group/name/${groupName}`),
+            ...initApiRequest(token, `${getDomain()}/v1/identity/group/name/pam-approver`, entityId, true),
             method: 'GET',
         }, (error, response, body) => {
             if (error) {
@@ -101,14 +101,19 @@ const checkStandardRequestSupport = async () => {
 /**
  * Creates the initial Vault API request object.
  *
- * @param {string} token The Vault token.
- * @param {string} apiUrl The Vault API endpoint.
+ * @param {string} token the user's Vault token.
+ * @param {string} apiUrl The Vault API URL
+ * @param {string} [entityId] the user's entity id
+ * @param {boolean} [useApiToken] whether to use the api token
  * @returns {Object}
  */
-const initApiRequest = (token, apiUrl) => {
+const initApiRequest = (token, apiUrl, entityId, useApiToken = false) => {
+    const {VAULT_API_TOKEN: apiToken} = process.env;
     return {
         headers: {
-            'x-vault-token': token
+            ...entityId && {'x-entity-id': entityId},
+            'x-user-token': token,
+            'x-vault-token': useApiToken ? apiToken : token,
         },
         uri: apiUrl,
         json: true
