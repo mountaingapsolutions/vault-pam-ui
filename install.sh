@@ -48,6 +48,7 @@ print_title() {
     show_info "---- ${1:Title} ----"
 }
 
+# display the spinner 
 spinner()
 {
     local pid=$!
@@ -106,7 +107,12 @@ check_env_file() {
 # accept a question(string) and assign it to a variable
 ask() {
     if [[ -z "${!2}" ]]; then
-        read -p "${NL}${BOLD}$1${NORMAL}" $2
+        READ_ARGS="-p"
+        if [ "${3}" = "--password" ]; then
+            READ_ARGS="-s ${READ_ARGS}"
+        fi
+        echo "${READ_ARGS}"
+        read $READ_ARGS "${NL}${BOLD}$1${NORMAL}" $2
     fi
 }
 
@@ -118,13 +124,13 @@ questions_db() {
         ask "Enter database port: " PAM_DATABASE_PORT
         ask "Enter database name: " PAM_DATABASE
         ask "Enter database user: " PAM_DATABASE_USER
-        ask "Enter database password: " PAM_DATABASE_PASSWORD
+        ask "Enter database password: " PAM_DATABASE_PASSWORD --password
     else
         print_raw $NL
         if [ -n "$WITH_BUILD" ]; then
             show_warn "We will now install and create a database."
             # setting the default internal database data
-            ask "Enter database password: " PAM_DATABASE_PASSWORD
+            ask "Enter database password: " PAM_DATABASE_PASSWORD --password
             INSTALL_DB=yes
             PAM_DATABASE_URL=postgres
             PAM_DATABASE_PORT=5432
@@ -165,7 +171,7 @@ questions_email() {
     print_title "Email"
     ask "Enter email service(gmail for now): " SMTP_SERVICE
     ask "Enter email username: " SMTP_USER
-    ask "Enter email password: " SMTP_PASS
+    ask "Enter email password: " SMTP_PASS --password
 }
 
 clean_docker() {
