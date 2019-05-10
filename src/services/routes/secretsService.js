@@ -2,6 +2,7 @@ const chalk = require('chalk');
 const request = require('request');
 const {initApiRequest, getDomain, sendError} = require('services/utils');
 const logger = require('services/logger');
+const addRequestId = require('express-request-id')();
 
 /**
  * Helper method to retrieve secrets by the provided URL path.
@@ -65,6 +66,7 @@ const _getCapabilities = (token, entityId, paths) => {
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
+    .use(addRequestId)
 /**
  * @swagger
  * /rest/secrets/list/{path}:
@@ -96,6 +98,7 @@ const router = require('express').Router()
  *         description: Not found.
  */
     .get('/list/*', async (req, res) => {
+        logger.audit(req, res);
         const {params = {}, query} = req;
         const urlParts = (params['0'] || '').split('/').filter(path => !!path);
         const listUrlParts = [...urlParts];
@@ -194,6 +197,7 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .get('/get/*', async (req, res) => {
+        logger.audit(req, res);
         const {entityId, token} = req.session.user;
         const apiUrl = `${getDomain()}/v1/${req.params[0]}`;
         request(initApiRequest(token, apiUrl, entityId), (error, response, body) => {
