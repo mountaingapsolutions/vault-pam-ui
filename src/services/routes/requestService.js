@@ -273,7 +273,6 @@ const _rejectRequest = (req) => {
             // Standard Request rejection.
             else if (type === 'standard-request') {
                 const isApprover = await _checkIfApprover(req);
-                console.warn('IS APPROVER: ', isApprover);
                 if (isApprover) {
                     await updateRequestResponse({
                         entityId,
@@ -652,7 +651,7 @@ const router = require('express').Router()
                         type
                     }, {
                         entityId: req.session.user.entityId,
-                        type: REQUEST_STATUS.REJECTED
+                        type: REQUEST_STATUS.APPROVED
                     });
                     const {dataValues = {}} = data;
                     path = dataValues.requestData;
