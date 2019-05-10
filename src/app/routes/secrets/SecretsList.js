@@ -224,7 +224,6 @@ class SecretsList extends Component {
      * Called when the create/update secrets modal is closed.
      *
      * @private
-     * @param {boolean} refresh Whether or not to refresh the secrets list.
      */
     _onCreateUpdateSecretModalClose() {
         const {refreshSecretsListOnClose} = this.state;

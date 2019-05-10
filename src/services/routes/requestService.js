@@ -1,15 +1,103 @@
 const {safeWrap, unwrap} = require('@mountaingapsolutions/objectutil');
 const logger = require('services/logger');
 const notificationsManager = require('services/notificationsManager');
+const {createRequest, getRequests, updateRequestResponse} = require('services/db/controllers/requestsController');
 const {sendMailFromTemplate} = require('services/mail/smtpClient');
 const {
-    createOrUpdateStatusByRequester,
     getApprovedRequests,
-    getRequests,
     updateStandardRequestByApprover
 } = require('services/routes/standardRequestService');
 const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, setSessionData} = require('services/utils');
 const {REQUEST_STATUS} = require('services/constants');
+
+/**
+ * Check if user is a member of approver group.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
+const _checkIfApprover = async (req) => {
+    const {entityId, token} = req.session.user;
+    const groupName = 'pam-approver';
+    try {
+        const response = await asyncRequest(initApiRequest(token, `${getDomain()}/v1/identity/group/name/${groupName}`, entityId, true));
+        if (response.body && response.body.data) {
+            const {member_entity_ids = []} = response.body.data;
+            return member_entity_ids.includes(entityId);
+        } else {
+            logger.error(`${groupName} group not found.`);
+            return false;
+        }
+    } catch (error) {
+        logger.error(error);
+        return false;
+    }
+};
+
+/**
+ * Creates a request record and injects the requester name into the result.
+ *
+ * @param {Object} req The HTTP request object.
+ * @param {Object} params The params to create the request with.
+ * @returns {Promise}
+ * @private
+ */
+const _createRequest = (req, params) => {
+    return new Promise((resolve, reject) => {
+        const {entityId} = params;
+        Promise.all([_getUserEntityIds(req), createRequest(params)])
+            .then((results) => {
+                const userIdMap = results[0];
+                // Inject the requester name into the data value.
+                if (results[1] && results[1].dataValues) {
+                    results[1].dataValues.name = (userIdMap[entityId] || {}).name || `<${entityId}>`;
+                    resolve(results[1]);
+                } else {
+                    reject(results[1]);
+                }
+            })
+            .catch(reject);
+    });
+};
+
+/**
+ * Retrieves the corresponding requests for the session user.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
+const _getRequests = (req) => {
+    return new Promise(async (resolve, reject) => {
+        const {entityId} = req.session.user;
+        const isApprover = await _checkIfApprover(req);
+        console.warn('IS APPROVER: ', isApprover);
+        // If not an approver, only retrieve user's own requests.
+        Promise.all([_getUserEntityIds(req), getRequests(!isApprover ? {} : {
+            entityId
+        })])
+            .then((results) => {
+                const userIdMap = results[0];
+                const requests = Array.isArray(results[1]) ? results[1] : [];
+                // Inject the requester name into each data value row.
+                requests.forEach((request) => {
+                    if (request.dataValues) {
+                        const {entityId: id} = request.dataValues;
+                        request.dataValues.name = (userIdMap[id] || {}).name || `<${id}>`;
+                        // Inject the response creator's name into each of the responses.
+                        request.dataValues.responses.forEach((response) => {
+                            const {entityId: responderEntityId} = response;
+                            response.name = (userIdMap[responderEntityId] || {}).name || `<${responderEntityId}>`;
+                        });
+                    }
+                });
+                // Filter out any CANCELLED requests.
+                resolve(requests.filter((request) => !(request.dataValues.responses || []).some((response) => response.type === REQUEST_STATUS.CANCELED)));
+            })
+            .catch(err => reject(err));
+    });
+};
 
 /**
  * Retrieves user data by entity id.
@@ -19,16 +107,43 @@ const {REQUEST_STATUS} = require('services/constants');
  * @param {string} entityId The entity id.
  * @returns {Promise}
  */
-const _getUserByEntityId = (req, entityId) => {
+const _getUserByEntityId = async (req, entityId) => {
     const {entityId: sessionEntityId, token} = req.session.user;
-    return new Promise((resolve) => {
-        asyncRequest(initApiRequest(token, `${getDomain()}/v1/identity/entity/id/${entityId}`, sessionEntityId, true))
-            .then((response) => {
-                const responseBody = response.body;
-                resolve(responseBody && responseBody.data ? responseBody.data : responseBody);
-            })
-            .catch((error) => resolve(error));
-    });
+    try {
+        const response = await asyncRequest(initApiRequest(token, `${getDomain()}/v1/identity/entity/id/${entityId}`, sessionEntityId, true));
+        if (response.body && response.body.data) {
+            return response.body.data;
+        } else {
+            logger.error(response.body);
+        }
+    } catch (error) {
+        logger.error(error);
+    }
+    return {};
+};
+
+/**
+ * Retrieves all user entity ids.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @param {string} entityId The entity id.
+ * @returns {Promise}
+ */
+const _getUserEntityIds = async (req) => {
+    const {entityId, token} = req.session.user;
+    try {
+        const response = await asyncRequest(initApiRequest(token, `${getDomain()}/v1/identity/entity/id?list=true`, entityId, true));
+        const keyInfo = unwrap(safeWrap(response.body).data.key_info);
+        if (keyInfo) {
+            return keyInfo;
+        } else {
+            logger.error(response.body);
+        }
+    } catch (error) {
+        logger.error(error);
+    }
+    return {};
 };
 
 /**
@@ -70,7 +185,7 @@ const _getUsersByGroupName = async (req, groupName) => {
  */
 const _cancelRequest = (req) => {
     const {path, type} = req.query;
-    const {entityId: requesterEntityId} = req.session.user;
+    const {entityId} = req.session.user;
     return new Promise(async (resolve, reject) => {
         try {
             const approverGroupPromises = [];
@@ -83,7 +198,14 @@ const _cancelRequest = (req) => {
             }
             // Standard Request cancellation.
             else if (type === 'standard-request') {
-                await createOrUpdateStatusByRequester(req, requesterEntityId, path, 'CANCELED');
+                await updateRequestResponse({
+                    entityId,
+                    requestData: path,
+                    type
+                }, {
+                    entityId,
+                    type: 'CANCELED'
+                });
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             }
             // Invalid type provided.
@@ -99,7 +221,7 @@ const _cancelRequest = (req) => {
             const recipients = {};
             Promise.all(approverGroupPromises).then((groups) => {
                 const requestType = 'cancel-request';
-                notificationsManager.getInstance().to(requesterEntityId).emit(requestType, path);
+                notificationsManager.getInstance().to(entityId).emit(requestType, path);
                 groups.forEach((groupData) => {
                     const {name, users = []} = groupData;
                     // Notify the group of the cancellation.
@@ -215,20 +337,18 @@ const _remapSecretsRequest = (secretsRequest) => {
             token
         };
     } else if (secretsRequest.dataValues) {
-        const {approverEntityId, approverName, createdAt: creationTime, requestData: requestPath, requesterEntityId: id, requesterName: name, status} = secretsRequest.dataValues;
+        const {createdAt: creationTime, requestData: requestPath, entityId, name, responses = []} = secretsRequest.dataValues;
         return {
-            approved: status === REQUEST_STATUS.APPROVED,
+            approved: responses.some((response) => response.type === REQUEST_STATUS.APPROVED),
             creationTime,
-            authorizations: approverEntityId ? [{
-                id: approverEntityId,
-                name: approverName
-            }] : [],
+            authorizations: responses.filter((response) => [REQUEST_STATUS.APPROVED, REQUEST_STATUS.REJECTED].includes(response.type)),
             isWrapped: false,
             requestEntity: {
-                id,
+                entityId,
                 name
             },
-            requestPath
+            requestPath,
+            responses
         };
     } else {
         logger.error(`Unknown request type: ${JSON.stringify(secretsRequest)}`);
@@ -280,7 +400,7 @@ const router = require('express').Router()
             }
         }
         try {
-            const standardRequests = await getRequests(req);
+            const standardRequests = await _getRequests(req);
             requests = requests.concat(standardRequests);
         } catch (err) {
             sendError(req.originalUrl, res, err);
@@ -309,7 +429,7 @@ const router = require('express').Router()
             promises.push(premiumGetRequests(req));
             promises.push(getActiveRequests(req));
         }
-        promises.push(getRequests(req));
+        promises.push(_getRequests(req));
         Promise.all(promises)
             .then(results => {
                 results.forEach((currentRequests) => {
@@ -419,7 +539,11 @@ const router = require('express').Router()
                     approverGroupPromises.push(_getUsersByGroupName(req, groupName));
                 });
             } else if (type === 'standard-request') {
-                requestData = _remapSecretsRequest(await createOrUpdateStatusByRequester(req, entityId, path, REQUEST_STATUS.PENDING));
+                requestData = _remapSecretsRequest(await _createRequest(req, {
+                    entityId,
+                    requestData: path,
+                    type
+                }));
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             } else {
                 sendError(req.originalUrl, res, 'Invalid request', 400);

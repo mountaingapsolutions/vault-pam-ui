@@ -1,7 +1,5 @@
 const request = require('request');
-
-const RequestController = require('services/controllers/Request');
-const requestLib = require('request');
+const requestsController = require('services/db/controllers/requestsController');
 const logger = require('services/logger');
 const {initApiRequest, getDomain} = require('services/utils');
 const {REQUEST_STATUS} = require('services/constants');
@@ -34,7 +32,7 @@ const _getUserIds = (entityId, token) => {
 const _checkIfApprover = (entityId, token) => {
     return new Promise((resolve) => {
         const groupName = 'pam-approver';
-        requestLib(initApiRequest(token, `${getDomain()}/v1/identity/group/name/${groupName}`, entityId, true), (error, response, body) => {
+        request(initApiRequest(token, `${getDomain()}/v1/identity/group/name/${groupName}`, entityId, true), (error, response, body) => {
             if (body && body.data) {
                 const {member_entity_ids = []} = body.data || {};
                 resolve(member_entity_ids.includes(entityId));
@@ -77,7 +75,7 @@ const _getRequestsByStatus = (entityId, token, status) => {
         if (!isApprover) {
             params.requesterEntityId = entityId;
         }
-        Promise.all([RequestController.findByParams(params), _getUserIds(entityId, token)]).then((results) => {
+        Promise.all([requestsController.findByParams(params), _getUserIds(entityId, token)]).then((results) => {
             const standardRequests = Array.isArray(results) && results[0] ? results[0] : [];
             const userIdMap = results[1];
             // Inject the requester name into each data value row.
@@ -102,7 +100,7 @@ const _getRequestsByStatus = (entityId, token, status) => {
  * @returns {Promise}
  */
 const getApprovedRequests = (entityId) => {
-    return RequestController.findByParams({
+    return requestsController.findByParams({
         requesterEntityId: entityId,
         status: REQUEST_STATUS.APPROVED
     });
@@ -137,7 +135,7 @@ const getRequests = (req) => {
  * @param {Object} req The HTTP request object.
  * @param {string} requesterEntityId The requester entity id.
  * @param {string} path The request path.
- * @param {string} status The request status.
+ * @param {string} [status] The request status.
  * @returns {Promise}
  */
 const createOrUpdateStatusByRequester = (req, requesterEntityId, path, status) => {
@@ -153,7 +151,7 @@ const createOrUpdateStatusByRequester = (req, requesterEntityId, path, status) =
                     userIdMap = results;
                 }),
             new Promise((updateResolve) => {
-                RequestController.updateStatusByRequester(requesterEntityId, path, status)
+                requestsController.updateStatusByRequester(requesterEntityId, path, status)
                     .then((results) => {
                         if (results && Array.isArray(results)) {
                             if (results[0] > 1) {
@@ -177,7 +175,7 @@ const createOrUpdateStatusByRequester = (req, requesterEntityId, path, status) =
                             };
                         } else {
                             logger.info(`Creating new request for ${requesterEntityId} for the path ${path}.`);
-                            RequestController.create(requesterEntityId, path, 'standard-request', REQUEST_STATUS.PENDING).then((createResults) => {
+                            requestsController.create(requesterEntityId, path, 'standard-request').then((createResults) => {
                                 standardRequest = createResults;
                                 updateResolve();
                             });
@@ -222,7 +220,7 @@ const updateStandardRequestByApprover = (req, requesterEntityId, path, status) =
                     .then((results) => {
                         userIdMap = results;
                     }),
-                RequestController.updateStatusByApprover(approverEntityId, requesterEntityId, path, status)
+                requestsController.updateStatusByApprover(approverEntityId, requesterEntityId, path, status)
                     .then((results) => {
                         standardRequest = results[1];
                     })
