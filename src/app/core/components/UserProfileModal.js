@@ -1,5 +1,6 @@
 import {
     CircularProgress,
+    Collapse,
     Dialog,
     DialogActions,
     DialogContent,
@@ -16,6 +17,8 @@ import {
 import {
     AccountCircle,
     Email,
+    ExpandLess,
+    ExpandMore,
     Lock,
     Visibility,
     VisibilityOff
@@ -46,7 +49,8 @@ class UserProfileModal extends Component {
             confirmPassword: '',
             showCurrentPassword: false,
             showNewPassword: false,
-            showConfirmPassword: false
+            showConfirmPassword: false,
+            open: false
         },
         user: {
             firstName: '',
@@ -75,6 +79,8 @@ class UserProfileModal extends Component {
         this._resetState = this._resetState.bind(this);
         this._togglePasswordVisibility = this._togglePasswordVisibility.bind(this);
         this._updateProfile = this._updateProfile.bind(this);
+        this._handleTogglePassword = this._handleTogglePassword.bind(this);
+
     }
 
     /**
@@ -220,6 +226,20 @@ class UserProfileModal extends Component {
     }
 
     /**
+     * Handle for when collapsing password list.
+     *
+     * @private
+     */
+    _handleTogglePassword() {
+        const {password} = this.state;
+        this.setState({
+            password: {
+                open: !password.open
+            }
+        });
+    }
+
+    /**
      * Helper method to render profile details card.
      *
      * @private
@@ -229,7 +249,7 @@ class UserProfileModal extends Component {
         const {classes, message} = this.props;
         const {errors, password, user} = this.state;
         const {email, firstName, lastName} = user;
-        const {currentPassword, newPassword, confirmPassword, showCurrentPassword, showNewPassword, showConfirmPassword} = password;
+        const {currentPassword, newPassword, confirmPassword, open, showCurrentPassword, showNewPassword, showConfirmPassword} = password;
         return (
             <Paper>
                 {message && <SnackbarContent message={message} variant='info'/>}
@@ -276,85 +296,91 @@ class UserProfileModal extends Component {
                                 variant='outlined'
                                 onChange={this._handleChange}/>}/>
                     </ListItem>
-                    <ListItem dense className={classes.passwordItem}>
+                    <ListItem button className={classes.passwordItem} onClick={this._handleTogglePassword}>
                         <Lock className={classes.passwordIcon} color='primary' fontSize='large'/>
-                        <ListItemText primary={
-                            <React.Fragment>
-                                <TextField
-                                    fullWidth
-                                    autoComplete='current-password'
-                                    className={classes.passwordPadding}
-                                    error={!!errors.currentPassword}
-                                    helperText={errors.currentPassword}
-                                    InputProps={{
-                                        endAdornment: <InputAdornment position='end'>
-                                            <IconButton
-                                                aria-label={`${showCurrentPassword ? 'Hide' : 'Show'} current password`}
-                                                className={classes.iconButton}
-                                                name='showCurrentPassword'
-                                                onClickCapture={this._togglePasswordVisibility}>
-                                                {showCurrentPassword ? <VisibilityOff/> : <Visibility/>}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    }}
-                                    label='Current password'
-                                    name='currentPassword'
-                                    type={showCurrentPassword ? 'text' : 'password'}
-                                    value={currentPassword}
-                                    variant='outlined'
-                                    onChange={this._handleChangePassword}/>
-                                <TextField
-                                    fullWidth
-                                    autoComplete='new-password'
-                                    className={classes.passwordPadding}
-                                    disabled={!password.currentPassword}
-                                    error={!!errors.newPassword}
-                                    helperText={errors.newPassword}
-                                    InputProps={{
-                                        endAdornment: <InputAdornment position='end'>
-                                            <IconButton
-                                                aria-label={`${showNewPassword ? 'Hide' : 'Show'} new password`}
-                                                className={classes.iconButton}
-                                                disabled={!password.currentPassword}
-                                                name='showNewPassword'
-                                                onClickCapture={this._togglePasswordVisibility}>
-                                                {showNewPassword ? <VisibilityOff/> : <Visibility/>}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    }}
-                                    label='New password'
-                                    name='newPassword'
-                                    type={showNewPassword ? 'text' : 'password'}
-                                    value={newPassword}
-                                    variant='outlined'
-                                    onChange={this._handleChangePassword}/>
-                                <TextField
-                                    fullWidth
-                                    autoComplete='new-password'
-                                    className={classes.passwordPadding}
-                                    disabled={!password.currentPassword}
-                                    error={!!errors.confirmPassword}
-                                    helperText={errors.confirmPassword}
-                                    InputProps={{
-                                        endAdornment: <InputAdornment position='end'>
-                                            <IconButton
-                                                aria-label={`${showConfirmPassword ? 'Hide' : 'Show'} confirm password`}
-                                                className={classes.iconButton}
-                                                disabled={!password.currentPassword}
-                                                name='showConfirmPassword'
-                                                onClickCapture={this._togglePasswordVisibility}>
-                                                {showConfirmPassword ? <VisibilityOff/> : <Visibility/>}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    }}
-                                    label='Confirm new password'
-                                    name='confirmPassword'
-                                    type={showConfirmPassword ? 'text' : 'password'}
-                                    value={confirmPassword}
-                                    variant='outlined'
-                                    onChange={this._handleChangePassword}/>
-                            </React.Fragment>}/>
+                        <ListItemText primary="Password"/>
+                        {open ? <ExpandLess /> : <ExpandMore />}
                     </ListItem>
+                    <Collapse unmountOnExit in={open} timeout="auto">
+                        <ListItem dense>
+                            <ListItemText primary={
+                                <React.Fragment>
+                                    <TextField
+                                        fullWidth
+                                        autoComplete='current-password'
+                                        className={classes.passwordPadding}
+                                        error={!!errors.currentPassword}
+                                        helperText={errors.currentPassword}
+                                        InputProps={{
+                                            endAdornment: <InputAdornment position='end'>
+                                                <IconButton
+                                                    aria-label={`${showCurrentPassword ? 'Hide' : 'Show'} current password`}
+                                                    className={classes.iconButton}
+                                                    name='showCurrentPassword'
+                                                    onClickCapture={this._togglePasswordVisibility}>
+                                                    {showCurrentPassword ? <VisibilityOff/> : <Visibility/>}
+                                                </IconButton>
+                                            </InputAdornment>
+                                        }}
+                                        label='Current password'
+                                        name='currentPassword'
+                                        type={showCurrentPassword ? 'text' : 'password'}
+                                        value={currentPassword}
+                                        variant='outlined'
+                                        onChange={this._handleChangePassword}/>
+                                    <TextField
+                                        fullWidth
+                                        autoComplete='new-password'
+                                        className={classes.passwordPadding}
+                                        disabled={!password.currentPassword}
+                                        error={!!errors.newPassword}
+                                        helperText={errors.newPassword}
+                                        InputProps={{
+                                            endAdornment: <InputAdornment position='end'>
+                                                <IconButton
+                                                    aria-label={`${showNewPassword ? 'Hide' : 'Show'} new password`}
+                                                    className={classes.iconButton}
+                                                    disabled={!password.currentPassword}
+                                                    name='showNewPassword'
+                                                    onClickCapture={this._togglePasswordVisibility}>
+                                                    {showNewPassword ? <VisibilityOff/> : <Visibility/>}
+                                                </IconButton>
+                                            </InputAdornment>
+                                        }}
+                                        label='New password'
+                                        name='newPassword'
+                                        type={showNewPassword ? 'text' : 'password'}
+                                        value={newPassword}
+                                        variant='outlined'
+                                        onChange={this._handleChangePassword}/>
+                                    <TextField
+                                        fullWidth
+                                        autoComplete='new-password'
+                                        className={classes.passwordPadding}
+                                        disabled={!password.currentPassword}
+                                        error={!!errors.confirmPassword}
+                                        helperText={errors.confirmPassword}
+                                        InputProps={{
+                                            endAdornment: <InputAdornment position='end'>
+                                                <IconButton
+                                                    aria-label={`${showConfirmPassword ? 'Hide' : 'Show'} confirm password`}
+                                                    className={classes.iconButton}
+                                                    disabled={!password.currentPassword}
+                                                    name='showConfirmPassword'
+                                                    onClickCapture={this._togglePasswordVisibility}>
+                                                    {showConfirmPassword ? <VisibilityOff/> : <Visibility/>}
+                                                </IconButton>
+                                            </InputAdornment>
+                                        }}
+                                        label='Confirm new password'
+                                        name='confirmPassword'
+                                        type={showConfirmPassword ? 'text' : 'password'}
+                                        value={confirmPassword}
+                                        variant='outlined'
+                                        onChange={this._handleChangePassword}/>
+                                </React.Fragment>}/>
+                        </ListItem>
+                    </Collapse>
                 </List>
             </Paper>
         );
@@ -499,7 +525,7 @@ const _styles = (theme) => ({
         paddingTop: theme.spacing.unit
     },
     passwordPadding: {
-        paddingBottom: theme.spacing.unit * 2
+        padding: theme.spacing.unit
     }
 });
 
