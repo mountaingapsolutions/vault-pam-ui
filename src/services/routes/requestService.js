@@ -4,8 +4,7 @@ const notificationsManager = require('services/notificationsManager');
 const {createRequest, getRequests, updateRequestResponse} = require('services/db/controllers/requestsController');
 const {sendMailFromTemplate} = require('services/mail/smtpClient');
 const {
-    getApprovedRequests,
-    updateStandardRequestByApprover
+    getApprovedRequests
 } = require('services/routes/standardRequestService');
 const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, setSessionData} = require('services/utils');
 const {REQUEST_STATUS} = require('services/constants');
@@ -73,9 +72,8 @@ const _getRequests = (req) => {
     return new Promise(async (resolve, reject) => {
         const {entityId} = req.session.user;
         const isApprover = await _checkIfApprover(req);
-        console.warn('IS APPROVER: ', isApprover);
         // If not an approver, only retrieve user's own requests.
-        Promise.all([_getUserEntityIds(req), getRequests(!isApprover ? {} : {
+        Promise.all([_getUserEntityIds(req), getRequests(isApprover ? {} : {
             entityId
         })])
             .then((results) => {
@@ -205,7 +203,7 @@ const _cancelRequest = (req) => {
                     type
                 }, {
                     entityId,
-                    type: 'CANCELED'
+                    type: REQUEST_STATUS.CANCELED
                 });
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             }
@@ -274,10 +272,28 @@ const _rejectRequest = (req) => {
             }
             // Standard Request rejection.
             else if (type === 'standard-request') {
-                await updateStandardRequestByApprover(req, entityId, path, REQUEST_STATUS.REJECTED);
-                // Notify the group of the rejection.
-                logger.info(`Emit ${requestType} of accessor ${path} to pam-approver.`);
-                notificationsManager.getInstance().to('pam-approver').emit(requestType, path);
+                const isApprover = await _checkIfApprover(req);
+                console.warn('IS APPROVER: ', isApprover);
+                if (isApprover) {
+                    await updateRequestResponse({
+                        entityId,
+                        requestData: path,
+                        type
+                    }, {
+                        entityId: req.session.user.entityId,
+                        type: REQUEST_STATUS.REJECTED
+                    });
+
+                    // Notify the group of the rejection.
+                    logger.info(`Emit ${requestType} of accessor ${path} to pam-approver.`);
+                    notificationsManager.getInstance().to('pam-approver').emit(requestType, path);
+                } else {
+                    reject({
+                        message: 'Unauthorized',
+                        statusCode: 403
+                    });
+                    return;
+                }
             }
             // Invalid type provided.
             else {
@@ -338,14 +354,14 @@ const _remapSecretsRequest = (secretsRequest) => {
             token
         };
     } else if (secretsRequest.dataValues) {
-        const {createdAt: creationTime, requestData: requestPath, entityId, name, responses = []} = secretsRequest.dataValues;
+        const {createdAt: creationTime, requestData: requestPath, entityId: id, name, responses = []} = secretsRequest.dataValues;
         return {
             approved: responses.some((response) => response.type === REQUEST_STATUS.APPROVED),
             creationTime,
             authorizations: responses.filter((response) => [REQUEST_STATUS.APPROVED, REQUEST_STATUS.REJECTED].includes(response.type)),
             isWrapped: false,
             requestEntity: {
-                entityId,
+                id,
                 name
             },
             requestPath,
@@ -628,14 +644,27 @@ const router = require('express').Router()
                     });
                 }
             } else if (type === 'standard-request') {
-                const data = await updateStandardRequestByApprover(req, entityId, path, REQUEST_STATUS.APPROVED) || {};
-                const {dataValues = {}} = data;
-                path = dataValues.requestData;
-                entityId = dataValues.requesterEntityId;
-                const remappedData = _remapSecretsRequest(data);
-                logger.info(`Emit approve-request data ${JSON.stringify(remappedData)} to ${entityId} and pam-approvers.`);
-                notificationsManager.getInstance().to(entityId).emit('approve-request', remappedData);
-                notificationsManager.getInstance().to('pam-approver').emit('approve-request', remappedData);
+                const isApprover = await _checkIfApprover(req);
+                if (isApprover) {
+                    const data = await updateRequestResponse({
+                        entityId,
+                        requestData: path,
+                        type
+                    }, {
+                        entityId: req.session.user.entityId,
+                        type: REQUEST_STATUS.REJECTED
+                    });
+                    const {dataValues = {}} = data;
+                    path = dataValues.requestData;
+                    entityId = dataValues.entityId;
+                    const remappedData = _remapSecretsRequest(data);
+                    logger.info(`Emit approve-request data ${JSON.stringify(remappedData)} to ${entityId} and pam-approvers.`);
+                    notificationsManager.getInstance().to(entityId).emit('approve-request', remappedData);
+                    notificationsManager.getInstance().to('pam-approver').emit('approve-request', remappedData);
+                } else {
+                    sendError(req.originalUrl, res, 'Unauthorized', 403);
+                    return;
+                }
             } else {
                 sendError(req.originalUrl, res, 'Invalid request', 400);
                 return;
