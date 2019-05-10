@@ -9,6 +9,7 @@ const {
 } = require('services/routes/standardRequestService');
 const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, setSessionData} = require('services/utils');
 const {REQUEST_STATUS} = require('services/constants');
+const addRequestId = require('express-request-id')();
 
 /**
  * Check if user is a member of approver group.
@@ -359,6 +360,7 @@ const _remapSecretsRequest = (secretsRequest) => {
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
+    .use(addRequestId)
     .use(async (req, res, next) => {
         const {standardRequestSupported} = req.session.user;
         if (standardRequestSupported === undefined) {
@@ -389,6 +391,7 @@ const router = require('express').Router()
      *         description: Unauthorized.
      */
     .get('/requests', async (req, res) => {
+        logger.audit(req, res);
         let requests = [];
         if (req.app.locals.features['control-groups']) {
             try {
@@ -422,6 +425,7 @@ const router = require('express').Router()
      *         description: Unauthorized.
      */
     .get('/requests/all', async (req, res) => {
+        logger.audit(req, res);
         let requests = [];
         const promises = [];
         if (req.app.locals.features['control-groups']) {
@@ -474,6 +478,7 @@ const router = require('express').Router()
      *         description: Request not found.
      */
     .delete('/request', async (req, res) => {
+        logger.audit(req, res);
         const {entityId, path, type} = req.query;
         const {entityId: entityIdSelf} = req.session.user;
         if (!path || !type) {
@@ -527,6 +532,7 @@ const router = require('express').Router()
      *         description: No approval group has been configured.
      */
     .post('/request', async (req, res) => {
+        logger.audit(req, res);
         const {path, type} = req.body;
         const {entityId} = req.session.user;
         try {
@@ -605,6 +611,7 @@ const router = require('express').Router()
      *         description: No approval group has been configured.
      */
     .post('/request/authorize', async (req, res) => {
+        logger.audit(req, res);
         let {accessor, entityId, path, type} = req.body;
         const {groups} = req.session.user;
         try {
@@ -675,6 +682,7 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .get('/open/*', async (req, res) => {
+        logger.audit(req, res);
         const {entityId, token} = req.session.user;
         const path = req.params[0];
         const apiUrl = `${getDomain()}/v1/${path}`;
@@ -727,6 +735,7 @@ const router = require('express').Router()
      *         description: Unauthorized.
      */
     .post('/unwrap', async (req, res) => {
+        logger.audit(req, res);
         let result;
         try {
             result = await require('vault-pam-premium').unwrapRequest(req);

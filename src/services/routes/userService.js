@@ -1,6 +1,7 @@
 const request = require('request');
 const logger = require('services/logger');
 const {initApiRequest, getDomain, sendError} = require('services/utils');
+const addRequestId = require('express-request-id')();
 
 /**
  * @swagger
@@ -318,6 +319,7 @@ const deleteUser = (req, id) => {
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
+    .use(addRequestId)
     .use((req, res, next) => {
         next();
     })
@@ -337,6 +339,7 @@ const router = require('express').Router()
      *               $ref: '#/definitions/user'
      */
     .get('/', async (req, res) => {
+        logger.audit(req, res);
         try {
             const response = await getUser(req);
             res.status(response.statusCode).json(response.body);
@@ -370,6 +373,7 @@ const router = require('express').Router()
      *         description: Unauthorized.
      */
     .get('/:id', async (req, res) => {
+        logger.audit(req, res);
         try {
             const response = await getUser(req, req.params.id);
             res.status(response.statusCode).json(response.body);
@@ -409,6 +413,7 @@ const router = require('express').Router()
      *         description: User name already exists.
      */
     .post('/', async (req, res) => {
+        logger.audit(req, res);
         const {id, name, password} = req.body;
         if (!name) {
             sendError(req.originalUrl, res, 'Required name field not provided.');
@@ -461,6 +466,7 @@ const router = require('express').Router()
      *         description: User updated.
      */
     .put('/', async (req, res) => {
+        logger.audit(req, res);
         // Delete the id from the request body in case it's erroneously added.
         if (req.body.id) {
             logger.log(`Ignoring user id ${req.body.id} in user PUT request.`);
@@ -502,6 +508,7 @@ const router = require('express').Router()
      *         description: User not found.
      */
     .put('/:id', async (req, res) => {
+        logger.audit(req, res);
         try {
             // Set the entity id from params.
             req.body.id = req.params.id;
@@ -534,6 +541,7 @@ const router = require('express').Router()
      *         description: User not found.
      */
     .delete('/:id', async (req, res) => {
+        logger.audit(req, res);
         const {id} = req.params;
         try {
             const userResponse = await getUser(req, id);
