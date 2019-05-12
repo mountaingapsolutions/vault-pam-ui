@@ -78,8 +78,8 @@ class NotificationsModal extends Component {
         const {classes, vaultLookupSelf} = this.props;
         const {entity_id: entityIdSelf} = unwrap(safeWrap(vaultLookupSelf).data.data) || {};
         // Exclude self from names list. If the user did approve the request, then that user will be listed first.
-        const namesList = authorizations.filter((authorization) => authorization.id !== entityIdSelf).map((authorization) => authorization.name);
-        const alreadyAuthorizedBySelf = authorizations && authorizations.some((authorization) => authorization.id === entityIdSelf);
+        const namesList = authorizations.filter((authorization) => authorization.entityId !== entityIdSelf).map((authorization) => authorization.name);
+        const alreadyAuthorizedBySelf = authorizations && authorizations.some((authorization) => authorization.entityId === entityIdSelf);
         if (alreadyAuthorizedBySelf) {
             namesList.unshift('you');
         }
@@ -236,7 +236,7 @@ class NotificationsModal extends Component {
                                     const requestType = isWrapped ? 'Control Groups' : 'Standard Request';
                                     const isOwnRequest = id === entityIdSelf;
                                     const deleteText = isOwnRequest ? 'Cancel' : 'Reject';
-                                    const alreadyApprovedBySelf = authorizations && authorizations.some((authorization) => authorization.id === entityIdSelf);
+                                    const alreadyApprovedBySelf = authorizations && authorizations.some((authorization) => authorization.entityId === entityIdSelf);
                                     return <React.Fragment key={requestPath}>
                                         <ListItem alignItems='flex-start'>
                                             <ListItemAvatar>

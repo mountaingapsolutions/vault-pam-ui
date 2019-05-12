@@ -1,11 +1,8 @@
 const {safeWrap, unwrap} = require('@mountaingapsolutions/objectutil');
 const logger = require('services/logger');
 const notificationsManager = require('services/notificationsManager');
-const {createRequest, getRequests, updateRequestResponse} = require('services/db/controllers/requestsController');
+const {getRequests, updateOrCreateRequest} = require('services/db/controllers/requestsController');
 const {sendMailFromTemplate} = require('services/mail/smtpClient');
-const {
-    getApprovedRequests
-} = require('services/routes/standardRequestService');
 const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, setSessionData} = require('services/utils');
 const {REQUEST_STATUS} = require('services/constants');
 const addRequestId = require('express-request-id')();
@@ -36,20 +33,22 @@ const _checkIfApprover = async (req) => {
 };
 
 /**
- * Creates a request record and injects the requester name into the result.
+ * Updates or creates a request record and injects the requester name into the result.
  *
  * @param {Object} req The HTTP request object.
- * @param {Object} params The params to create the request with.
+ * @param {Object} requestParams The params to create the request with.
+ * @param {Object} responseParams The params for the associated requestResponses table.
  * @returns {Promise}
  * @private
  */
-const _createRequest = (req, params) => {
+const _updateOrCreateRequest = (req, requestParams, responseParams) => {
     return new Promise((resolve, reject) => {
-        const {entityId} = params;
-        Promise.all([_getUserEntityIds(req), createRequest(params)])
+        const {entityId} = requestParams;
+        Promise.all([_getUserEntityIds(req), updateOrCreateRequest(requestParams, responseParams)])
             .then((results) => {
                 const userIdMap = results[0];
                 // Inject the requester name into the data value.
+                console.warn('what is this: ', results[1]);
                 if (results[1] && results[1].dataValues) {
                     results[1].dataValues.name = (userIdMap[entityId] || {}).name || `<${entityId}>`;
                     resolve(results[1]);
@@ -91,7 +90,7 @@ const _getRequests = (req) => {
                         });
                     }
                 });
-                // Filter out any CANCELLED requests.
+                // Exclude any CANCELED requests.
                 resolve(requests.filter((request) => !(request.dataValues.responses || []).some((response) => response.type === REQUEST_STATUS.CANCELED)));
             })
             .catch(err => reject(err));
@@ -197,7 +196,7 @@ const _cancelRequest = (req) => {
             }
             // Standard Request cancellation.
             else if (type === 'standard-request') {
-                await updateRequestResponse({
+                _updateOrCreateRequest(req, {
                     entityId,
                     requestData: path,
                     type
@@ -274,7 +273,7 @@ const _rejectRequest = (req) => {
             else if (type === 'standard-request') {
                 const isApprover = await _checkIfApprover(req);
                 if (isApprover) {
-                    await updateRequestResponse({
+                    _updateOrCreateRequest(req, {
                         entityId,
                         requestData: path,
                         type
@@ -560,10 +559,13 @@ const router = require('express').Router()
                     approverGroupPromises.push(_getUsersByGroupName(req, groupName));
                 });
             } else if (type === 'standard-request') {
-                requestData = _remapSecretsRequest(await _createRequest(req, {
+                requestData = _remapSecretsRequest(await _updateOrCreateRequest(req, {
                     entityId,
                     requestData: path,
                     type
+                }, {
+                    entityId,
+                    type: REQUEST_STATUS.REQUESTED
                 }));
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             } else {
@@ -645,7 +647,7 @@ const router = require('express').Router()
             } else if (type === 'standard-request') {
                 const isApprover = await _checkIfApprover(req);
                 if (isApprover) {
-                    const data = await updateRequestResponse({
+                    const data = await _updateOrCreateRequest(req, {
                         entityId,
                         requestData: path,
                         type
@@ -715,11 +717,14 @@ const router = require('express').Router()
         const path = req.params[0];
         const apiUrl = `${getDomain()}/v1/${path}`;
         // Request for approved requests and secrets data can be fetched in parallel.
-        Promise.all([getApprovedRequests(entityId),
-            asyncRequest(initApiRequest(token, apiUrl, entityId, true))
-        ])
+        Promise.all([getRequests({
+            entityId
+        }, {
+            type: REQUEST_STATUS.APPROVED
+        }), asyncRequest(initApiRequest(token, apiUrl, entityId, true))])
             .then((results) => {
                 const approvedRequests = results[0];
+                console.warn('approvedRequests: ', approvedRequests);
                 const secrets = (results[1] || {}).body;
                 if (Array.isArray(approvedRequests) && secrets) {
                     const isApproved = approvedRequests.some((approvedRequest) => approvedRequest.dataValues.requestData === path);
