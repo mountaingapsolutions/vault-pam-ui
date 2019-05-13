@@ -1,4 +1,5 @@
 import _Actions from 'app/core/actions/_Actions';
+import Constants from 'app/util/Constants';
 
 /**
  * Actions class responsible for kv secrets engine related actions.
@@ -39,7 +40,7 @@ class KvAction extends _Actions {
      * @param {string} [type] The request type.
      * @returns {function} Redux dispatch function.
      */
-    authorizeRequest(accessor, path, entityId, type = 'standard-request') {
+    authorizeRequest(accessor, path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) {
         return this._dispatchPost(this.ACTION_TYPES.AUTHORIZE_REQUEST, '/rest/secret/request/authorize', {
             accessor,
             path,
@@ -56,7 +57,7 @@ class KvAction extends _Actions {
      * @param {string} [type] The request type.
      * @returns {function} Redux dispatch function.
      */
-    deleteRequest(path, entityId = '', type = 'standard-request') {
+    deleteRequest(path, entityId = '', type = Constants.REQUEST_TYPES.STANDARD_REQUEST) {
         return this._dispatchDelete(this.ACTION_TYPES.DELETE_REQUEST, '/rest/secret/request', {
             path,
             entityId,
@@ -108,11 +109,13 @@ class KvAction extends _Actions {
      *
      * @param {string} [path] Specifies the path of the secrets to list.
      * @param {number} [version] The KV engine version.
+     * @param {string} [type] The engine type.
      * @returns {function} Redux dispatch function.
      */
-    listSecretsAndCapabilities(path = '', version = 2) {
+    listSecretsAndCapabilities(path = '', version = 2, type = '') {
         return this._dispatchGet(this.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES, `/rest/secrets/list/${path}`, {
-            version
+            version,
+            type
         });
     }
 
