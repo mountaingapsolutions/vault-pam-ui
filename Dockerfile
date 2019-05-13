@@ -5,7 +5,7 @@ WORKDIR /app
 
 COPY package.json /app/
 
-RUN npm install
+RUN npm install --quiet
 
 COPY ./ /app/
 
@@ -25,7 +25,7 @@ WORKDIR /usr/src/dist/
 
 ENV PATH /usr/src/dist/node_modules/.bin:$PATH
 
-RUN npm install --production
+RUN npm install --quiet --production
 
 # start app
 CMD ["npm", "run", "startpm2prod"]

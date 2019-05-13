@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-#
 
 readonly APP_NAME=vault-pam-ui
 readonly CURRENT_SCRIPT="$(basename -- ${BASH_SOURCE[0]})"
@@ -48,6 +47,20 @@ print_title() {
     show_info "---- ${1:Title} ----"
 }
 
+# display the spinner 
+spin()
+{
+    spinner="/|\\-/|\\-"
+    while :
+    do
+        for i in `seq 0 7`
+        do
+            printf "\r[${spinner:$i:1}]"
+            sleep .2
+        done
+    done
+}
+
 confirm() {
   while true; do
   read -r -n 1 -p "${1:-Continue?} [y/n]: " REPLY
@@ -59,7 +72,7 @@ confirm() {
   done
 }
 
-print_required_env(){
+print_required_env() {
     show_warn "Required environment variables"
     for i in "${ENV_VARS[@]}"
     do
@@ -91,11 +104,15 @@ check_env_file() {
 # accept a question(string) and assign it to a variable
 ask() {
     if [[ -z "${!2}" ]]; then
-        read -p "${NL}${BOLD}$1${NORMAL}" $2
+        READ_ARGS="-p"
+        if [ "${3}" = "--password" ]; then
+            READ_ARGS="-s ${READ_ARGS}"
+        fi
+        read $READ_ARGS "${NL}${BOLD}$1${NORMAL}" $2
     fi
 }
 
-# Database questions
+# database questions
 questions_db() {
     print_title "Database"
     if $(confirm "Are you using an EXTERNAL postgresql database(RDS or any hosted database)?" && return 0 || return 1); then
@@ -103,13 +120,13 @@ questions_db() {
         ask "Enter database port: " PAM_DATABASE_PORT
         ask "Enter database name: " PAM_DATABASE
         ask "Enter database user: " PAM_DATABASE_USER
-        ask "Enter database password: " PAM_DATABASE_PASSWORD
+        ask "Enter database password: " PAM_DATABASE_PASSWORD --password
     else
         print_raw $NL
         if [ -n "$WITH_BUILD" ]; then
             show_warn "We will now install and create a database."
             # setting the default internal database data
-            ask "Enter database password: " PAM_DATABASE_PASSWORD
+            ask "Enter database password: " PAM_DATABASE_PASSWORD --password
             INSTALL_DB=yes
             PAM_DATABASE_URL=postgres
             PAM_DATABASE_PORT=5432
@@ -145,12 +162,21 @@ questions_vault() {
     ask "Enter vault token: " VAULT_API_TOKEN
 }
 
-# Email questions
+# email questions
 questions_email() {
     print_title "Email"
     ask "Enter email service(gmail for now): " SMTP_SERVICE
     ask "Enter email username: " SMTP_USER
-    ask "Enter email password: " SMTP_PASS
+    ask "Enter email password: " SMTP_PASS --password
+}
+
+# check if docker is running.
+check_docker() {
+    docker_state=$(docker info >/dev/null 2>&1)
+    if [[ $? -ne 0 ]]; then
+        show_err "Docker does not seem to be running, run it first and try again."
+        exit 1
+    fi
 }
 
 clean_docker() {
@@ -214,9 +240,10 @@ run_docker() {
 
 # Show running container
 finish() {
-    show_info "Listing all running docker containers."
-    docker ps
-    show_info "Sweet! The application will be up soon at https://localhost:${PORT}"
+    CONTAINER="$(docker ps --all --quiet --filter=name="$APP_NAME")"
+    if [ -n "$CONTAINER" ]; then
+        show_info "$APP_NAME container is now running."
+    fi
     print_raw $NL
 }
 
@@ -225,7 +252,6 @@ main() {
     show_info "--------------------------------------------------"
     show_info "---- Welcome to Vault PAM installation script ----"
     show_info "--------------------------------------------------"
-    print_raw $NL
     if [ "${1}" = "--build" ]; then
         WITH_BUILD=yes
         show_info "Building the images..."
@@ -240,9 +266,15 @@ main() {
         questions_vault
         questions_email
     fi
+    # start the spinner
+    spin & SPIN_PID=$!
+    # kill the spinner on any following signal, including our own exit.
+    trap "kill -9 $SPIN_PID" `seq 0 15`
+    check_docker
     clean_docker
     run_docker
     finish
+    kill -9 $SPIN_PID
 }
 
 if [[ "$0" == "${BASH_SOURCE[0]}" ]]; then
