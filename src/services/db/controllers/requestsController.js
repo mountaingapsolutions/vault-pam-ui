@@ -1,3 +1,4 @@
+const {REQUEST_STATUS} = require('services/constants');
 const requests = require('services/db/models/requests');
 const requestResponses = require('services/db/models/requestResponses');
 
@@ -26,6 +27,73 @@ const _getPlainResult = (result) => {
 };
 
 /**
+ * Helper method to update a request's associated request response DAO.
+ *
+ * @private
+ * @param {Object} request The requester's request DAO.
+ * @param {string} entityId The entity id of the associated request response.
+ * @param {string} requestResponseType The request response type.
+ * @returns {Promise}
+ */
+const _updateOrCreateRequestResponse = async (request, entityId, requestResponseType) => {
+    // Check if there is currently an existing response.
+    const ownResponse = (request.get('RequestResponses') || []).filter((r) => r.get('entityId') === entityId)[0];
+    // Create the associated request response if no record found.
+    if (!ownResponse) {
+        await request.createRequestResponse({
+            entityId,
+            type: requestResponseType
+        });
+    }
+    // Otherwise, update the existing record.
+    else {
+        ownResponse.set('type', requestResponseType);
+        await ownResponse.save();
+    }
+};
+
+/**
+ * Updates the request and associated response.
+ *
+ * @private
+ * @param {string} requesterEntityId The requester's entity id.
+ * @param {string} requestData The request data/path.
+ * @param {string} responderEntityId The response's entity id.
+ * @param {string} responseType The response type.
+ * @returns {Promise}
+ */
+const _updateRequestResponseType = async (requesterEntityId, requestData, responderEntityId, responseType) => {
+    const request = (await requests.findCreateFind({
+        where: {
+            entityId: requesterEntityId,
+            requestData
+        },
+        include: [{
+            model: requestResponses
+        }]
+    }))[0];
+
+    // Update the requester's request response status.
+    await _updateOrCreateRequestResponse(request, responderEntityId, responseType);
+
+    return _getPlainResult(await request.reload());
+};
+
+/**
+ * Approves a request from the approver's perspective
+ *
+ * @param {Object} req The HTTP request object.
+ * @param {string} requesterEntityId The requester's entity id.
+ * @param {string} requestData The request data/path.
+ * @returns {Promise}
+ */
+const approveRequest = async (req, requesterEntityId, requestData) => {
+    const {entityId} = req.session.user;
+
+    return await _updateRequestResponseType(requesterEntityId, requestData, entityId, REQUEST_STATUS.APPROVED);
+};
+
+/**
  * Retrieves requests.
  *
  * @param {Object} requestParams The params for the requests table.
@@ -51,14 +119,28 @@ const getRequests = async (requestParams, responseParams) => {
 };
 
 /**
- * Updates the request with the specified response.
+ * Cancels a request from the requester's perspective
  *
- * @param {Object} requestParams The params for the requests table.
- * @param {Object} responseParams The params for the associated requestResponses table.
+ * @param {Object} req The HTTP request object.
+ * @param {string} requestData The request data/path.
  * @returns {Promise}
  */
-const updateOrCreateRequest = async (requestParams, responseParams) => {
-    const {entityId, requestData, type} = requestParams;
+const cancelRequest = async (req, requestData) => {
+    const {entityId} = req.session.user;
+
+    return await _updateRequestResponseType(entityId, requestData, entityId, REQUEST_STATUS.CANCELED);
+};
+
+/**
+ * Initiates a request from the requester's perspective
+ *
+ * @param {Object} req The HTTP request object.
+ * @param {string} requestData The request data/path.
+ * @param {string} type The request type.
+ * @returns {Promise}
+ */
+const initiateRequest = async (req, requestData, type = 'standard-request') => {
+    const {entityId} = req.session.user;
     const request = (await requests.findCreateFind({
         where: {
             entityId,
@@ -70,21 +152,36 @@ const updateOrCreateRequest = async (requestParams, responseParams) => {
         }]
     }))[0];
 
-    // Check if there is currently an existing response.
-    const response = (request.get('RequestResponses') || []).filter((r) => r.get('entityId') === responseParams.entityId)[0];
-    // Create the associated request response if no record found.
-    if (!response) {
-        await request.createRequestResponse(responseParams);
-    }
-    // Otherwise, update the existing record.
-    else {
-        Object.keys(responseParams).forEach((key) => response.set(key, responseParams[key]));
-        await response.save();
-    }
+    const otherResponses = (request.get('RequestResponses') || []).filter((r) => r.get('entityId') !== entityId);
+
+    // Update the requester's request response status.
+    await _updateOrCreateRequestResponse(request, entityId, REQUEST_STATUS.REQUESTED);
+
+    // Remove previously recorded response records (i.e. REJECTED or APPROVED responses).
+    await new Promise((resolve) => {
+        Promise.all(otherResponses.map((otherResponse) => otherResponse.destroy())).then(resolve);
+    });
     return _getPlainResult(await request.reload());
 };
 
+/**
+ * Rejects a request from the approver's perspective
+ *
+ * @param {Object} req The HTTP request object.
+ * @param {string} requesterEntityId The requester's entity id.
+ * @param {string} requestData The request data/path.
+ * @returns {Promise}
+ */
+const rejectRequest = async (req, requesterEntityId, requestData) => {
+    const {entityId} = req.session.user;
+
+    return await _updateRequestResponseType(requesterEntityId, requestData, entityId, REQUEST_STATUS.REJECTED);
+};
+
 module.exports = {
+    approveRequest,
+    cancelRequest,
     getRequests,
-    updateOrCreateRequest
+    initiateRequest,
+    rejectRequest
 };
