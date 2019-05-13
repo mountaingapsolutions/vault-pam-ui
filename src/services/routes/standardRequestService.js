@@ -4,7 +4,7 @@ const RequestController = require('services/controllers/Request');
 const requestLib = require('request');
 const logger = require('services/logger');
 const {initApiRequest, getDomain} = require('services/utils');
-const {REQUEST_STATUS} = require('services/constants');
+const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
 
 /**
  * Retrieves all user entity ids.
@@ -138,9 +138,10 @@ const getRequests = (req) => {
  * @param {string} requesterEntityId The requester entity id.
  * @param {string} path The request path.
  * @param {string} status The request status.
+ * @param {string} type The request type.
  * @returns {Promise}
  */
-const createOrUpdateStatusByRequester = (req, requesterEntityId, path, status) => {
+const createOrUpdateStatusByRequester = (req, requesterEntityId, path, status, type = REQUEST_TYPES.STANDARD_REQUEST) => {
     return new Promise((resolve, reject) => {
         const {entityId, token} = req.session.user;
         let standardRequest;
@@ -177,7 +178,7 @@ const createOrUpdateStatusByRequester = (req, requesterEntityId, path, status) =
                             };
                         } else {
                             logger.info(`Creating new request for ${requesterEntityId} for the path ${path}.`);
-                            RequestController.create(requesterEntityId, path, 'standard-request', REQUEST_STATUS.PENDING).then((createResults) => {
+                            RequestController.create(requesterEntityId, path, type, REQUEST_STATUS.PENDING).then((createResults) => {
                                 standardRequest = createResults;
                                 updateResolve();
                             });
@@ -207,9 +208,10 @@ const createOrUpdateStatusByRequester = (req, requesterEntityId, path, status) =
  * @param {string} requesterEntityId The requester entity id.
  * @param {string} path The request path.
  * @param {string} status The request status.
+ * @param {string} data lease info.
  * @returns {Promise}
  */
-const updateStandardRequestByApprover = (req, requesterEntityId, path, status) => {
+const updateStandardRequestByApprover = (req, requesterEntityId, path, status, data = null) => {
     return new Promise(async (resolve, reject) => {
         const {entityId: approverEntityId, token} = req.session.user;
         const isApprover = await _checkIfApprover(approverEntityId, token);
@@ -222,7 +224,7 @@ const updateStandardRequestByApprover = (req, requesterEntityId, path, status) =
                     .then((results) => {
                         userIdMap = results;
                     }),
-                RequestController.updateStatusByApprover(approverEntityId, requesterEntityId, path, status)
+                RequestController.updateStatusByApprover(approverEntityId, requesterEntityId, path, status, data)
                     .then((results) => {
                         standardRequest = results[1];
                     })

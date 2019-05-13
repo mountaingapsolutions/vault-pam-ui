@@ -299,7 +299,7 @@ class Main extends Component {
                                     const {description, name, type} = mount;
                                     return <ListItem
                                         button
-                                        component={(props) => <Link to={`secrets/${name}`} {...props}/>}
+                                        component={(props) => <Link to={{pathname: `secrets/${name}`, state: {type}}} {...props}/>}
                                         key={name}>
                                         <ListItemIcon>{
                                             this._renderIconFromType(type)
