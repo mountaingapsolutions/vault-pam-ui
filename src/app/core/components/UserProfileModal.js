@@ -8,6 +8,7 @@ import {
     Grid,
     IconButton,
     InputAdornment,
+    Link,
     List,
     ListItem,
     ListItemText,
@@ -280,6 +281,8 @@ class UserProfileModal extends Component {
                                 value={lastName}
                                 variant='outlined'
                                 onChange={this._handleChange}/>
+                            <Link href='https://en.gravatar.com/emails' rel='noopener noreferrer' style={{marginTop: '8px'}} target='_blank' title='Change your Gravatar'>
+                                Change your Gravatar</Link>
                         </React.Fragment>}/>
                     </ListItem>
                     <ListItem dense>
@@ -298,7 +301,7 @@ class UserProfileModal extends Component {
                     </ListItem>
                     <ListItem button className={classes.passwordItem} onClick={this._handleTogglePassword}>
                         <Lock className={classes.passwordIcon} color='primary' fontSize='large'/>
-                        <ListItemText primary="Password"/>
+                        <ListItemText primary="Change Password"/>
                         {open ? <ExpandLess /> : <ExpandMore />}
                     </ListItem>
                     <Collapse unmountOnExit in={open} timeout="auto">
@@ -504,6 +507,9 @@ UserProfileModal.propTypes = {
  * @returns {Object}
  */
 const _styles = (theme) => ({
+    iconItem: {
+        verticalAlign: 'top'
+    },
     inlineNameFields: {
         boxSizing: 'border-box',
         width: '50%'
@@ -519,7 +525,7 @@ const _styles = (theme) => ({
         padding: 20
     },
     passwordItem: {
-        alignItems: 'inherit'
+        verticalAlign: 'center'
     },
     passwordIcon: {
         paddingTop: theme.spacing.unit
