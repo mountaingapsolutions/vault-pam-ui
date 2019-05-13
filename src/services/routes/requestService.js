@@ -4,7 +4,8 @@ const notificationsManager = require('services/notificationsManager');
 const {approveRequest, cancelRequest, getRequests, initiateRequest, rejectRequest} = require('services/db/controllers/requestsController');
 const {sendMailFromTemplate} = require('services/mail/smtpClient');
 const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, setSessionData} = require('services/utils');
-const {REQUEST_STATUS} = require('services/constants');
+const {createCredential} = require('services/routes/dynamicSecretRequestService');
+const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
 const addRequestId = require('express-request-id')();
 
 /**
@@ -192,18 +193,19 @@ const _getUsersByGroupName = async (req, groupName) => {
 const _cancelRequest = (req) => {
     const {path, type} = req.query;
     const {entityId} = req.session.user;
+    const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = REQUEST_TYPES;
     return new Promise(async (resolve, reject) => {
         try {
             const approverGroupPromises = [];
             // Control Group request cancellation.
-            if (req.app.locals.features['control-groups'] && type === 'control-group') {
+            if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP) {
                 const {groups = []} = await require('vault-pam-premium').deleteRequest(req);
                 groups.forEach(group => {
                     approverGroupPromises.push(_getUsersByGroupName(req, group.data.name));
                 });
             }
             // Standard Request cancellation.
-            else if (type === 'standard-request') {
+            else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
                 cancelRequest(req, path);
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             }
@@ -256,11 +258,12 @@ const _cancelRequest = (req) => {
  */
 const _rejectRequest = (req) => {
     const {entityId, path, type} = req.query;
+    const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = REQUEST_TYPES;
     return new Promise(async (resolve, reject) => {
         const requestType = 'reject-request';
         try {
             // Control Group rejection.
-            if (req.app.locals.features['control-groups'] && type === 'control-group') {
+            if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP) {
                 const {groups = []} = await require('vault-pam-premium').deleteRequest(req);
 
                 groups.forEach(group => {
@@ -271,7 +274,7 @@ const _rejectRequest = (req) => {
                 });
             }
             // Standard Request rejection.
-            else if (type === 'standard-request') {
+            else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
                 const isApprover = await _checkIfApprover(req);
                 if (isApprover) {
                     rejectRequest(req, entityId, path);
@@ -346,7 +349,7 @@ const _remapSecretsRequest = (secretsRequest) => {
             token
         };
     } else if (secretsRequest.dataValues) {
-        const {createdAt: creationTime, requestData: requestPath, entityId: id, name, responses = []} = secretsRequest.dataValues;
+        const {createdAt: creationTime, requestData: requestPath, entityId: id, name, responses = [], type} = secretsRequest.dataValues;
         return {
             approved: responses.some((response) => response.type === REQUEST_STATUS.APPROVED),
             creationTime,
@@ -357,7 +360,8 @@ const _remapSecretsRequest = (secretsRequest) => {
                 name
             },
             requestPath,
-            responses
+            responses,
+            type
         };
     } else {
         logger.error(`Unknown request type: ${JSON.stringify(secretsRequest)}`);
@@ -543,16 +547,17 @@ const router = require('express').Router()
         logger.audit(req, res);
         const {path, type} = req.body;
         const {entityId} = req.session.user;
+        const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = REQUEST_TYPES;
         try {
             const approverGroupPromises = [];
             let requestData;
-            if (req.app.locals.features['control-groups'] && type === 'control-group') {
+            if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP) {
                 const {groups = [], data} = await require('vault-pam-premium').createRequest(req);
                 requestData = _remapSecretsRequest(data);
                 groups.forEach((groupName) => {
                     approverGroupPromises.push(_getUsersByGroupName(req, groupName));
                 });
-            } else if (type === 'standard-request') {
+            } else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
                 requestData = _remapSecretsRequest(await _injectEntityNameIntoRequestResponse(req, entityId, initiateRequest(req, path, type)));
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             } else {
@@ -618,8 +623,13 @@ const router = require('express').Router()
         logger.audit(req, res);
         let {accessor, entityId, path, type} = req.body;
         const {groups} = req.session.user;
+        const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = REQUEST_TYPES;
+        //DYNAMIC SECRET
+        let dynamicRequest = null;
+        let leaseId = '';
+        let resolveDynamicSecret = type !== REQUEST_TYPES.DYNAMIC_REQUEST;
         try {
-            if (req.app.locals.features['control-groups'] && type === 'control-group' && accessor) {
+            if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP && accessor) {
                 const {data} = await require('vault-pam-premium').authorizeRequest(req);
                 path = unwrap(safeWrap(data).request_info.data.request_path);
                 entityId = unwrap(safeWrap(data).request_info.data.request_entity.id);
@@ -631,10 +641,18 @@ const router = require('express').Router()
                         notificationsManager.getInstance().to(groupName).emit('approve-request', remappedData);
                     });
                 }
-            } else if (type === 'standard-request') {
+            } else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
                 const isApprover = await _checkIfApprover(req);
                 if (isApprover) {
-                    const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path));
+                    if (type === DYNAMIC_REQUEST) {
+                        const {body} = await createCredential(req);
+                        if (body.lease_id) {
+                            resolveDynamicSecret = true;
+                            dynamicRequest = body.data;
+                            leaseId = body.lease_id;
+                        }
+                    }
+                    const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path, leaseId));
                     const {dataValues = {}} = data;
                     path = dataValues.requestData;
                     entityId = dataValues.entityId;
@@ -650,12 +668,13 @@ const router = require('express').Router()
                 sendError(req.originalUrl, res, 'Invalid request', 400);
                 return;
             }
-            if (entityId && path) {
+            if (entityId && path && resolveDynamicSecret) {
                 _getUserByEntityId(req, entityId).then((user) => {
                     if (user.metadata && user.metadata.email) {
                         sendMailFromTemplate(req, 'approve-request', {
                             to: user.metadata.email,
-                            secretsPath: path.replace('/data/', '/')
+                            secretsPath: path.replace('/data/', '/'),
+                            dynamicRequest
                         });
                     }
                 });

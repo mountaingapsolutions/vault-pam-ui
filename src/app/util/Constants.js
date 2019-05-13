@@ -10,10 +10,6 @@ class Constants {
      */
     constructor() {
         this.APP_TITLE = 'Vault PAM UI';
-        this.SECRET_REQUEST_ACTIVE_VIEW = {
-            SECRET_REQUEST_DETAILS: 'SECRET_REQUEST_DETAILS',
-            SECRET_REQUEST_ADD_SPLIT: 'SECRET_REQUEST_ADD_SPLIT'
-        };
         this.REQUEST_STATUS = {
             CANCELED: 'CANCELED',
             PENDING: 'PENDING',
@@ -29,6 +25,14 @@ class Constants {
                 REJECT: 'reject-request',
             }
         };
+        this.REQUEST_TYPES = {
+            CONTROL_GROUP: 'control-group',
+            DYNAMIC_REQUEST: 'dynamic-request',
+            STANDARD_REQUEST: 'standard-request'
+        };
+        this.DYNAMIC_ENGINES = [
+            'aws'
+        ];
     }
 }
 

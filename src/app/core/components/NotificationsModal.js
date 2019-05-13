@@ -31,6 +31,7 @@ import kvAction from 'app/core/actions/kvAction';
 import Button from 'app/core/components/Button';
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 import {connect} from 'react-redux';
+import Constants from 'app/util/Constants';
 
 /**
  * Notifications modal.
@@ -230,14 +231,15 @@ class NotificationsModal extends Component {
                         </ListSubheader>
                         {
                             secretsRequests.length > 0 ?
-                                secretsRequests.map(requestData => {
-                                    const {accessor, approved, authorizations, creationTime, isWrapped, requestEntity = {}, requestPath} = requestData;
+                                secretsRequests.map((requestData, i) => {
+                                    const {CONTROL_GROUP, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
+                                    const {accessor, approved, authorizations, creationTime, isWrapped, requestEntity = {}, requestPath, type} = requestData;
                                     const {id, name} = requestEntity;
-                                    const requestType = isWrapped ? 'Control Groups' : 'Standard Request';
+                                    const requestType = isWrapped ? 'Control Groups' : type === STANDARD_REQUEST ? 'Standard Request' : 'Dynamic Request';
                                     const isOwnRequest = id === entityIdSelf;
                                     const deleteText = isOwnRequest ? 'Cancel' : 'Reject';
                                     const alreadyApprovedBySelf = authorizations && authorizations.some((authorization) => authorization.entityId === entityIdSelf);
-                                    return <React.Fragment key={requestPath}>
+                                    return <React.Fragment key={`${requestPath}-${i}`}>
                                         <ListItem alignItems='flex-start'>
                                             <ListItemAvatar>
                                                 <Avatar>
@@ -290,7 +292,7 @@ class NotificationsModal extends Component {
                                                             <Tooltip aria-label='Approve' title='Approve'>
                                                                 <IconButton
                                                                     color='primary'
-                                                                    onClick={() => authorizeRequest(accessor, requestPath, id, isWrapped ? 'control-group' : 'standard-request')}>
+                                                                    onClick={() => authorizeRequest(accessor, requestPath, id, isWrapped ? CONTROL_GROUP : type)}>
                                                                     <CheckIcon/>
                                                                 </IconButton>
                                                             </Tooltip>}
@@ -299,7 +301,7 @@ class NotificationsModal extends Component {
                                                                 onClick={() => {
                                                                     /* eslint-disable no-alert */
                                                                     if (window.confirm(`Are you sure you want to ${isOwnRequest ? 'cancel your' : `reject ${name}'s`} request to ${requestPath}?`)) {
-                                                                        deleteRequest(requestPath, id, isWrapped ? 'control-group' : 'standard-request');
+                                                                        deleteRequest(requestPath, id, isWrapped ? CONTROL_GROUP : type);
                                                                     }
                                                                     /* eslint-enable no-alert */
                                                                 }}>
@@ -387,7 +389,7 @@ const _mapStateToProps = (state) => {
 const _mapDispatchToProps = (dispatch) => {
     return {
         authorizeRequest: (path, entityId, requestId, type) => dispatch(kvAction.authorizeRequest(path, entityId, requestId, type)),
-        deleteRequest: (path, entityId, type = 'standard-request') => dispatch(kvAction.deleteRequest(path, entityId, type))
+        deleteRequest: (path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => dispatch(kvAction.deleteRequest(path, entityId, type))
     };
 };
 

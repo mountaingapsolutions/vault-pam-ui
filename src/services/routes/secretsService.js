@@ -2,6 +2,8 @@ const chalk = require('chalk');
 const request = require('request');
 const {initApiRequest, getDomain, sendError} = require('services/utils');
 const logger = require('services/logger');
+const {getDynamicEngineRoles} = require('services/routes/dynamicSecretRequestService');
+const {DYNAMIC_ENGINES} = require('services/constants');
 const addRequestId = require('express-request-id')();
 
 /**
@@ -110,6 +112,15 @@ const router = require('express').Router()
         const {entityId: requesterEntityId, token} = req.session.user;
         const apiUrl = `${domain}/v1/${listUrlParts.join('/')}?list=true`;
 
+        //DYNAMIC SECRET
+        const isDynamicEngine = DYNAMIC_ENGINES.some(engine => engine === query.type);
+        let dynamicSecretRoles = [];
+        if (isDynamicEngine) {
+            //GET ROLES HERE
+            const response = await getDynamicEngineRoles(listUrlParts);
+            dynamicSecretRoles = [...response.body.data.keys];
+        }
+
         // Maintain the list of paths as a key/value map as well for easier access later.
         const pathsMap = {};
         const paths = (await _getSecretsByPath(token, apiUrl, requesterEntityId)).map((key) => {
@@ -123,7 +134,7 @@ const router = require('express').Router()
         });
 
         // Make sure to include listing path.
-        const listingPath = listUrlParts.join('/');
+        const listingPath = isDynamicEngine ? `${listUrlParts}/data` : listUrlParts.join('/');
         paths.push(listingPath);
         pathsMap[listingPath] = listingPath;
         const capabilities = await _getCapabilities(token, requesterEntityId, paths);
@@ -170,7 +181,8 @@ const router = require('express').Router()
             res.json({
                 data: {
                     capabilities: capabilities[listingPath] || [], // Add the capabilities of the listing path to the top level of the response data.
-                    secrets
+                    secrets,
+                    dynamicSecretRoles
                 }
             });
         });

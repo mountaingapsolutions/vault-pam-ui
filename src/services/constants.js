@@ -8,6 +8,15 @@ const REQUEST_STATUS = {
     REJECTED: 'REJECTED'
 };
 
+const REQUEST_TYPES = {
+    CONTROL_GROUP: 'control-group',
+    DYNAMIC_REQUEST: 'dynamic-request',
+    STANDARD_REQUEST: 'standard-request'
+};
+const DYNAMIC_ENGINES = [
+    'aws'
+];
+
 // Logger levels
 const LOG_LEVELS = {
     'error': 0,
@@ -21,6 +30,8 @@ const LOG_LEVELS = {
 };
 
 module.exports = {
+    DYNAMIC_ENGINES,
     LOG_LEVELS,
-    REQUEST_STATUS
+    REQUEST_STATUS,
+    REQUEST_TYPES
 };

@@ -18,6 +18,7 @@ import {
 } from '@material-ui/core';
 import {withStyles} from '@material-ui/core/styles';
 import AddIcon from '@material-ui/icons/Add';
+import Cloud from '@material-ui/icons/Cloud';
 import DeleteIcon from '@material-ui/icons/Delete';
 import FileCopyIcon from '@material-ui/icons/FileCopy';
 import FolderIcon from '@material-ui/icons/Folder';
@@ -36,6 +37,7 @@ import Button from 'app/core/components/Button';
 import CreateUpdateSecretModal from 'app/core/components/CreateUpdateSecretModal';
 import ConfirmationModal from 'app/core/components/ConfirmationModal';
 import SnackbarContent from 'app/core/components/SnackbarContent';
+import Constants from 'app/util/Constants';
 
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 
@@ -182,19 +184,32 @@ class SecretsList extends Component {
      *
      * @param {string} mount The mount point.
      * @param {string} name The name of the secret to request.
-     * @param {boolean} isWrapped if request contains wrap token
+     * @param {string} type The type of secret being requested.
      * @private
      */
-    _openRequestModal(mount, name, isWrapped) {
+    _openRequestModal(mount, name, type) {
+        const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
+        let typeLabel = '';
+        switch (type) {
+            case CONTROL_GROUP:
+                typeLabel = 'Control Group';
+                break;
+            case DYNAMIC_REQUEST:
+                typeLabel = 'Dynamic Request';
+                break;
+            case STANDARD_REQUEST:
+                typeLabel = 'Standard Request';
+                break;
+        }
         this.setState({
             showConfirmationModal: true,
             confirmationModalData: {
                 title: 'Privilege Access Request',
-                content: `The path ${name} has been locked through ${isWrapped ? 'Control Groups' : 'Standard Request'}. Request access?`,
+                content: `The path ${name} has been locked through ${typeLabel}. Request access?`,
                 onClose: (confirm) => {
                     if (confirm) {
                         const {requestSecret} = this.props;
-                        requestSecret(name, this._getVersionFromMount(mount), isWrapped ? 'control-group' : 'standard-request');
+                        requestSecret(name, this._getVersionFromMount(mount), type);
                     }
                     this.setState({
                         showConfirmationModal: false
@@ -248,15 +263,16 @@ class SecretsList extends Component {
      * @override
      */
     componentDidMount() {
-        const {dismissError, history, listMounts, listSecretsAndCapabilities, match, secretsMounts} = this.props;
+        const {dismissError, history, listMounts, listSecretsAndCapabilities, location: locProp, match, secretsMounts} = this.props;
         const {params} = match;
         const {mount, path} = params;
+        const type = ((locProp || {}).state || {}).type || null;
         if ((secretsMounts.data || []).length === 0) {
             listMounts().then(() => {
-                listSecretsAndCapabilities(path, this._getVersionFromMount(mount));
+                listSecretsAndCapabilities(path, this._getVersionFromMount(mount), type);
             });
         } else {
-            listSecretsAndCapabilities(path, this._getVersionFromMount(mount));
+            listSecretsAndCapabilities(path, this._getVersionFromMount(mount), type);
         }
 
         this.unlisten = history.listen((location, action) => {
@@ -356,6 +372,7 @@ class SecretsList extends Component {
         const {mount} = params;
         const {isApproved, isPending, canOpen, canDelete, name, isWrapped, requiresRequest, secretsData, secretsPath, wrapInfoToken} = secret;
         const isFolderPath = name.endsWith('/');
+        const {CONTROL_GROUP, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
         if (isFolderPath) {
             return <IconButton>
                 <KeyboardArrowRightIcon/>
@@ -387,16 +404,27 @@ class SecretsList extends Component {
             </Tooltip>;
         } else if (requiresRequest) {
             const requestAccessLabel = isPending ? 'Cancel Request' : 'Request Access';
-            const type = isWrapped ? 'control-group' : 'standard-request';
+            const type = isWrapped ? CONTROL_GROUP : STANDARD_REQUEST;
             return <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
                 <IconButton
                     aria-label={requestAccessLabel}
-                    onClick={() => isPending ? this._openRequestCancellationModal(mount, name, type) : this._openRequestModal(mount, name, isWrapped)}>
+                    onClick={() => isPending ? this._openRequestCancellationModal(mount, name, type) : this._openRequestModal(mount, name, type)}>
                     <LockIcon/>
                 </IconButton>
             </Tooltip>;
         }
         return null;
+    }
+
+    /**
+     * Renders the lease list area.
+     *
+     * @private
+     */
+    _listLease() {
+        /* eslint-disable no-alert */
+        window.alert('LIST LEASE. ADD REVOKE FUNCTION');
+        /* eslint-disable no-alert */
     }
 
     /**
@@ -406,9 +434,10 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     _renderSecretsListArea() {
-        const {classes, pageError, getSecrets, history, inProgress, listSecretsAndCapabilities, match, openApprovedSecret, secretsList, setSecretsData} = this.props;
+        const {classes, pageError, getSecrets, history, inProgress, listSecretsAndCapabilities, match, openApprovedSecret, secretsList, setSecretsData, dynamicSecretRole} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
+        const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
         if (inProgress) {
             return <Grid container justify='center'>
                 <Grid item>
@@ -446,10 +475,11 @@ class SecretsList extends Component {
                                     openApprovedSecret(name, this._getVersionFromMount(mount));
                                 }
                             } else if (requiresRequest) {
+                                const type = isWrapped ? CONTROL_GROUP : STANDARD_REQUEST;
                                 if (isPending) {
-                                    this._openRequestCancellationModal(mount, name, isWrapped ? 'control-group' : 'standard-request');
+                                    this._openRequestCancellationModal(mount, name, type);
                                 } else {
-                                    this._openRequestModal(mount, name, isWrapped);
+                                    this._openRequestModal(mount, name, type);
                                 }
                             }
                         }
@@ -476,6 +506,36 @@ class SecretsList extends Component {
                     </ListItem>;
                 })
             }</List>;
+        } else if (dynamicSecretRole.length > 0 ) {
+            //DYNAMIC SECRET
+            return <List>
+                {dynamicSecretRole.map((role, i) => {
+                    const {isPending, requiresRequest, role: engineRole, secondaryText} = role;
+                    return <ListItem button key={i} onClick={() => {
+                        if (requiresRequest) {
+                            if (isPending) {
+                                this._openRequestCancellationModal(mount, engineRole, DYNAMIC_REQUEST);
+                            } else {
+                                this._openRequestModal(mount, engineRole, DYNAMIC_REQUEST);
+                            }
+                        } else {
+                            this._listLease();
+                        }
+                    }}>
+                        <ListItemAvatar>
+                            <Avatar>
+                                <Cloud/>
+                            </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText primary={engineRole} secondary={
+                            secondaryText && <React.Fragment>
+                                <Typography className={classes.block} color='textSecondary' component='span'>
+                                    {secondaryText}
+                                </Typography>
+                            </React.Fragment>
+                        }/>
+                    </ListItem>;
+                })}</List>;
         } else {
             return <Paper className={classes.paper} elevation={2}>
                 <Typography className={classes.paperMessage} color='textSecondary' variant='h5'>
@@ -522,12 +582,14 @@ SecretsList.propTypes = {
     deleteSecrets: PropTypes.func.isRequired,
     dismissError: PropTypes.func.isRequired,
     dismissibleError: PropTypes.string,
+    dynamicSecretRole: PropTypes.array,
     getSecrets: PropTypes.func.isRequired,
     history: PropTypes.object.isRequired,
     inProgress: PropTypes.bool,
     listMounts: PropTypes.func.isRequired,
     listRequests: PropTypes.func.isRequired,
     listSecretsAndCapabilities: PropTypes.func.isRequired,
+    location: PropTypes.object.isRequired,
     match: PropTypes.object.isRequired,
     openApprovedSecret: PropTypes.func.isRequired,
     pageError: PropTypes.string,
@@ -550,7 +612,7 @@ SecretsList.propTypes = {
  * @returns {Object}
  */
 const _mapStateToProps = (state, ownProps) => {
-    const {match} = ownProps;
+    const {location, match} = ownProps;
     const {params} = match;
     const {mount, path = ''} = params;
     const {secretsMounts, secretsPaths, secretsRequests} = state.kvReducer;
@@ -559,54 +621,87 @@ const _mapStateToProps = (state, ownProps) => {
     if (mountData) {
         isV2 = mountData.options && mountData.options.version === '2';
     }
-    const secretsList = (secretsPaths.secrets || []).map((secret) => {
-        const {capabilities, data = {}, name} = secret;
-        const {wrap_info: wrapInfo} = data;
-        const currentPath = path ? `${path}/${name}` : name;
-        const mountPath = `${mount}/${currentPath}`;
-        const isWrapped = !!wrapInfo;
-        let isApproved = false;
-        const requiresRequest = !capabilities.includes('read') && !name.endsWith('/') || isWrapped;
-        let activeRequest;
-        let secondaryText;
-        let authorizationsText;
-        let wrapInfoToken;
-        if (requiresRequest) {
-            secondaryText = `Request type: ${isWrapped ? 'Control Groups' : 'Standard Request'}`;
-            // Check for any active requests.
-            const requestPath = `${mount}${isV2 ? '/data/' : '/'}${currentPath}`;
-            activeRequest = secretsRequests.find((request) => request.requestPath === requestPath);
-            if (activeRequest) {
-                const {approved, authorizations, creationTime, token} = activeRequest;
+    const type = ((location || {}).state || {}).type || null;
+    const isDynamicSecret = Constants.DYNAMIC_ENGINES.some(engine => engine === type);
+    let dynamicSecretRole = [];
+    let secretsList = [];
+    if (isDynamicSecret) {
+        //DYNAMIC SECRET
+        dynamicSecretRole = (secretsPaths.dynamicSecretRoles || []).map(role => {
+            const engineNameRole = mountData && `${mountData.name.slice(0, -1)}/${role}`;
+            const {capabilities} = secretsPaths;
+            let isApproved = false;
+            const requiresRequest = !capabilities.includes('read');
+            let secondaryText;
+            const activeDynamicRequest = secretsRequests.find(request => request.requestPath === engineNameRole);
+            if (activeDynamicRequest) {
+                const {approved, creationTime} = activeDynamicRequest;
+                secondaryText = 'Request type: Dynamic Request';
                 isApproved = approved;
-                wrapInfoToken = token;
-                if (approved) {
-                    const namesList = authorizations.map((authorization) => authorization.name);
-                    authorizationsText = `Approved by ${namesList.join(', ')}.`;
-                }
                 if (creationTime) {
                     secondaryText += ` (Requested at ${new Date(creationTime).toLocaleString()})`;
                 }
             }
-
-        }
-        return {
-            authorizationsText,
-            canDelete: capabilities.includes('delete'),
-            canOpen: capabilities.includes('read') && !name.endsWith('/') && !isWrapped,
-            canUpdate: capabilities.some(capability => capability === 'update' || capability === 'root'),
-            isApproved,
-            isPending: !!activeRequest && !isApproved,
-            isWrapped,
-            name,
-            requiresRequest,
-            secondaryText,
-            secretsData: !isWrapped && secret.data ? secret.data : undefined,
-            secretsPath: currentPath,
-            url: `/secrets/${mountPath}`,
-            wrapInfoToken
-        };
-    });
+            return {
+                role,
+                engineNameRole,
+                activeDynamicRequest,
+                isApproved,
+                requiresRequest,
+                name,
+                secondaryText,
+                isPending: !!activeDynamicRequest && !isApproved
+            };
+        });
+    } else {
+        secretsList = (secretsPaths.secrets || []).map((secret) => {
+            const {capabilities, data = {}, name} = secret;
+            const {wrap_info: wrapInfo} = data;
+            const currentPath = path ? `${path}/${name}` : name;
+            const mountPath = `${mount}/${currentPath}`;
+            const isWrapped = !!wrapInfo;
+            let isApproved = false;
+            const requiresRequest = !capabilities.includes('read') && !name.endsWith('/') || isWrapped;
+            let activeRequest;
+            let secondaryText;
+            let authorizationsText;
+            let wrapInfoToken;
+            if (requiresRequest) {
+                secondaryText = `Request type: ${isWrapped ? 'Control Groups' : 'Standard Request'}`;
+                // Check for any active requests.
+                const requestPath = `${mount}${isV2 ? '/data/' : '/'}${currentPath}`;
+                activeRequest = secretsRequests.find((request) => request.requestPath === requestPath);
+                if (activeRequest) {
+                    const {approved, authorizations, creationTime, token} = activeRequest;
+                    isApproved = approved;
+                    wrapInfoToken = token;
+                    if (approved) {
+                        const namesList = authorizations.map((authorization) => authorization.name);
+                        authorizationsText = `Approved by ${namesList.join(', ')}.`;
+                    }
+                    if (creationTime) {
+                        secondaryText += ` (Requested at ${new Date(creationTime).toLocaleString()})`;
+                    }
+                }
+            }
+            return {
+                authorizationsText,
+                canDelete: capabilities.includes('delete'),
+                canOpen: capabilities.includes('read') && !name.endsWith('/') && !isWrapped,
+                canUpdate: capabilities.some(capability => capability === 'update' || capability === 'root'),
+                isApproved,
+                isPending: !!activeRequest && !isApproved,
+                isWrapped,
+                name,
+                requiresRequest,
+                secondaryText,
+                secretsData: !isWrapped && secret.data ? secret.data : undefined,
+                secretsPath: currentPath,
+                url: `/secrets/${mountPath}`,
+                wrapInfoToken
+            };
+        });
+    }
     return {
         dismissibleError: createErrorsSelector([
             kvAction.ACTION_TYPES.DELETE_SECRETS,
@@ -626,7 +721,8 @@ const _mapStateToProps = (state, ownProps) => {
         ...state.sessionReducer,
         ...state.systemReducer,
         ...state.userReducer,
-        secretsList
+        secretsList,
+        dynamicSecretRole
     };
 };
 
@@ -640,7 +736,7 @@ const _mapStateToProps = (state, ownProps) => {
  */
 const _mapDispatchToProps = (dispatch, ownProps) => {
     return {
-        deleteRequest: (name, version, type = 'standard-request') => {
+        deleteRequest: (name, version, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
@@ -666,11 +762,11 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
         },
         listMounts: () => dispatch(kvAction.listMounts()),
         listRequests: () => dispatch(kvAction.listRequests()),
-        listSecretsAndCapabilities: (path = '', version) => {
+        listSecretsAndCapabilities: (path = '', version, type = 'kv') => {
             const {match} = ownProps;
             const {params} = match;
             const {mount} = params;
-            return dispatch(kvAction.listSecretsAndCapabilities(`${mount}/${path.endsWith('/') ? path.slice(0, -1) : path}`, version));
+            return dispatch(kvAction.listSecretsAndCapabilities(`${mount}/${path.endsWith('/') ? path.slice(0, -1) : path}`, version, type));
         },
         getSecrets: (name, version) => {
             const {match} = ownProps;
@@ -701,7 +797,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
             return dispatch(kvAction.openApprovedSecret(fullPath));
         },
-        requestSecret: (name, version, type = 'standard-request') => {
+        requestSecret: (name, version, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
