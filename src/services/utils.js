@@ -133,13 +133,15 @@ const getDomain = () => {
 /**
  * Sends the standard error response.
  *
- * @param {Object} url The requested Vault server url.
+ * @param {Object} req The HTTP request object.
  * @param {Object} res The HTTP response object.
  * @param {string|Object|Array} error The error.
+ * @param {string} [url] The requested Vault server url.
  * @param {number} [statusCode] The HTTP status code.
  */
-const sendError = (url, res, error, statusCode = 400) => {
-    logger.warn(`Error in retrieving url "${url}": `, error);
+const sendError = (req, res, error, url, statusCode = 400) => {
+    logger.audit(req, res, null, error);
+    logger.warn(`Error in retrieving url "${url || req.originalUrl}": `, error);
     let errors = [];
     if (typeof error === 'string') {
         errors.push(error);
@@ -151,6 +153,19 @@ const sendError = (url, res, error, statusCode = 400) => {
     res.status(statusCode).json({
         errors
     });
+};
+
+/**
+ * Sends a JSON response and logs the response.
+ *
+ * @param {Object} req The HTTP request object.
+ * @param {Object} res The HTTP response object.
+ * @param {Object} response The response object.
+ * @param {number} [statusCode] The HTTP status code.
+ */
+const sendJsonResponse = (req, res, response, statusCode) => {
+    logger.audit(req, res, response);
+    statusCode ? res.status(statusCode).json(response) : res.json(response);
 };
 
 /**
@@ -203,6 +218,7 @@ module.exports = {
     getDomain,
     getSessionMiddleware,
     sendError,
+    sendJsonResponse,
     setSessionData,
     validateDomain
 };

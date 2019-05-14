@@ -8,7 +8,7 @@ const {
     getRequests,
     updateStandardRequestByApprover
 } = require('services/routes/standardRequestService');
-const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, setSessionData} = require('services/utils');
+const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, sendJsonResponse, setSessionData} = require('services/utils');
 const {createCredential} = require('services/routes/dynamicSecretRequestService');
 const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
 const addRequestId = require('express-request-id')();
@@ -255,7 +255,7 @@ const router = require('express').Router()
                 });
                 logger.log('Setting Standard Request support in session user data: ', standardRequestSupport);
             } catch (err) {
-                sendError(req.originalUrl, res, err);
+                sendError(req, res, err);
                 return;
             }
         }
@@ -282,7 +282,7 @@ const router = require('express').Router()
                 const controlGroupRequests = await require('vault-pam-premium').getRequests(req);
                 requests = requests.concat(controlGroupRequests);
             } catch (err) {
-                sendError(req.originalUrl, res, err);
+                sendError(req, res, err);
                 return;
             }
         }
@@ -290,10 +290,10 @@ const router = require('express').Router()
             const standardRequests = await getRequests(req);
             requests = requests.concat(standardRequests);
         } catch (err) {
-            sendError(req.originalUrl, res, err);
+            sendError(req, res, err);
             return;
         }
-        res.json(requests);
+        sendJsonResponse(req, res, requests);
     })
     /**
      * @swagger
@@ -323,11 +323,11 @@ const router = require('express').Router()
                 results.forEach((currentRequests) => {
                     requests = requests.concat(currentRequests);
                 });
-                res.json(requests.map(_remapSecretsRequest));
+                sendJsonResponse(req, res, requests.map(_remapSecretsRequest));
             })
             .catch((err) => {
                 logger.error(err);
-                res.status(500).json([]);
+                sendJsonResponse(req, res, [], 500);
             });
     })
     /**
@@ -366,19 +366,19 @@ const router = require('express').Router()
         const {entityId, path, type} = req.query;
         const {entityId: entityIdSelf} = req.session.user;
         if (!path || !type) {
-            sendError(req.originalUrl, res, 'Invalid request', 400);
+            sendError(req, res, 'Invalid request');
             return;
         }
 
         try {
             // If entity id explicitly provided and it's not the same as as the current session user's id, it means it was a request rejection.
             if (entityId && entityId !== entityIdSelf) {
-                res.json(await _rejectRequest(req));
+                sendJsonResponse(req, res, await _rejectRequest(req));
             } else {
-                res.json(await _cancelRequest(req));
+                sendJsonResponse(req, res, await _cancelRequest(req));
             }
         } catch (err) {
-            sendError(req.originalUrl, res, err.message, err.statusCode);
+            sendError(req, res, err.message, null, err.statusCode);
         }
     })
     /**
@@ -433,7 +433,7 @@ const router = require('express').Router()
                 requestData = _remapSecretsRequest(await createOrUpdateStatusByRequester(req, entityId, path, REQUEST_STATUS.PENDING, type));
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             } else {
-                sendError(req.originalUrl, res, 'Invalid request', 400);
+                sendError(req, res, 'Invalid request');
                 return;
             }
             const approvers = {};
@@ -456,10 +456,10 @@ const router = require('express').Router()
                 });
             });
         } catch (err) {
-            sendError(req.originalUrl, res, err.message, err.statusCode);
+            sendError(req, res, err.message, null, err.statusCode);
             return;
         }
-        res.json({
+        sendJsonResponse(req, res, {
             status: 'ok'
         });
     })
@@ -532,7 +532,7 @@ const router = require('express').Router()
                 notificationsManager.getInstance().to(entityId).emit('approve-request', remappedData);
                 notificationsManager.getInstance().to('pam-approver').emit('approve-request', remappedData);
             } else {
-                sendError(req.originalUrl, res, 'Invalid request', 400);
+                sendError(req, res, 'Invalid request');
                 return;
             }
             if (entityId && path && resolveDynamicSecret) {
@@ -547,10 +547,10 @@ const router = require('express').Router()
                 });
             }
         } catch (err) {
-            sendError(req.originalUrl, res, err.message, err.statusCode);
+            sendError(req, res, err.message, null, err.statusCode);
             return;
         }
-        res.json({
+        sendJsonResponse(req, res, {
             status: 'ok'
         });
     })
@@ -592,16 +592,16 @@ const router = require('express').Router()
                 if (Array.isArray(approvedRequests) && secrets) {
                     const isApproved = approvedRequests.some((approvedRequest) => approvedRequest.dataValues.requestData === path);
                     if (isApproved) {
-                        res.json(secrets);
+                        sendJsonResponse(req, res, secrets);
                     } else {
-                        sendError(apiUrl, res, 'Unauthorized', 403);
+                        sendError(req, res, 'Unauthorized', apiUrl, 403);
                     }
                 } else {
-                    sendError(apiUrl, res, 'Unknown error');
+                    sendError(req, res, 'Unknown error', apiUrl);
                 }
             })
             .catch((err) => {
-                sendError(apiUrl, res, err);
+                sendError(req, res, err, apiUrl);
             });
     })
     /**
@@ -639,9 +639,9 @@ const router = require('express').Router()
                 logger.info(`Emit read-approved-request accessor ${result.accessor} to ${groupName}.`);
                 notificationsManager.getInstance().to(groupName).emit('read-approved-request', result.accessor);
             });
-            res.status(result.statusCode).json(result.body);
+            sendJsonResponse(req, res, result.body, result.statusCode);
         } catch (err) {
-            sendError(req.originalUrl, res, err.message, err.statusCode);
+            sendError(req, res, err.message, null, err.statusCode);
         }
     });
 

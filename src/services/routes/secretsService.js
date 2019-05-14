@@ -1,6 +1,6 @@
 const chalk = require('chalk');
 const request = require('request');
-const {initApiRequest, getDomain, sendError} = require('services/utils');
+const {initApiRequest, getDomain, sendError, sendJsonResponse} = require('services/utils');
 const logger = require('services/logger');
 const {getDynamicEngineRoles} = require('services/routes/dynamicSecretRequestService');
 const {DYNAMIC_ENGINES} = require('services/constants');
@@ -178,7 +178,7 @@ const router = require('express').Router()
                 return secret;
             });
         Promise.all(promises).then(() => {
-            res.json({
+            sendJsonResponse(req, res, {
                 data: {
                     capabilities: capabilities[listingPath] || [], // Add the capabilities of the listing path to the top level of the response data.
                     secrets,
@@ -214,10 +214,10 @@ const router = require('express').Router()
         const apiUrl = `${getDomain()}/v1/${req.params[0]}`;
         request(initApiRequest(token, apiUrl, entityId), (error, response, body) => {
             if (error) {
-                sendError(error, response, body);
+                sendError(req, res, error, apiUrl);
                 return;
             }
-            res.json({...body});
+            sendJsonResponse(req, res, {...body});
         });
     });
 
