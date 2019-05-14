@@ -74,10 +74,11 @@ const updateStatusByRequester = (requesterEntityId, path, status) => {
  * @param {string} requesterEntityId The requester entity id.
  * @param {string} path The request path.
  * @param {string} status The request status.
+ * @param {string} referenceData Reference data for the secret
  * @returns {Promise}
  */
-const updateStatusByApprover = (approverEntityId, requesterEntityId, path, status) => {
-    return Request.update({approverEntityId, status},
+const updateStatusByApprover = (approverEntityId, requesterEntityId, path, status, referenceData) => {
+    return Request.update({approverEntityId, status, engineType: referenceData},
         {
             where: {
                 requesterEntityId,
