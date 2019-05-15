@@ -195,6 +195,60 @@ const validateDomain = async (domain) => {
     return responseKeys.includes('sealed') && responseKeys.includes('version') && responseKeys.includes('cluster_name');
 };
 
+/**
+ * Helper method for wrapping data.
+ *
+ * @param {Object} data The data object to be wrapped.
+ * @returns {Promise<void>}
+ */
+const wrapData = (data = {}) => {
+    return new Promise((resolve, reject) => {
+        const domain = getDomain();
+        const {VAULT_API_TOKEN: apiToken} = process.env;
+        const apiUrl = `${domain}/v1/sys/wrapping/wrap`;
+        let apiRequest = initApiRequest(apiToken, apiUrl);
+        //TODO PLACE TTL SOMEWHERE ELSE
+        apiRequest.headers['X-Vault-Wrap-TTL'] = 60000;
+        request({
+            ...apiRequest,
+            method: 'POST',
+            json: data
+        }, (error, response) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(response.body.wrap_info.token);
+            }
+        });
+    });
+};
+
+/**
+ * Helper method for unwrapping data.
+ *
+ * @param {string} token The data object to be wrapped.
+ * @returns {Promise<void>}
+ */
+const unwrapData = token => {
+    return new Promise((resolve, reject) => {
+        const domain = getDomain();
+        const {VAULT_API_TOKEN: apiToken} = process.env;
+        const apiUrl = `${domain}/v1/sys/wrapping/unwrap`;
+        const data = typeof token === 'object' ? token : {token};
+        request({
+            ...initApiRequest(apiToken, apiUrl),
+            method: 'POST',
+            json: data
+        }, (error, response) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(response);
+            }
+        });
+    });
+};
+
 module.exports = {
     asyncRequest,
     checkPremiumFeatures,
@@ -204,5 +258,7 @@ module.exports = {
     getSessionMiddleware,
     sendError,
     setSessionData,
-    validateDomain
+    unwrapData,
+    validateDomain,
+    wrapData
 };
