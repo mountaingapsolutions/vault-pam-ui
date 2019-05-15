@@ -66,6 +66,11 @@ export default (previousState = {
                 ...previousState,
                 secretsPaths: (action.data || {}).data || {}
             };
+        case secretAction.ACTION_TYPES.LIST_LEASE:
+            return {
+                ...previousState,
+                leaseList: (action.data || {}).data || {}
+            };
         default:
             return {...previousState};
     }

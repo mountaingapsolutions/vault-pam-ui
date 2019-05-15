@@ -36,6 +36,7 @@ import secretAction from 'app/core/actions/secretAction';
 import Button from 'app/core/components/Button';
 import CreateUpdateSecretModal from 'app/core/components/CreateUpdateSecretModal';
 import ConfirmationModal from 'app/core/components/ConfirmationModal';
+import ListModal from 'app/core/components/ListModal';
 import SnackbarContent from 'app/core/components/SnackbarContent';
 import Constants from 'app/util/Constants';
 
@@ -63,6 +64,7 @@ class SecretsList extends Component {
             secretModalInitialPath: '',
             secretModalMode: '',
             showConfirmationModal: false,
+            showLeaseListModal: false
         };
 
         this._onBack = this._onBack.bind(this);
@@ -103,9 +105,13 @@ class SecretsList extends Component {
      * @param {string} currentPath The current path.
      * @param {string} name The name of the secret to open.
      * @param {string} token The token to unwrap.
+     * @param {string} type The request type.
+     * @param {[number, string]} requestId The request id.
      * @private
      */
-    _openApprovedRequestModal(mount, currentPath, name, token) {
+    _openApprovedRequestModal(mount, currentPath, name, token, type = '', requestId = null) {
+        const {DYNAMIC_REQUEST} = Constants.REQUEST_TYPES;
+        const isDynamicSecret = DYNAMIC_REQUEST === type;
         this.setState({
             showConfirmationModal: true,
             confirmationModalData: {
@@ -116,9 +122,9 @@ class SecretsList extends Component {
                         showConfirmationModal: false
                     }, () => {
                         if (confirm) {
-                            const {unwrapSecret} = this.props;
+                            const {unwrapSecret, unwrapDynamicSecret} = this.props;
+                            isDynamicSecret ? unwrapDynamicSecret(token, requestId) : unwrapSecret(name, token);
                             this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'read', true);
-                            unwrapSecret(name, token);
                         }
                     });
                 }
@@ -244,11 +250,12 @@ class SecretsList extends Component {
     _onCreateUpdateSecretModalClose() {
         const {refreshSecretsListOnClose} = this.state;
         if (refreshSecretsListOnClose) {
-            const {listRequests, listSecretsAndCapabilities, match} = this.props;
+            const {listRequests, location, listSecretsAndCapabilities, match} = this.props;
+            const type = ((location || {}).state || {}).type || null;
             const {params} = match;
             const {mount, path} = params;
             listRequests();
-            listSecretsAndCapabilities(path, this._getVersionFromMount(mount));
+            listSecretsAndCapabilities(path, this._getVersionFromMount(mount), type);
         }
         this.setState({
             secretModalInitialPath: '',
@@ -418,14 +425,22 @@ class SecretsList extends Component {
     }
 
     /**
-     * Renders the lease list area.
+     * Toggles Lease List modal.
      *
      * @private
      */
-    _listLease() {
-        /* eslint-disable no-alert */
-        window.alert('LIST LEASE. ADD REVOKE FUNCTION');
-        /* eslint-disable no-alert */
+    _toggleLeaseListModal() {
+        this.setState({showLeaseListModal: !this.state.showLeaseListModal});
+    }
+
+    /**
+     * Revokes lease.
+     *
+     * @param {string} leaseId The Lease id.
+     * @private
+     */
+    _revokeLease(leaseId) {
+        this.props.revokeLease(leaseId);
     }
 
     /**
@@ -435,7 +450,7 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     _renderSecretsListArea() {
-        const {classes, pageError, getSecrets, history, inProgress, listSecretsAndCapabilities, match, openApprovedSecret, secretsList, setSecretsData, dynamicSecretRole} = this.props;
+        const {classes, pageError, getLeaseList, getSecrets, history, inProgress, listSecretsAndCapabilities, match, openApprovedSecret, secretsList, setSecretsData, dynamicSecretRole} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
         const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
@@ -511,16 +526,19 @@ class SecretsList extends Component {
             //DYNAMIC SECRET
             return <List>
                 {dynamicSecretRole.map((role, i) => {
-                    const {isPending, requiresRequest, role: engineRole, secondaryText} = role;
+                    const {isApproved, isPending, requiresRequest, referenceId, requestId, role: engineRole, secondaryText} = role;
                     return <ListItem button key={i} onClick={() => {
                         if (requiresRequest) {
                             if (isPending) {
                                 this._openRequestCancellationModal(mount, engineRole, DYNAMIC_REQUEST);
+                            } else if (isApproved) {
+                                this._openApprovedRequestModal(mount, engineRole, engineRole, referenceId, DYNAMIC_REQUEST, requestId);
                             } else {
                                 this._openRequestModal(mount, engineRole, DYNAMIC_REQUEST);
                             }
                         } else {
-                            this._listLease();
+                            getLeaseList(mount, engineRole);
+                            this._toggleLeaseListModal();
                         }
                     }}>
                         <ListItemAvatar>
@@ -554,8 +572,10 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, dismissError, dismissibleError} = this.props;
-        const {confirmationModalData, secretModalMode, secretModalInitialPath, showConfirmationModal} = this.state;
+        const {classes, dismissError, dismissibleError, leaseList, match} = this.props;
+        const {params} = match;
+        const {mount} = params;
+        const {confirmationModalData, secretModalMode, secretModalInitialPath, showConfirmationModal, showLeaseListModal} = this.state;
         return <Card className={classes.card}>
             {this._renderBreadcrumbsArea()}
             {dismissibleError && <SnackbarContent message={dismissibleError} variant='error' onClose={dismissError}/>}
@@ -573,6 +593,14 @@ class SecretsList extends Component {
                         confirmationModalData: {}
                     });
                 }}/>
+            <ListModal
+                buttonTitle='Revoke'
+                items={leaseList}
+                listTitle={`Active lease for ${mount}`}
+                open={showLeaseListModal}
+                onClick={leaseId => this._revokeLease(leaseId)}
+                onClose={() => this._toggleLeaseListModal()}
+            />
         </Card>;
     }
 }
@@ -584,9 +612,11 @@ SecretsList.propTypes = {
     dismissError: PropTypes.func.isRequired,
     dismissibleError: PropTypes.string,
     dynamicSecretRole: PropTypes.array,
+    getLeaseList: PropTypes.func.isRequired,
     getSecrets: PropTypes.func.isRequired,
     history: PropTypes.object.isRequired,
     inProgress: PropTypes.bool,
+    leaseList: PropTypes.object,
     listMounts: PropTypes.func.isRequired,
     listRequests: PropTypes.func.isRequired,
     listSecretsAndCapabilities: PropTypes.func.isRequired,
@@ -595,12 +625,14 @@ SecretsList.propTypes = {
     openApprovedSecret: PropTypes.func.isRequired,
     pageError: PropTypes.string,
     requestSecret: PropTypes.func.isRequired,
+    revokeLease: PropTypes.func.isRequired,
     secrets: PropTypes.object,
     secretsList: PropTypes.array,
     secretsMounts: PropTypes.object,
     secretsPaths: PropTypes.object,
     secretsRequests: PropTypes.array,
     setSecretsData: PropTypes.func.isRequired,
+    unwrapDynamicSecret: PropTypes.func.isRequired,
     unwrapSecret: PropTypes.func.isRequired
 };
 
@@ -626,19 +658,23 @@ const _mapStateToProps = (state, ownProps) => {
     const isDynamicSecret = Constants.DYNAMIC_ENGINES.some(engine => engine === type);
     let dynamicSecretRole = [];
     let secretsList = [];
+    let requestId = null;
+    //TODO CONSOLIDATE DYNAMIC AND STANDARD REQUEST CODE?
     if (isDynamicSecret) {
         //DYNAMIC SECRET
         dynamicSecretRole = (secretsPaths.dynamicSecretRoles || []).map(role => {
             const engineNameRole = mountData && `${mountData.name.slice(0, -1)}/${role}`;
             const {capabilities} = secretsPaths;
             let isApproved = false;
+            let referenceId = '';
             const requiresRequest = !capabilities.includes('read');
-            let secondaryText;
+            let secondaryText = 'Request type: Dynamic Request';
             const activeDynamicRequest = secretsRequests.find(request => request.requestPath === engineNameRole);
             if (activeDynamicRequest) {
-                const {approved, creationTime} = activeDynamicRequest;
-                secondaryText = 'Request type: Dynamic Request';
+                const {approved, creationTime, referenceId: refId, requestId: reqId} = activeDynamicRequest;
                 isApproved = approved;
+                referenceId = refId;
+                requestId = reqId;
                 if (creationTime) {
                     secondaryText += ` (Requested at ${new Date(creationTime).toLocaleString()})`;
                 }
@@ -650,7 +686,9 @@ const _mapStateToProps = (state, ownProps) => {
                 isApproved,
                 requiresRequest,
                 name,
-                secondaryText,
+                referenceId,
+                requestId,
+                secondaryText: requiresRequest ? secondaryText : 'Click to open list of active lease',
                 isPending: !!activeDynamicRequest && !isApproved
             };
         });
@@ -814,7 +852,33 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             });
         },
         setSecretsData: (data) => dispatch(secretAction.setSecretsData(data)),
-        unwrapSecret: (name, token) => dispatch(secretAction.unwrapSecret(name, token))
+        unwrapSecret: (name, token) => dispatch(secretAction.unwrapSecret(name, token)),
+        getLeaseList: (engineName, role) => {
+            return new Promise((resolve, reject) => {
+                dispatch(secretAction.getLeaseList(engineName, role))
+                    .then(resolve)
+                    .catch(reject);
+            });
+        },
+        revokeLease: leaseId => {
+            return new Promise((resolve, reject) => {
+                const data = leaseId.split('/');
+                dispatch(secretAction.revokeLease(leaseId))
+                    .then(() => {
+                        dispatch(secretAction.getLeaseList(data[0], data[2]))
+                            .then(resolve)
+                            .catch(reject);
+                    })
+                    .catch(reject);
+            });
+        },
+        unwrapDynamicSecret: (token, requestId) => {
+            return new Promise((resolve, reject) => {
+                dispatch(secretAction.unwrapDynamicSecret(token, requestId))
+                    .then(resolve)
+                    .catch(reject);
+            });
+        }
     };
 };
 

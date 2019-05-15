@@ -5,6 +5,7 @@ const {options, swaggerDoc} = require('services/Swagger');
 const {router: secretsServiceRouter} = require('services/routes/secretsService');
 const {router: userServiceRouter} = require('services/routes/userService');
 const {router: requestServiceRouter} = require('services/routes/requestService');
+const {router: dynamicSecretServicRoute} = require('services/routes/dynamicSecretRequestService');
 const {initApiRequest, getDomain, sendError, sendJsonResponse, setSessionData} = require('services/utils');
 const logger = require('services/logger');
 
@@ -179,6 +180,7 @@ const authenticatedRoutes = require('express').Router()
     .use('/secret', requestServiceRouter)
     .use('/secrets', secretsServiceRouter)
     .use('/log', logger.router)
+    .use('/dynamic', dynamicSecretServicRoute)
     .get('/session', (req, res) => {
         const {'x-vault-token': token} = req.headers;
         _sendTokenValidationResponse(token, req, res);

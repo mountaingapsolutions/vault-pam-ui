@@ -1,5 +1,6 @@
 const connection = require('services/db/connection');
 const Request = connection.getModel('Request');
+const {REQUEST_STATUS} = require('services/constants');
 
 /**
  * Create a Request.
@@ -56,7 +57,12 @@ const findByParams = (params) => {
  * @returns {Promise}
  */
 const updateStatusByRequester = (requesterEntityId, path, status) => {
-    return Request.update({status},
+    //TODO SHOULD NEW PENDING INSERT A NEW RECORD? TEMP FIX FOR NOW
+    let updateData = {status};
+    if (status === REQUEST_STATUS.PENDING) {
+        updateData.approverEntityId = null;
+    }
+    return Request.update(updateData,
         {
             where: {
                 requesterEntityId,
@@ -90,10 +96,30 @@ const updateStatusByApprover = (approverEntityId, requesterEntityId, path, statu
     );
 };
 
+/**
+ * Update a Request Status by Id.
+ *
+ * @param {number} id The request id.
+ * @param {string} status The request status.
+ * @returns {Promise}
+ */
+const updateStatusById = (id, status) => {
+    return Request.update({status},
+        {
+            where: {
+                id
+            },
+            returning: true,
+            plain: true
+        }
+    );
+};
+
 module.exports = {
     create,
     findAllByRequester,
     findByParams,
+    updateStatusById,
     updateStatusByRequester,
     updateStatusByApprover
 };

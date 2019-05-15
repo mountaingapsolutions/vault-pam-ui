@@ -8,7 +8,7 @@ const {
     getRequests,
     updateStandardRequestByApprover
 } = require('services/routes/standardRequestService');
-const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, sendJsonResponse, setSessionData} = require('services/utils');
+const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, sendJsonResponse, setSessionData, wrapData} = require('services/utils');
 const {createCredential} = require('services/routes/dynamicSecretRequestService');
 const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
 const addRequestId = require('express-request-id')();
@@ -219,7 +219,8 @@ const _remapSecretsRequest = (secretsRequest) => {
             token
         };
     } else if (secretsRequest.dataValues) {
-        const {approverEntityId, approverName, createdAt: creationTime, requestData: requestPath, requesterEntityId: id, requesterName: name, status, type} = secretsRequest.dataValues;
+        //TODO CHANGE engineType to reference column, once DB is finalized.
+        const {approverEntityId, approverName, createdAt: creationTime, engineType: referenceId, id: requestId, requestData: requestPath, requesterEntityId: id, requesterName: name, status, type} = secretsRequest.dataValues;
         return {
             approved: status === REQUEST_STATUS.APPROVED,
             creationTime,
@@ -232,6 +233,8 @@ const _remapSecretsRequest = (secretsRequest) => {
                 id,
                 name
             },
+            referenceId,
+            requestId,
             requestPath,
             type
         };
@@ -497,8 +500,7 @@ const router = require('express').Router()
         const {groups} = req.session.user;
         const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = REQUEST_TYPES;
         //DYNAMIC SECRET
-        let dynamicRequest = null;
-        let leaseId = '';
+        let leaseWrapToken = null;
         let resolveDynamicSecret = type !== REQUEST_TYPES.DYNAMIC_REQUEST;
         try {
             if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP && accessor) {
@@ -518,12 +520,11 @@ const router = require('express').Router()
                     const {body} = await createCredential(req);
                     if (body.lease_id) {
                         resolveDynamicSecret = true;
-                        dynamicRequest = body.data;
-                        leaseId = body.lease_id;
+                        leaseWrapToken = body.data && await wrapData(body.data);
                     }
                 }
                 //TODO - Make separate method for dynamic requests? or just rename method
-                const data = await updateStandardRequestByApprover(req, entityId, path, REQUEST_STATUS.APPROVED, leaseId) || {};
+                const data = await updateStandardRequestByApprover(req, entityId, path, REQUEST_STATUS.APPROVED, leaseWrapToken) || {};
                 const {dataValues = {}} = data;
                 path = dataValues.requestData;
                 entityId = dataValues.requesterEntityId;
@@ -540,8 +541,7 @@ const router = require('express').Router()
                     if (user.metadata && user.metadata.email) {
                         sendMailFromTemplate(req, 'approve-request', {
                             to: user.metadata.email,
-                            secretsPath: path.replace('/data/', '/'),
-                            dynamicRequest
+                            secretsPath: path.replace('/data/', '/')
                         });
                     }
                 });
