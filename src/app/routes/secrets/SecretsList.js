@@ -59,6 +59,7 @@ class SecretsList extends Component {
         this.state = {
             confirmationModalData: {},
             deleteSecretConfirmation: '',
+            dynamicEnginePath: '',
             newSecretAnchorElement: null,
             refreshSecretsListOnClose: false,
             secretModalInitialPath: '',
@@ -427,10 +428,14 @@ class SecretsList extends Component {
     /**
      * Toggles Lease List modal.
      *
+     * @param {string} mountPath The mount path.
      * @private
      */
-    _toggleLeaseListModal() {
-        this.setState({showLeaseListModal: !this.state.showLeaseListModal});
+    _toggleLeaseListModal(mountPath = '') {
+        this.setState({
+            showLeaseListModal: !this.state.showLeaseListModal,
+            dynamicEnginePath: mountPath
+        });
     }
 
     /**
@@ -538,7 +543,7 @@ class SecretsList extends Component {
                             }
                         } else {
                             getLeaseList(mount, engineRole);
-                            this._toggleLeaseListModal();
+                            this._toggleLeaseListModal(`${mount}/${engineRole}`);
                         }
                     }}>
                         <ListItemAvatar>
@@ -572,10 +577,8 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, dismissError, dismissibleError, leaseList, match} = this.props;
-        const {params} = match;
-        const {mount} = params;
-        const {confirmationModalData, secretModalMode, secretModalInitialPath, showConfirmationModal, showLeaseListModal} = this.state;
+        const {classes, dismissError, dismissibleError, leaseList} = this.props;
+        const {confirmationModalData, dynamicEnginePath, secretModalMode, secretModalInitialPath, showConfirmationModal, showLeaseListModal} = this.state;
         return <Card className={classes.card}>
             {this._renderBreadcrumbsArea()}
             {dismissibleError && <SnackbarContent message={dismissibleError} variant='error' onClose={dismissError}/>}
@@ -596,7 +599,7 @@ class SecretsList extends Component {
             <ListModal
                 buttonTitle='Revoke'
                 items={leaseList}
-                listTitle={`Active lease for ${mount}`}
+                listTitle={`Active lease in ${dynamicEnginePath}`}
                 open={showLeaseListModal}
                 onClick={leaseId => this._revokeLease(leaseId)}
                 onClose={() => this._toggleLeaseListModal()}
@@ -671,10 +674,14 @@ const _mapStateToProps = (state, ownProps) => {
             let secondaryText = 'Request type: Dynamic Request';
             const activeDynamicRequest = secretsRequests.find(request => request.requestPath === engineNameRole);
             if (activeDynamicRequest) {
-                const {approved, creationTime, referenceId: refId, requestId: reqId} = activeDynamicRequest;
+                const {approved, authorizations, creationTime, referenceId: refId, requestId: reqId} = activeDynamicRequest;
                 isApproved = approved;
                 referenceId = refId;
                 requestId = reqId;
+                if (approved) {
+                    const namesList = authorizations.map((authorization) => authorization.name);
+                    secondaryText = `Approved by ${namesList.join(', ')}.`;
+                }
                 if (creationTime) {
                     secondaryText += ` (Requested at ${new Date(creationTime).toLocaleString()})`;
                 }
