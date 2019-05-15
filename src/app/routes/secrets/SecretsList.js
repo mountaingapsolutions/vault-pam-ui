@@ -32,7 +32,7 @@ import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import {Link, withRouter} from 'react-router-dom';
 
-import kvAction from 'app/core/actions/kvAction';
+import secretAction from 'app/core/actions/secretAction';
 import Button from 'app/core/components/Button';
 import CreateUpdateSecretModal from 'app/core/components/CreateUpdateSecretModal';
 import ConfirmationModal from 'app/core/components/ConfirmationModal';
@@ -648,7 +648,7 @@ const _mapStateToProps = (state, ownProps) => {
     const {location, match} = ownProps;
     const {params} = match;
     const {mount, path = ''} = params;
-    const {secretsMounts, secretsPaths, secretsRequests} = state.kvReducer;
+    const {secretsMounts, secretsPaths, secretsRequests} = state.secretReducer;
     let isV2 = false;
     const mountData = (secretsMounts.data || []).find(m => mount === m.name.slice(0, -1));
     if (mountData) {
@@ -743,20 +743,20 @@ const _mapStateToProps = (state, ownProps) => {
     }
     return {
         dismissibleError: createErrorsSelector([
-            kvAction.ACTION_TYPES.DELETE_SECRETS,
-            kvAction.ACTION_TYPES.REQUEST_SECRET
+            secretAction.ACTION_TYPES.DELETE_SECRETS,
+            secretAction.ACTION_TYPES.REQUEST_SECRET
         ])(state.actionStatusReducer),
         pageError: createErrorsSelector([
-            kvAction.ACTION_TYPES.LIST_MOUNTS,
-            kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES
+            secretAction.ACTION_TYPES.LIST_MOUNTS,
+            secretAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES
         ])(state.actionStatusReducer),
         inProgress: createInProgressSelector([
-            kvAction.ACTION_TYPES.DELETE_SECRETS,
-            kvAction.ACTION_TYPES.LIST_MOUNTS,
-            kvAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES
+            secretAction.ACTION_TYPES.DELETE_SECRETS,
+            secretAction.ACTION_TYPES.LIST_MOUNTS,
+            secretAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES
         ])(state.actionStatusReducer),
         ...state.localStorageReducer,
-        ...state.kvReducer,
+        ...state.secretReducer,
         ...state.sessionReducer,
         ...state.systemReducer,
         ...state.userReducer,
@@ -781,7 +781,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const {mount, path} = params;
             const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
             return new Promise((resolve, reject) => {
-                dispatch(kvAction.deleteRequest(fullPath, '', type))
+                dispatch(secretAction.deleteRequest(fullPath, '', type))
                     .then(resolve)
                     .catch(reject);
             });
@@ -789,8 +789,8 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
         dismissError: () => {
             return new Promise((resolve) => {
                 [
-                    kvAction.ACTION_TYPES.DELETE_SECRETS,
-                    kvAction.ACTION_TYPES.REQUEST_SECRET
+                    secretAction.ACTION_TYPES.DELETE_SECRETS,
+                    secretAction.ACTION_TYPES.REQUEST_SECRET
                 ].forEach(type => {
                     dispatch({
                         type
@@ -799,20 +799,20 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                 resolve();
             });
         },
-        listMounts: () => dispatch(kvAction.listMounts()),
-        listRequests: () => dispatch(kvAction.listRequests()),
+        listMounts: () => dispatch(secretAction.listMounts()),
+        listRequests: () => dispatch(secretAction.listRequests()),
         listSecretsAndCapabilities: (path = '', version, type = 'kv') => {
             const {match} = ownProps;
             const {params} = match;
             const {mount} = params;
-            return dispatch(kvAction.listSecretsAndCapabilities(`${mount}/${path.endsWith('/') ? path.slice(0, -1) : path}`, version, type));
+            return dispatch(secretAction.listSecretsAndCapabilities(`${mount}/${path.endsWith('/') ? path.slice(0, -1) : path}`, version, type));
         },
         getSecrets: (name, version) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
             const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
-            return dispatch(kvAction.getSecrets(fullPath));
+            return dispatch(secretAction.getSecrets(fullPath));
         },
         deleteSecrets: (name, version) => {
             const {match} = ownProps;
@@ -820,9 +820,9 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const {mount, path} = params;
             return new Promise((resolve, reject) => {
                 const fullPath = `${mount}${version === 2 ? '/metadata' : ''}${path ? `/${path}` : ''}/${name}`;
-                dispatch(kvAction.deleteSecrets(fullPath))
+                dispatch(secretAction.deleteSecrets(fullPath))
                     .then(() => {
-                        dispatch(kvAction.listSecretsAndCapabilities(`${mount}${path ? `/${path}` : ''}`, version))
+                        dispatch(secretAction.listSecretsAndCapabilities(`${mount}${path ? `/${path}` : ''}`, version))
                             .then(resolve)
                             .catch(reject);
                     })
@@ -834,7 +834,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const {params} = match;
             const {mount, path} = params;
             const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
-            return dispatch(kvAction.openApprovedSecret(fullPath));
+            return dispatch(secretAction.openApprovedSecret(fullPath));
         },
         requestSecret: (name, version, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => {
             const {match} = ownProps;
@@ -846,16 +846,16 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                     path: fullPath,
                     type
                 };
-                dispatch(kvAction.requestSecret(requestData))
+                dispatch(secretAction.requestSecret(requestData))
                     .then(resolve)
                     .catch(reject);
             });
         },
-        setSecretsData: (data) => dispatch(kvAction.setSecretsData(data)),
-        unwrapSecret: (name, token) => dispatch(kvAction.unwrapSecret(name, token)),
+        setSecretsData: (data) => dispatch(secretAction.setSecretsData(data)),
+        unwrapSecret: (name, token) => dispatch(secretAction.unwrapSecret(name, token)),
         getLeaseList: (engineName, role) => {
             return new Promise((resolve, reject) => {
-                dispatch(kvAction.getLeaseList(engineName, role))
+                dispatch(secretAction.getLeaseList(engineName, role))
                     .then(resolve)
                     .catch(reject);
             });
@@ -863,9 +863,9 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
         revokeLease: leaseId => {
             return new Promise((resolve, reject) => {
                 const data = leaseId.split('/');
-                dispatch(kvAction.revokeLease(leaseId))
+                dispatch(secretAction.revokeLease(leaseId))
                     .then(() => {
-                        dispatch(kvAction.getLeaseList(data[0], data[2]))
+                        dispatch(secretAction.getLeaseList(data[0], data[2]))
                             .then(resolve)
                             .catch(reject);
                     })
@@ -874,7 +874,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
         },
         unwrapDynamicSecret: (token, requestId) => {
             return new Promise((resolve, reject) => {
-                dispatch(kvAction.unwrapDynamicSecret(token, requestId))
+                dispatch(secretAction.unwrapDynamicSecret(token, requestId))
                     .then(resolve)
                     .catch(reject);
             });

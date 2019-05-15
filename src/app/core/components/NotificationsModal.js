@@ -27,7 +27,7 @@ import {withStyles} from '@material-ui/core/styles';
 import {safeWrap, unwrap} from '@mountaingapsolutions/objectutil';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
-import kvAction from 'app/core/actions/kvAction';
+import secretAction from 'app/core/actions/secretAction';
 import Button from 'app/core/components/Button';
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 import {connect} from 'react-redux';
@@ -368,13 +368,13 @@ NotificationsModal.propTypes = {
  */
 const _mapStateToProps = (state) => {
     const actionsUsed = [
-        kvAction.ACTION_TYPES.DELETE_REQUEST,
-        kvAction.ACTION_TYPES.LIST_REQUESTS
+        secretAction.ACTION_TYPES.DELETE_REQUEST,
+        secretAction.ACTION_TYPES.LIST_REQUESTS
     ];
     return {
         errors: createErrorsSelector(actionsUsed)(state.actionStatusReducer),
         inProgress: createInProgressSelector(actionsUsed)(state.actionStatusReducer),
-        ...state.kvReducer,
+        ...state.secretReducer,
         ...state.sessionReducer
     };
 };
@@ -388,8 +388,8 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        authorizeRequest: (path, entityId, requestId, type) => dispatch(kvAction.authorizeRequest(path, entityId, requestId, type)),
-        deleteRequest: (path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => dispatch(kvAction.deleteRequest(path, entityId, type))
+        authorizeRequest: (path, entityId, requestId, type) => dispatch(secretAction.authorizeRequest(path, entityId, requestId, type)),
+        deleteRequest: (path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => dispatch(secretAction.deleteRequest(path, entityId, type))
     };
 };
 

@@ -36,7 +36,7 @@ import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import {Link, Redirect, Route, Switch, withRouter} from 'react-router-dom';
 
-import kvAction from 'app/core/actions/kvAction';
+import secretAction from 'app/core/actions/secretAction';
 import sessionAction from 'app/core/actions/sessionAction';
 import systemAction from 'app/core/actions/systemAction';
 import userAction from 'app/core/actions/userAction';
@@ -374,7 +374,7 @@ const _mapStateToProps = (state) => {
     return {
         ...state.localStorageReducer,
         ...state.sessionReducer,
-        ...state.kvReducer,
+        ...state.secretReducer,
         ...state.systemReducer,
         ...state.userReducer
     };
@@ -405,8 +405,8 @@ const _mapDispatchToProps = (dispatch) => {
                 }).catch(reject);
             });
         },
-        listMounts: () => dispatch(kvAction.listMounts()),
-        listRequests: () => dispatch(kvAction.listRequests()),
+        listMounts: () => dispatch(secretAction.listMounts()),
+        listRequests: () => dispatch(secretAction.listRequests()),
         getSealStatus: () => dispatch(systemAction.getSealStatus()),
         logout: () => dispatch(userAction.logout())
     };

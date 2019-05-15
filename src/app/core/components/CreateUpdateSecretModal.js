@@ -31,7 +31,7 @@ import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
 
-import kvAction from 'app/core/actions/kvAction';
+import secretAction from 'app/core/actions/secretAction';
 import Button from 'app/core/components/Button';
 
 import {createInProgressSelector} from 'app/util/actionStatusSelector';
@@ -714,10 +714,10 @@ CreateUpdateSecretModal.propTypes = {
  * @returns {Object}
  */
 const _mapStateToProps = (state) => {
-    const actionsUsed = [kvAction.ACTION_TYPES.GET_SECRETS, kvAction.ACTION_TYPES.UNWRAP_SECRET];
+    const actionsUsed = [secretAction.ACTION_TYPES.GET_SECRETS, secretAction.ACTION_TYPES.UNWRAP_SECRET];
     return {
         inProgress: createInProgressSelector(actionsUsed)(state.actionStatusReducer),
-        ...state.kvReducer
+        ...state.secretReducer
     };
 };
 
@@ -752,7 +752,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                         };
                     }
                     const fullSavePath = `${savePath.join('/')}/${newPaths.join('/')}`;
-                    dispatch(kvAction.saveSecret(fullSavePath.endsWith('/') ? fullSavePath.slice(0, -1) : fullSavePath, secretsData)).then(resolve).catch(reject);
+                    dispatch(secretAction.saveSecret(fullSavePath.endsWith('/') ? fullSavePath.slice(0, -1) : fullSavePath, secretsData)).then(resolve).catch(reject);
                 } else {
                     reject();
                 }

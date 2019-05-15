@@ -4,7 +4,7 @@ import Constants from 'app/util/Constants';
 /**
  * Actions class responsible for kv secrets engine related actions.
  */
-class KvAction extends _Actions {
+class SecretAction extends _Actions {
 
     /**
      * The constructor method. Executed upon class instantiation.
@@ -12,7 +12,7 @@ class KvAction extends _Actions {
      * @public
      */
     constructor() {
-        super('KvAction', {
+        super('SecretAction', {
             APPROVE_REQUEST_DATA: 'APPROVE_REQUEST_DATA',
             AUTHORIZE_REQUEST: 'AUTHORIZE_REQUEST',
             CREATE_REQUEST_DATA: 'CREATE_REQUEST_DATA',
@@ -256,4 +256,4 @@ class KvAction extends _Actions {
     }
 }
 
-export default new KvAction();
+export default new SecretAction();
