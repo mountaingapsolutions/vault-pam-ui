@@ -47,7 +47,7 @@ class ListModal extends Component {
                                     <ListItemText primary={item} secondary={items[item]} />
                                     <Button
                                         variant='text'
-                                        onClick={onClick}>
+                                        onClick={() => onClick(items[item])}>
                                         {buttonTitle}
                                     </Button>
                                 </ListItem>
@@ -68,6 +68,7 @@ class ListModal extends Component {
 }
 
 ListModal.defaultProps = {
+    items: {},
     open: false
 };
 

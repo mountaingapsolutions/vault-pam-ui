@@ -5,7 +5,7 @@ const {LOG_LEVELS} = require('services/constants');
  * Main Logging method.
  */
 const _logger = createLogger({
-    level: 'audit',
+    level: process.env.NODE_ENV === 'production' ? 'audit' : 'info',
     levels: LOG_LEVELS,
     format: format.combine(
         format.timestamp({

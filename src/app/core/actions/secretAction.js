@@ -19,6 +19,7 @@ class SecretAction extends _Actions {
             DELETE_REQUEST: 'DELETE_REQUEST',
             DELETE_SECRETS: 'DELETE_SECRETS',
             GET_SECRETS: 'GET_SECRETS',
+            LIST_LEASE: 'LIST_LEASE',
             LIST_MOUNTS: 'LIST_MOUNTS',
             LIST_SECRETS_AND_CAPABILITIES: 'LIST_SECRETS_AND_CAPABILITIES',
             LIST_REQUESTS: 'LIST_REQUESTS',
@@ -26,6 +27,7 @@ class SecretAction extends _Actions {
             REJECT_REQUEST: 'REJECT_REQUEST',
             REMOVE_REQUEST_DATA: 'REMOVE_REQUEST_DATA',
             REQUEST_SECRET: 'REQUEST_SECRET',
+            REVOKE_LEASE: 'REVOKE_LEASE',
             SAVE_SECRET: 'SAVE_SECRET',
             UNWRAP_SECRET: 'UNWRAP_SECRET'
         });
@@ -120,6 +122,30 @@ class SecretAction extends _Actions {
     }
 
     /**
+     * Lists all the active lease per role.
+     *
+     * @param {string} [mount] The engine mount.
+     * @param {string} [role] The engine type.
+     * @returns {function} Redux dispatch function.
+     */
+    getLeaseList(mount, role) {
+        return this._dispatchGet(this.ACTION_TYPES.LIST_LEASE, '/rest/dynamic/lease', {
+            mount,
+            role
+        });
+    }
+
+    /**
+     * Revokes a lease.
+     *
+     * @param {string} [lease_id] The Lease id.
+     * @returns {function} Redux dispatch function.
+     */
+    revokeLease(lease_id) {
+        return this._dispatchPut(this.ACTION_TYPES.REVOKE_LEASE, '/rest/dynamic/revoke', {lease_id});
+    }
+
+    /**
      * Requests access to a secret.
      *
      * @param {Object} requestData Specifies the path of the secrets to request
@@ -201,6 +227,20 @@ class SecretAction extends _Actions {
     unwrapSecret(name, token) {
         return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/secret/unwrap', {
             token
+        });
+    }
+
+    /**
+     * Unwraps a dynamic secret.
+     *
+     * @param {string} token The token to unwrap.
+     * @param {number} requestId The request id.
+     * @returns {function} Redux dispatch function.
+     */
+    unwrapDynamicSecret(token, requestId) {
+        return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/dynamic/unwrap', {
+            token,
+            requestId
         });
     }
 
