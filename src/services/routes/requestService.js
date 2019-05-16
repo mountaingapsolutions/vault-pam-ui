@@ -86,7 +86,7 @@ const _cancelRequest = (req) => {
             }
             // Standard Request cancellation.
             else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
-                await createOrUpdateStatusByRequester(req, requesterEntityId, path, 'CANCELED');
+                await createOrUpdateStatusByRequester(req, requesterEntityId, path, REQUEST_STATUS.CANCELED);
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             }
             // Invalid type provided.

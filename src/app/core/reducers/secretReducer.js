@@ -15,6 +15,7 @@ import secretAction from 'app/core/actions/secretAction';
  * @returns {Object} The updated state.
  */
 export default (previousState = {
+    leaseList: {},
     requestListFromDatabase: [],
     secrets: {},
     secretsMounts: {},

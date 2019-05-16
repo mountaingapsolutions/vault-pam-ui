@@ -577,7 +577,7 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, dismissError, dismissibleError, leaseList} = this.props;
+        const {classes, dismissError, dismissibleError, leaseList, leaseModalInProgress} = this.props;
         const {confirmationModalData, dynamicEnginePath, secretModalMode, secretModalInitialPath, showConfirmationModal, showLeaseListModal} = this.state;
         return <Card className={classes.card}>
             {this._renderBreadcrumbsArea()}
@@ -598,6 +598,7 @@ class SecretsList extends Component {
                 }}/>
             <ListModal
                 buttonTitle='Revoke'
+                isLoading={leaseModalInProgress}
                 items={leaseList}
                 listTitle={`Active lease in ${dynamicEnginePath}`}
                 open={showLeaseListModal}
@@ -620,6 +621,7 @@ SecretsList.propTypes = {
     history: PropTypes.object.isRequired,
     inProgress: PropTypes.bool,
     leaseList: PropTypes.object,
+    leaseModalInProgress: PropTypes.bool,
     listMounts: PropTypes.func.isRequired,
     listRequests: PropTypes.func.isRequired,
     listSecretsAndCapabilities: PropTypes.func.isRequired,
@@ -761,6 +763,10 @@ const _mapStateToProps = (state, ownProps) => {
             secretAction.ACTION_TYPES.DELETE_SECRETS,
             secretAction.ACTION_TYPES.LIST_MOUNTS,
             secretAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES
+        ])(state.actionStatusReducer),
+        leaseModalInProgress: createInProgressSelector([
+            secretAction.ACTION_TYPES.REVOKE_LEASE,
+            secretAction.ACTION_TYPES.LIST_LEASE
         ])(state.actionStatusReducer),
         ...state.localStorageReducer,
         ...state.secretReducer,
