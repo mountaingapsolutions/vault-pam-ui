@@ -143,7 +143,7 @@ const router = require('express').Router()
         try {
             const response = await _getLease(req);
             const leaseKeys = ((response.body || {}).data || {}).keys || [];
-            const dbRequests = await getRequests(req);
+            const dbRequests = await getRequests(req, [REQUEST_STATUS.OPENED]);
             let mappedData = {};
             leaseKeys.forEach(key => {
                 const dataInDB = dbRequests.find(dbReq => {
@@ -189,7 +189,7 @@ const router = require('express').Router()
         const {lease_id, requestId} = req.body;
         try {
             const response = await _revokeLease(lease_id);
-            await RequestController.updateDataById(requestId, {status: REQUEST_STATUS.REVOKED, engineType: null});
+            requestId && await RequestController.updateDataById(requestId, {status: REQUEST_STATUS.REVOKED, engineType: null});
             res.status(response.statusCode).json(response.body);
         } catch (err) {
             sendError(req.originalUrl, res, err);

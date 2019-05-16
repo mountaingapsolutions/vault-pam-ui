@@ -112,14 +112,15 @@ const getApprovedRequests = (entityId) => {
  * Get standard pending and approved requests.
  *
  * @param {Object} req The HTTP request object.
+ * @param {Array} otherStatus Other status type to return.
  * @returns {Promise}
  */
-const getRequests = (req) => {
+const getRequests = (req, otherStatus = []) => {
     return new Promise(async (resolve, reject) => {
         let result = [];
         try {
             const {entityId, token} = req.session.user;
-            const data = await _getRequestsByStatus(entityId, token, [REQUEST_STATUS.PENDING, REQUEST_STATUS.APPROVED]);
+            const data = await _getRequestsByStatus(entityId, token, [REQUEST_STATUS.PENDING, REQUEST_STATUS.APPROVED, ...otherStatus]);
             result = result.concat(data);
         } catch (err) {
             reject({
