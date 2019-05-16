@@ -152,7 +152,7 @@ const router = require('express').Router()
                     const isSameMount = dbReq.requestData === enginePath;
                     return isLease && isDynamicRequest && isSameMount;
                 });
-                const {id, requesterName} = dataInDB.dataValues || {};
+                const {id, requesterName} = (dataInDB || {}).dataValues || {};
                 mappedData[key] = {requestId: id, leaseId: `${mount}/creds/${role}/${key}`, requesterName};
             });
             response.body.data = mappedData;
