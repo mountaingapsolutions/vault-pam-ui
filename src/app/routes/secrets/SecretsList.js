@@ -441,11 +441,12 @@ class SecretsList extends Component {
     /**
      * Revokes lease.
      *
-     * @param {string} leaseId The Lease id.
+     * @param {Object} item The Lease object.
      * @private
      */
-    _revokeLease(leaseId) {
-        this.props.revokeLease(leaseId);
+    _revokeLease(item) {
+        const {leaseId, requestId} = item;
+        this.props.revokeLease(leaseId, requestId);
     }
 
     /**
@@ -602,7 +603,9 @@ class SecretsList extends Component {
                 items={leaseList}
                 listTitle={`Active lease in ${dynamicEnginePath}`}
                 open={showLeaseListModal}
-                onClick={leaseId => this._revokeLease(leaseId)}
+                primaryTextPropName='requesterName'
+                secondaryTextPropName='leaseId'
+                onClick={item => this._revokeLease(item)}
                 onClose={() => this._toggleLeaseListModal()}
             />
         </Card>;
@@ -873,10 +876,10 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                     .catch(reject);
             });
         },
-        revokeLease: leaseId => {
+        revokeLease: (leaseId, requestId) => {
             return new Promise((resolve, reject) => {
                 const data = leaseId.split('/');
-                dispatch(secretAction.revokeLease(leaseId))
+                dispatch(secretAction.revokeLease(leaseId, requestId))
                     .then(() => {
                         dispatch(secretAction.getLeaseList(data[0], data[2]))
                             .then(resolve)

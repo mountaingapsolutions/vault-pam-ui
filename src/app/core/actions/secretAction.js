@@ -139,10 +139,11 @@ class SecretAction extends _Actions {
      * Revokes a lease.
      *
      * @param {string} [lease_id] The Lease id.
+     * @param {number} [requestId] The request id in database.
      * @returns {function} Redux dispatch function.
      */
-    revokeLease(lease_id) {
-        return this._dispatchPut(this.ACTION_TYPES.REVOKE_LEASE, '/rest/dynamic/revoke', {lease_id});
+    revokeLease(lease_id, requestId) {
+        return this._dispatchPut(this.ACTION_TYPES.REVOKE_LEASE, '/rest/dynamic/revoke', {lease_id, requestId});
     }
 
     /**
@@ -233,11 +234,13 @@ class SecretAction extends _Actions {
     /**
      * Unwraps a dynamic secret.
      *
-     * @param {string} token The token to unwrap.
+     * @param {string} referenceId The token to unwrap.
      * @param {number} requestId The request id.
      * @returns {function} Redux dispatch function.
      */
-    unwrapDynamicSecret(token, requestId) {
+    unwrapDynamicSecret(referenceId, requestId) {
+        //TODO SEPARATE WRAP ID AND LEASE ID IN NEW DB SCHEMA
+        const token = referenceId.split('/')[0];
         return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/dynamic/unwrap', {
             token,
             requestId

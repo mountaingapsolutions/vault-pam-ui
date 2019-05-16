@@ -1,7 +1,10 @@
 const request = require('request');
 const {initApiRequest, getDomain, sendError, unwrapData} = require('services/utils');
 const RequestController = require('services/controllers/Request');
-const {REQUEST_STATUS} = require('services/constants');
+const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
+const {
+    getRequests
+} = require('services/routes/standardRequestService');
 
 /**
  * Get dynamic engine roles.
@@ -73,12 +76,6 @@ const _getLease = req => {
             if (error) {
                 reject(error);
             } else {
-                const keys = ((response.body || {}).data || {}).keys || [];
-                const newData = {};
-                keys.map(key => {
-                    newData[key] = `${mount}/creds/${role}/${key}`;
-                });
-                response.body.data = newData;
                 resolve(response);
             }
         });
@@ -88,10 +85,10 @@ const _getLease = req => {
 /**
  * Revokes a lease.
  *
- * @param {Object} req The HTTP request object.
+ * @param {string} lease_id The lease id.
  * @returns {Promise<void>}
  */
-const _revokeLease = req => {
+const _revokeLease = lease_id => {
     return new Promise((resolve, reject) => {
         const domain = getDomain();
         const {VAULT_API_TOKEN: apiToken} = process.env;
@@ -99,7 +96,7 @@ const _revokeLease = req => {
         request({
             ...initApiRequest(apiToken, apiUrl),
             method: 'PUT',
-            json: req.body
+            json: {lease_id}
         }, (error, response) => {
             if (error) {
                 reject(error);
@@ -141,8 +138,24 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .get('/lease', async (req, res) => {
+        const {mount, role} = req.query;
+        const enginePath = `${mount}/${role}`;
         try {
             const response = await _getLease(req);
+            const leaseKeys = ((response.body || {}).data || {}).keys || [];
+            const dbRequests = await getRequests(req);
+            let mappedData = {};
+            leaseKeys.forEach(key => {
+                const dataInDB = dbRequests.find(dbReq => {
+                    const isLease = (dbReq.engineType || '').split('/')[1] === key;
+                    const isDynamicRequest = dbReq.type === REQUEST_TYPES.DYNAMIC_REQUEST;
+                    const isSameMount = dbReq.requestData === enginePath;
+                    return isLease && isDynamicRequest && isSameMount;
+                });
+                const {id, requesterName} = dataInDB.dataValues || {};
+                mappedData[key] = {requestId: id, leaseId: `${mount}/creds/${role}/${key}`, requesterName};
+            });
+            response.body.data = mappedData;
             res.status(response.statusCode).json(response.body);
         } catch (err) {
             sendError(req.originalUrl, res, err);
@@ -164,6 +177,8 @@ const router = require('express').Router()
      *             properties:
      *               lease_id:
      *                 type: string
+     *               requestId:
+     *                 type: number
      *     responses:
      *       200:
      *         description: Success.
@@ -171,8 +186,10 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .put('/revoke', async (req, res) => {
+        const {lease_id, requestId} = req.body;
         try {
-            const response = await _revokeLease(req);
+            const response = await _revokeLease(lease_id);
+            await RequestController.updateDataById(requestId, {status: REQUEST_STATUS.REVOKED, engineType: null});
             res.status(response.statusCode).json(response.body);
         } catch (err) {
             sendError(req.originalUrl, res, err);
@@ -207,7 +224,7 @@ const router = require('express').Router()
         const {requestId, token} = req.body;
         try {
             const response = await unwrapData(token);
-            await RequestController.updateStatusById(requestId, REQUEST_STATUS.OPENED);
+            await RequestController.updateDataById(requestId, {status: REQUEST_STATUS.OPENED});
             res.status(response.statusCode).json(response.body);
         } catch (err) {
             sendError(req.originalUrl, res, err.message, err.statusCode);
