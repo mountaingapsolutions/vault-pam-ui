@@ -500,7 +500,7 @@ const router = require('express').Router()
         const {groups} = req.session.user;
         const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = REQUEST_TYPES;
         //DYNAMIC SECRET
-        let leaseWrapToken = null;
+        let dynamicSecretRefId = null;
         let resolveDynamicSecret = type !== REQUEST_TYPES.DYNAMIC_REQUEST;
         try {
             if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP && accessor) {
@@ -520,11 +520,13 @@ const router = require('express').Router()
                     const {body} = await createCredential(req);
                     if (body.lease_id) {
                         resolveDynamicSecret = true;
-                        leaseWrapToken = body.data && await wrapData(body.data);
+                        const leaseWrapToken = body.data && await wrapData(body.data);
+                        const leaseId = body.lease_id.split('/');
+                        dynamicSecretRefId = leaseWrapToken && leaseId[leaseId.length - 1] && `${leaseWrapToken}/${leaseId[leaseId.length - 1]}`;
                     }
                 }
                 //TODO - Make separate method for dynamic requests? or just rename method
-                const data = await updateStandardRequestByApprover(req, entityId, path, REQUEST_STATUS.APPROVED, leaseWrapToken) || {};
+                const data = await updateStandardRequestByApprover(req, entityId, path, REQUEST_STATUS.APPROVED, dynamicSecretRefId) || {};
                 const {dataValues = {}} = data;
                 path = dataValues.requestData;
                 entityId = dataValues.requesterEntityId;

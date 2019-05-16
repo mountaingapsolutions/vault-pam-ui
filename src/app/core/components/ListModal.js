@@ -27,15 +27,18 @@ class ListModal extends Component {
      * @returns {React.ReactElement}
      */
     _renderContent() {
-        const {classes, buttonTitle, items, onClick} = this.props;
+        const {classes, buttonTitle, items, onClick, primaryTextPropName, secondaryTextPropName} = this.props;
         return <Paper className={classes.paper} elevation={2}>
             {Object.keys(items).map((item, index) => {
+                const data = items[item];
+                const primary = primaryTextPropName ? data[primaryTextPropName] : item;
+                const secondary = typeof data === 'object' ? secondaryTextPropName ? data[secondaryTextPropName] : data[Object.keys(data)[0]] : data;
                 return (
                     <ListItem dense divider key={index}>
-                        <ListItemText primary={item} secondary={items[item]} />
+                        <ListItemText primary={primary} secondary={secondary} />
                         <Button
                             variant='text'
-                            onClick={() => onClick(items[item])}>
+                            onClick={() => onClick(data)}>
                             {buttonTitle}
                         </Button>
                     </ListItem>
@@ -108,7 +111,9 @@ ListModal.propTypes = {
     listTitle: PropTypes.string.isRequired,
     onClick: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
-    open: PropTypes.bool.isRequired
+    open: PropTypes.bool.isRequired,
+    primaryTextPropName: PropTypes.string,
+    secondaryTextPropName: PropTypes.string
 };
 
 /**

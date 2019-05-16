@@ -100,11 +100,11 @@ const updateStatusByApprover = (approverEntityId, requesterEntityId, path, statu
  * Update a Request Status by Id.
  *
  * @param {number} id The request id.
- * @param {string} status The request status.
+ * @param {Object} data The new data values.
  * @returns {Promise}
  */
-const updateStatusById = (id, status) => {
-    return Request.update({status},
+const updateDataById = (id, data) => {
+    return Request.update(data,
         {
             where: {
                 id
@@ -119,7 +119,7 @@ module.exports = {
     create,
     findAllByRequester,
     findByParams,
-    updateStatusById,
+    updateDataById,
     updateStatusByRequester,
     updateStatusByApprover
 };
