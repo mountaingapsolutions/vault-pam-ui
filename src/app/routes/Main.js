@@ -237,6 +237,10 @@ class Main extends Component {
                         }</Typography>
                     </Button>
                     <div className={classes.grow}/>
+                    <Typography color='inherit' variant='overline'>
+                        {isRoot ? '<root>' : unwrap(safeWrap(user).data.name)}
+                    </Typography>
+                    <div className={classes.userNameDivider} />
                     <Typography color={isVaultSealed ? 'secondary' : 'inherit'}>
                         Status:
                     </Typography>
@@ -438,6 +442,12 @@ const _styles = (theme) => ({
     },
     textCenter: {
         textAlign: 'center'
+    },
+    userNameDivider: {
+        borderRight: '0.1em solid white',
+        height: '1.5em',
+        padding: '0.5em',
+        marginRight: theme.spacing.unit * 2
     },
     warningMessageContentWidth: {
         width: 'calc(100% - 70px)'
