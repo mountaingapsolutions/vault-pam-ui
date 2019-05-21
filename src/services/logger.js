@@ -1,5 +1,6 @@
 const {createLogger, format, transports} = require('winston');
 const {LOG_LEVELS} = require('services/constants');
+const cryptoJs = require('crypto-js');
 
 /**
  * Main Logging method.
@@ -28,6 +29,30 @@ const _logger = createLogger({
 });
 
 /**
+ * Method to hash an object's properties using HMAC-SHA256
+ *
+ * @private
+ * @param {Object} obj object to be hashed
+ * @returns {Object}
+ */
+const _hashObject = (obj) => {
+    const {VAULT_API_TOKEN: apiToken} = process.env;
+    const hashedObject = {};
+    Object.keys(obj).forEach(key => {
+        const objProp = obj[key];
+        typeof objProp === 'string' ?
+            // eslint-disable-next-line new-cap
+            hashedObject[key] = cryptoJs.HmacSHA256(obj[key], apiToken).toString(cryptoJs.enc.Hex) :
+            Array.isArray(objProp) ? hashedObject[key] = objProp.map((prop) => {
+                // eslint-disable-next-line new-cap
+                return typeof prop === 'string' ? cryptoJs.HmacSHA256(obj[key], apiToken).toString(cryptoJs.enc.Hex) : prop;
+            }) :
+                hashedObject[key] = obj[key];
+    });
+    return hashedObject;
+};
+
+/**
  * Logging method.
  *
  * @private
@@ -54,8 +79,9 @@ const _log = (level, data, req, res, response, error) => {
         if (query) {
             logObject.query = query;
         }
-        if (session) {
-            logObject.user = session.user;
+        if (session && session.user) {
+            const {user} = session;
+            logObject.user = _hashObject(user);
         }
     }
 
@@ -64,7 +90,12 @@ const _log = (level, data, req, res, response, error) => {
     }
 
     if (response) {
-        logObject.response = response;
+        const {data: responseData} = response;
+        if (responseData) {
+            logObject.response = _hashObject(responseData);
+        } else {
+            logObject.response = response;
+        }
     }
 
     if (error) {
