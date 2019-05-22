@@ -1,6 +1,6 @@
 const request = require('request');
 const logger = require('services/logger');
-const {initApiRequest, getDomain, sendError} = require('services/utils');
+const {initApiRequest, getDomain, sendError, sendJsonResponse} = require('services/utils');
 const addRequestId = require('express-request-id')();
 
 /**
@@ -342,9 +342,9 @@ const router = require('express').Router()
         logger.audit(req, res);
         try {
             const response = await getUser(req);
-            res.status(response.statusCode).json(response.body);
+            sendJsonResponse(req, res, response.body, response.statusCode);
         } catch (err) {
-            sendError(req.originalUrl, res, err);
+            sendError(req, res, err);
         }
     })
     /**
@@ -376,9 +376,9 @@ const router = require('express').Router()
         logger.audit(req, res);
         try {
             const response = await getUser(req, req.params.id);
-            res.status(response.statusCode).json(response.body);
+            sendJsonResponse(req, res, response.body, response.statusCode);
         } catch (err) {
-            sendError(req.originalUrl, res, err);
+            sendError(req, res, err);
         }
     })
     /**
@@ -416,13 +416,13 @@ const router = require('express').Router()
         logger.audit(req, res);
         const {id, name, password} = req.body;
         if (!name) {
-            sendError(req.originalUrl, res, 'Required name field not provided.');
+            sendError(req, res, 'Required name field not provided.');
             return;
         } else if (!password) {
-            sendError(req.originalUrl, res, 'Required password field not provided.');
+            sendError(req, res, 'Required password field not provided.');
             return;
         } else if (id) {
-            sendError(req.originalUrl, res, 'Use PUT when attempting to update an existing user.');
+            sendError(req, res, 'Use PUT when attempting to update an existing user.');
             return;
         }
 
@@ -438,14 +438,14 @@ const router = require('express').Router()
 
                 // Return the newly created entity.
                 const userResponse = await getUserByName(req, name);
-                res.status(201).json(userResponse.body);
+                sendJsonResponse(req, res, userResponse.body, 201);
             } else if (userpassResponse.statusCode === 200) {
-                sendError(req.originalUrl, res, `User ${name} is already in use.`, 409);
+                sendError(req, res, `User ${name} is already in use.`, null, 409);
             } else {
-                sendError(req.originalUrl, res, userpassResponse.body.errors || 'Error in saving user.', userpassResponse.statusCode);
+                sendError(req, res, userpassResponse.body.errors || 'Error in saving user.', null, userpassResponse.statusCode);
             }
         } catch (err) {
-            sendError(req.originalUrl, res, err);
+            sendError(req, res, err);
         }
     })
     /**
@@ -474,9 +474,9 @@ const router = require('express').Router()
         }
         try {
             const response = await updateUser(req, req.body);
-            res.status(response.statusCode).json(response.body);
+            sendJsonResponse(req, res, response.body, response.statusCode);
         } catch (err) {
-            sendError(req.originalUrl, res, err);
+            sendError(req, res, err);
         }
     })
     /**
@@ -513,9 +513,9 @@ const router = require('express').Router()
             // Set the entity id from params.
             req.body.id = req.params.id;
             const response = await updateUser(req, req.body);
-            res.status(response.statusCode).json(response.body);
+            sendJsonResponse(req, res, response.body, response.statusCode);
         } catch (err) {
-            sendError(req.originalUrl, res, err);
+            sendError(req, res, err);
         }
     })
     /**
@@ -546,17 +546,16 @@ const router = require('express').Router()
         try {
             const userResponse = await getUser(req, id);
             if (userResponse.statusCode === 404) {
-                res.status(userResponse.statusCode).json(userResponse.body);
+                sendJsonResponse(req, res, userResponse.body, userResponse.statusCode);
             } else {
                 const deleteUserResponse = await deleteUser(req, id);
 
                 // Also make sure to delete the corresponding userpass authentication method.
                 await deleteUserpass(req, userResponse.body.data.name);
-
-                res.status(deleteUserResponse.statusCode).json(deleteUserResponse.body);
+                sendJsonResponse(req, res, deleteUserResponse.body, deleteUserResponse.statusCode);
             }
         } catch (err) {
-            sendError(req.originalUrl, res, err);
+            sendError(req, res, err);
         }
     });
 

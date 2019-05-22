@@ -1,10 +1,12 @@
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {
+    CircularProgress,
     Dialog,
     DialogActions,
     DialogContent,
     DialogTitle,
+    Grid,
     ListItem,
     ListItemText,
     Paper,
@@ -19,6 +21,47 @@ import {withStyles} from '@material-ui/core/styles/index';
 class ListModal extends Component {
 
     /**
+     * Helper method to render content.
+     *
+     * @private
+     * @returns {React.ReactElement}
+     */
+    _renderContent() {
+        const {classes, buttonTitle, items, onClick, primaryTextPropName, secondaryTextPropName} = this.props;
+        return <Paper className={classes.paper} elevation={2}>
+            {Object.keys(items).map((item, index) => {
+                const data = items[item];
+                const primary = primaryTextPropName ? data[primaryTextPropName] : item;
+                const secondary = typeof data === 'object' ? secondaryTextPropName ? data[secondaryTextPropName] : data[Object.keys(data)[0]] : data;
+                return (
+                    <ListItem dense divider key={index}>
+                        <ListItemText primary={primary} secondary={secondary} />
+                        <Button
+                            variant='text'
+                            onClick={() => onClick(data)}>
+                            {buttonTitle}
+                        </Button>
+                    </ListItem>
+                );})}
+        </Paper>;
+    }
+
+    /**
+     * Helper method to render loading indicator.
+     *
+     * @private
+     * @returns {React.ReactElement}
+     */
+    _renderLoader() {
+        const {classes} = this.props;
+        return <Grid container justify='center'>
+            <Grid item>
+                <CircularProgress className={classes.loader}/>
+            </Grid>
+        </Grid>;
+    }
+
+    /**
      * Required React Component lifecycle method. Returns a tree of React components that will render to HTML.
      *
      * @override
@@ -26,7 +69,7 @@ class ListModal extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {buttonTitle, classes, onClick, onClose, open, items, listTitle} = this.props;
+        const {classes, onClose, open, isLoading, listTitle} = this.props;
         return (
             <Dialog
                 disableBackdropClick
@@ -40,20 +83,7 @@ class ListModal extends Component {
                     </Typography>
                 </DialogTitle>
                 <DialogContent>
-                    <Paper className={classes.paper} elevation={2}>
-                        {Object.keys(items).map((item, index) => {
-                            return (
-                                <ListItem dense divider key={index}>
-                                    <ListItemText primary={item} secondary={items[item]} />
-                                    <Button
-                                        variant='text'
-                                        onClick={onClick}>
-                                        {buttonTitle}
-                                    </Button>
-                                </ListItem>
-                            );
-                        })}
-                    </Paper>
+                    {isLoading ? this._renderLoader() : this._renderContent()}
                 </DialogContent>
                 <DialogActions>
                     <Button
@@ -68,17 +98,22 @@ class ListModal extends Component {
 }
 
 ListModal.defaultProps = {
+    isLoading: false,
+    items: {},
     open: false
 };
 
 ListModal.propTypes = {
     buttonTitle: PropTypes.string.isRequired,
     classes: PropTypes.object.isRequired,
+    isLoading: PropTypes.bool.isRequired,
     items: PropTypes.object.isRequired,
     listTitle: PropTypes.string.isRequired,
     onClick: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
-    open: PropTypes.bool.isRequired
+    open: PropTypes.bool.isRequired,
+    primaryTextPropName: PropTypes.string,
+    secondaryTextPropName: PropTypes.string
 };
 
 /**

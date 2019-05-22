@@ -4,7 +4,7 @@ import {connect} from 'react-redux';
 import {withRouter} from 'react-router-dom';
 import io from 'socket.io-client';
 
-import kvAction from 'app/core/actions/kvAction';
+import secretAction from 'app/core/actions/secretAction';
 import Constants from 'app/util/Constants';
 import Logger from 'app/util/Logger';
 
@@ -93,7 +93,7 @@ NotificationsManager.propTypes = {
  */
 const _mapStateToProps = (state) => {
     return {
-        ...state.kvReducer
+        ...state.secretReducer
     };
 };
 
@@ -106,9 +106,9 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        approveRequestData: (requestData) => dispatch(kvAction.approveRequestData(requestData)),
-        createRequestData: (requestData) => dispatch(kvAction.createRequestData(requestData)),
-        removeRequestData: (accessor) => dispatch(kvAction.removeRequestData(accessor))
+        approveRequestData: (requestData) => dispatch(secretAction.approveRequestData(requestData)),
+        createRequestData: (requestData) => dispatch(secretAction.createRequestData(requestData)),
+        removeRequestData: (accessor) => dispatch(secretAction.removeRequestData(accessor))
     };
 };
 

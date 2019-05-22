@@ -5,7 +5,8 @@ const {options, swaggerDoc} = require('services/Swagger');
 const {router: secretsServiceRouter} = require('services/routes/secretsService');
 const {router: userServiceRouter} = require('services/routes/userService');
 const {router: requestServiceRouter} = require('services/routes/requestService');
-const {initApiRequest, getDomain, sendError, setSessionData} = require('services/utils');
+const {router: dynamicSecretServicRoute} = require('services/routes/dynamicSecretRequestService');
+const {initApiRequest, getDomain, sendError, sendJsonResponse, setSessionData} = require('services/utils');
 const logger = require('services/logger');
 
 /**
@@ -15,14 +16,17 @@ const logger = require('services/logger');
  * @param {Object} res The HTTP response object.
  */
 const api = (req, res) => {
+    logger.audit(req, res);
     _disableCache(res);
     const {'x-vault-token': token} = req.headers;
     const {entityId} = req.session.user || {};
     const apiUrl = `${getDomain()}${req.url}`;
     logger.log(`Proxy the request from ${_yellowBold(req.originalUrl)} to ${_yellowBold(apiUrl)}.`);
-    req.pipe(request(initApiRequest(token, apiUrl, entityId), (err) => {
+    req.pipe(request(initApiRequest(token, apiUrl, entityId), (err, response) => {
         if (err) {
-            res.status(500).json({errors: [err]});
+            sendJsonResponse(req, res, {errors: [err]}, 500);
+        } else if (response) {
+            logger.audit(req, res, response);
         }
     }))
     // .on('response', response => {
@@ -40,7 +44,7 @@ const api = (req, res) => {
  */
 const config = (req, res) => {
     _disableCache(res);
-    res.json({
+    sendJsonResponse(req, res, {
         domain: process.env.VAULT_DOMAIN,
         features: req.app.locals.features || {}
     });
@@ -70,25 +74,25 @@ const login = (req, res) => {
             }
         }, (error, response, body) => {
             if (error) {
-                sendError(apiUrl, res, error);
+                sendError(req, res, error, apiUrl);
                 return;
             }
             try {
                 if (response.statusCode !== 200) {
-                    res.status(response.statusCode).json(body);
+                    sendJsonResponse(req, res, body, response.statusCode);
                     return;
                 }
 
                 const {client_token: clientToken} = body.auth || {};
                 _sendTokenValidationResponse(clientToken, req, res);
             } catch (err) {
-                sendError(apiUrl, res, err);
+                sendError(req, res, err, apiUrl);
             }
         });
     }
     // Womp womp. ¯\_(ツ)_/¯
     else {
-        res.status(400).json({errors: ['Unsupported authentication method. ¯\\_(ツ)_/¯']});
+        sendJsonResponse(req, res, {errors: ['Unsupported authentication method. ¯\\_(ツ)_/¯']}, 400);
     }
 };
 
@@ -101,10 +105,10 @@ const login = (req, res) => {
 const logout = (req, res) => {
     req.session.destroy(err => {
         if (err) {
-            sendError(req.originalUrl, res, err);
+            sendError(req, res, err);
         } else {
             req.session = null;
-            res.json({status: 'ok'});
+            sendJsonResponse(req, res, {status: 'ok'});
         }
     });
 };
@@ -122,7 +126,7 @@ const authenticatedRoutes = require('express').Router()
         const {'x-vault-token': token} = req.headers;
         // Check if the token has been provided.
         if (!token) {
-            res.status(401).json({errors: ['Unauthorized.']});
+            sendJsonResponse(req, res, {errors: ['Unauthorized.']}, 401);
         } else {
             const {token: sessionToken} = req.session.user || {};
 
@@ -133,11 +137,11 @@ const authenticatedRoutes = require('express').Router()
                 const apiUrl = `${domain}/v1/auth/token/lookup-self`;
                 request(initApiRequest(token, apiUrl), (error, response, body) => {
                     if (error) {
-                        sendError(req.originalUrl, res, error);
+                        sendError(req, res, error);
                         return;
                     }
                     if (response.statusCode !== 200) {
-                        res.status(response.statusCode).json(body);
+                        sendJsonResponse(req, res, body, response.statusCode);
                         return;
                     }
                     const {entity_id: entityId, id: clientToken, meta = {}} = body.data || {};
@@ -176,14 +180,15 @@ const authenticatedRoutes = require('express').Router()
     .use('/secret', requestServiceRouter)
     .use('/secrets', secretsServiceRouter)
     .use('/log', logger.router)
+    .use('/dynamic', dynamicSecretServicRoute)
     .get('/session', (req, res) => {
         const {'x-vault-token': token} = req.headers;
         _sendTokenValidationResponse(token, req, res);
     })
     .use((req, res) => {
-        res.status(400).json({
+        sendJsonResponse(req, res, {
             errors: ['These are\'t the droids you\'re looking for.']
-        });
+        }, 400);
     });
 
 /**
@@ -249,7 +254,7 @@ const _sendTokenValidationResponse = (token, req, res) => {
     const apiUrl = `${domain}/v1/auth/token/lookup-self`;
     request(initApiRequest(token, apiUrl), (error, response, body) => {
         if (error) {
-            sendError(apiUrl, res, error);
+            sendError(req, res, error, apiUrl);
             return;
         }
         try {
@@ -277,13 +282,13 @@ const _sendTokenValidationResponse = (token, req, res) => {
                     setSessionData(req, {
                         groups: groups.map(group => group.data.name)
                     });
-                    res.status(response.statusCode).json(body);
+                    sendJsonResponse(req, res, body, response.statusCode);
                 });
             } else {
-                res.status(response.statusCode).json(body);
+                sendJsonResponse(req, res, body, response.statusCode);
             }
         } catch (err) {
-            sendError(apiUrl, res, err);
+            sendError(req, res, err, apiUrl);
         }
     });
 };

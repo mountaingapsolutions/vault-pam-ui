@@ -15,7 +15,9 @@ import {
     ListItemSecondaryAction,
     ListItemText,
     ListSubheader,
+    MenuItem,
     Paper,
+    TextField,
     Tooltip,
     Typography
 } from '@material-ui/core';
@@ -27,7 +29,7 @@ import {withStyles} from '@material-ui/core/styles';
 import {safeWrap, unwrap} from '@mountaingapsolutions/objectutil';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
-import kvAction from 'app/core/actions/kvAction';
+import secretAction from 'app/core/actions/secretAction';
 import Button from 'app/core/components/Button';
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 import {connect} from 'react-redux';
@@ -46,12 +48,14 @@ class NotificationsModal extends Component {
      */
     constructor(props) {
         super(props);
-
         this.state = {
+            filter: 'ALL',
             selectedRequestPath: null
         };
 
         this._onRequestDetails = this._onRequestDetails.bind(this);
+        this._handleChangeFilter = this._handleChangeFilter.bind(this);
+
     }
 
     /**
@@ -87,6 +91,18 @@ class NotificationsModal extends Component {
         return <Typography className={classes.block} color='textSecondary' component='span'>
             Already approved by {namesList.join(', ')}.
         </Typography>;
+    }
+
+    /**
+     * Handle for filter change .
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _handleChangeFilter(event) {
+        const {name, value} = event.target;
+        this.setState({[name]: value});
+
     }
 
     /**
@@ -191,7 +207,8 @@ class NotificationsModal extends Component {
      */
     render() {
         const {authorizeRequest, classes, inProgress, onClose, open, deleteRequest, secretsRequests = [], vaultLookupSelf} = this.props;
-        const {selectedRequestPath} = this.state;
+        const {filter, selectedRequestPath} = this.state;
+        const {APPROVED, PENDING} = Constants.REQUEST_STATUS;
         const {entity_id: entityIdSelf} = unwrap(safeWrap(vaultLookupSelf).data.data) || {};
         const selectedRequest = secretsRequests.length > 0 ? secretsRequests.find((request) => request.requestPath === selectedRequestPath) : undefined;
         return <Dialog
@@ -226,12 +243,45 @@ class NotificationsModal extends Component {
                 :
                 <DialogContent>
                     <List className={classes.listContainer}>
-                        <ListSubheader>
-                            Pending requests
-                        </ListSubheader>
+                        <Grid container spacing={24}>
+                            <Grid item xs={6}>
+                                <ListSubheader>
+                                    Pending requests
+                                </ListSubheader>
+                            </Grid>
+                            <Grid item style={{textAlign: 'right'}} xs={6}>
+                                <ListSubheader>
+                                    <TextField
+                                        select
+                                        className={classes.filter}
+                                        id='filter'
+                                        label='Filter by status'
+                                        name='filter'
+                                        value={filter}
+                                        variant='outlined'
+                                        onChange={this._handleChangeFilter}
+                                    >
+                                        <MenuItem value='ALL'>
+                                            <em>All</em>
+                                        </MenuItem>
+                                        <MenuItem value={APPROVED}>Approved</MenuItem>
+                                        <MenuItem value={PENDING}>Pending</MenuItem>
+                                    </TextField>
+                                </ListSubheader>
+                            </Grid>
+                        </Grid>
                         {
                             secretsRequests.length > 0 ?
-                                secretsRequests.map((requestData, i) => {
+                                secretsRequests.filter(d => {
+                                    switch (filter) {
+                                        case APPROVED:
+                                            return d.approved;
+                                        case PENDING:
+                                            return !d.approved;
+                                        default:
+                                            return true;
+                                    }
+                                }).map((requestData, i) => {
                                     const {CONTROL_GROUP, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
                                     const {accessor, approved, authorizations, creationTime, isWrapped, requestEntity = {}, requestPath, type} = requestData;
                                     const {id, name} = requestEntity;
@@ -368,13 +418,13 @@ NotificationsModal.propTypes = {
  */
 const _mapStateToProps = (state) => {
     const actionsUsed = [
-        kvAction.ACTION_TYPES.DELETE_REQUEST,
-        kvAction.ACTION_TYPES.LIST_REQUESTS
+        secretAction.ACTION_TYPES.DELETE_REQUEST,
+        secretAction.ACTION_TYPES.LIST_REQUESTS
     ];
     return {
         errors: createErrorsSelector(actionsUsed)(state.actionStatusReducer),
         inProgress: createInProgressSelector(actionsUsed)(state.actionStatusReducer),
-        ...state.kvReducer,
+        ...state.secretReducer,
         ...state.sessionReducer
     };
 };
@@ -388,8 +438,8 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        authorizeRequest: (path, entityId, requestId, type) => dispatch(kvAction.authorizeRequest(path, entityId, requestId, type)),
-        deleteRequest: (path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => dispatch(kvAction.deleteRequest(path, entityId, type))
+        authorizeRequest: (path, entityId, requestId, type) => dispatch(secretAction.authorizeRequest(path, entityId, requestId, type)),
+        deleteRequest: (path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => dispatch(secretAction.deleteRequest(path, entityId, type))
     };
 };
 
@@ -403,6 +453,10 @@ const _mapDispatchToProps = (dispatch) => {
 const _styles = (theme) => ({
     block: {
         display: 'block',
+    },
+    filter: {
+        width: 120,
+        textAlign: 'center'
     },
     loader: {
         margin: 50

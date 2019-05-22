@@ -2,7 +2,7 @@ import {applyMiddleware, combineReducers, createStore} from 'redux';
 import reduxThunk from 'redux-thunk';
 
 import actionStatusReducer from 'app/core/reducers/actionStatusReducer';
-import kvReducer from 'app/core/reducers/kvReducer';
+import secretReducer from 'app/core/reducers/secretReducer';
 import sessionReducer from 'app/core/reducers/sessionReducer';
 import systemReducer from 'app/core/reducers/systemReducer';
 import userReducer from 'app/core/reducers/userReducer';
@@ -17,7 +17,7 @@ const configureMainStore = (initialState) => {
     return createStore(
         combineReducers({
             actionStatusReducer,
-            kvReducer,
+            secretReducer,
             sessionReducer,
             systemReducer,
             userReducer

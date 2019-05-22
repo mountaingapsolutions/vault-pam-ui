@@ -36,7 +36,7 @@ import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import {Link, Redirect, Route, Switch, withRouter} from 'react-router-dom';
 
-import kvAction from 'app/core/actions/kvAction';
+import secretAction from 'app/core/actions/secretAction';
 import sessionAction from 'app/core/actions/sessionAction';
 import systemAction from 'app/core/actions/systemAction';
 import userAction from 'app/core/actions/userAction';
@@ -237,6 +237,10 @@ class Main extends Component {
                         }</Typography>
                     </Button>
                     <div className={classes.grow}/>
+                    <Typography color='inherit' variant='overline'>
+                        {isRoot ? '<root>' : unwrap(safeWrap(user).data.name)}
+                    </Typography>
+                    <div className={classes.userNameDivider} />
                     <Typography color={isVaultSealed ? 'secondary' : 'inherit'}>
                         Status:
                     </Typography>
@@ -374,7 +378,7 @@ const _mapStateToProps = (state) => {
     return {
         ...state.localStorageReducer,
         ...state.sessionReducer,
-        ...state.kvReducer,
+        ...state.secretReducer,
         ...state.systemReducer,
         ...state.userReducer
     };
@@ -405,8 +409,8 @@ const _mapDispatchToProps = (dispatch) => {
                 }).catch(reject);
             });
         },
-        listMounts: () => dispatch(kvAction.listMounts()),
-        listRequests: () => dispatch(kvAction.listRequests()),
+        listMounts: () => dispatch(secretAction.listMounts()),
+        listRequests: () => dispatch(secretAction.listRequests()),
         getSealStatus: () => dispatch(systemAction.getSealStatus()),
         logout: () => dispatch(userAction.logout())
     };
@@ -438,6 +442,12 @@ const _styles = (theme) => ({
     },
     textCenter: {
         textAlign: 'center'
+    },
+    userNameDivider: {
+        borderRight: '0.1em solid white',
+        height: '1.5em',
+        padding: '0.5em',
+        marginRight: theme.spacing.unit * 2
     },
     warningMessageContentWidth: {
         width: 'calc(100% - 70px)'

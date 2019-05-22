@@ -49,7 +49,7 @@ const _getSenderFromRequest = (req) => {
 const secretsRequestApprovalTemplate = (req, emailData) => {
     const {firstName, lastName, username} = req.session.user;
     const name = firstName && lastName ? `${firstName} ${lastName}` : username;
-    const {to, secretsPath, dynamicRequest} = emailData;
+    const {to, secretsPath} = emailData;
     const fullPath = `${req.protocol}://${req.get('host')}/${secretsPath}`;
     return {
         from: _getSenderFromRequest(req),
@@ -61,18 +61,7 @@ const secretsRequestApprovalTemplate = (req, emailData) => {
              </p>
              <p style="color: #000;">
                  To view this secret, go to <a href="${fullPath}">${fullPath}</a>.
-             </p>
-            ${dynamicRequest !== null ? `<p style="color: #000;">
-                Dynamic Secret Approved:
-             </p>
-             <p style="color: #000;">
-                <b>Access Key:</b> ${dynamicRequest.access_key}
-             </p>
-             <p style="color: #000;">
-                <b>Secret Key:</b> ${dynamicRequest.secret_key}
-             </p>
-           ` : ''}
-            `)
+             </p>`)
     };
 };
 
