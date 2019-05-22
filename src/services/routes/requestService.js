@@ -442,6 +442,24 @@ const router = require('express').Router()
         const promises = [];
         if (req.app.locals.features['control-groups']) {
             const {getRequests: premiumGetRequests, getActiveRequests} = require('vault-pam-premium');
+            // TODO CONTINUE HERE
+            const reqs = await _getRequests(req);
+            console.warn('hi: ', JSON.stringify(reqs));
+            Promise.all(reqs.filter((requestRecord) => requestRecord.dataValues.type === 'control-group').map((requestRecord) => {
+                const accessor = requestRecord.dataValues.referenceId;
+                const {entityId, token} = req.session.user;
+                return asyncRequest({
+                    ...initApiRequest(token, `${getDomain()}/v1/sys/control-group/request`, entityId, true),
+                    method: 'POST',
+                    json: {
+                        accessor
+                    }
+                });
+            })).then((results) => {
+                results.forEach((result) => {
+                    console.warn('RESULT: ', JSON.stringify(result.body));
+                });
+            });
             promises.push(premiumGetRequests(req));
             promises.push(getActiveRequests(req));
         }
@@ -553,12 +571,24 @@ const router = require('express').Router()
             let requestData;
             if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP) {
                 const {groups = [], data} = await require('vault-pam-premium').createRequest(req);
-                requestData = _remapSecretsRequest(data);
+                console.warn('data ', data);
+                console.warn('data string', JSON.stringify(data));
+
+                requestData = _remapSecretsRequest(await _injectEntityNameIntoRequestResponse(req, entityId, initiateRequest(req, {
+                    referenceId: data.accessor,
+                    requestData: path,
+                    type
+                })));
+                console.warn('request data: ', JSON.stringify(requestData));
+
                 groups.forEach((groupName) => {
                     approverGroupPromises.push(_getUsersByGroupName(req, groupName));
                 });
             } else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
-                requestData = _remapSecretsRequest(await _injectEntityNameIntoRequestResponse(req, entityId, initiateRequest(req, path, type)));
+                requestData = _remapSecretsRequest(await _injectEntityNameIntoRequestResponse(req, entityId, initiateRequest(req, {
+                    requestData: path,
+                    type
+                })));
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             } else {
                 sendError(req.originalUrl, res, 'Invalid request', 400);

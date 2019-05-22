@@ -11,11 +11,11 @@ module.exports = class Requests extends Model {
     static init(sequelize) {
         return super.init({
             entityId: {
-                type: DataTypes.UUID,
+                type: DataTypes.STRING,
                 allowNull: false
             },
             referenceId: {
-                type: DataTypes.UUID,
+                type: DataTypes.STRING,
                 allowNull: true
             },
             requestData: {

@@ -135,17 +135,18 @@ const cancelRequest = async (req, requestData) => {
  * Initiates a request from the requester's perspective
  *
  * @param {Object} req The HTTP request object.
- * @param {string} requestData The request data/path.
- * @param {string} type The request type.
+ * @param {Object} requestParams The request data/path.
+ * @param {string} [requestParams.referenceId] The unique identifier of the external record.
+ * @param {string} requestParams.requestData The request data/path.
+ * @param {string} requestParams.type The request type.
  * @returns {Promise}
  */
-const initiateRequest = async (req, requestData, type = 'standard-request') => {
+const initiateRequest = async (req, requestParams) => {
     const {entityId} = req.session.user;
     const request = (await requests.findCreateFind({
         where: {
             entityId,
-            requestData,
-            type
+            ...requestParams
         },
         include: [{
             model: requestResponses
