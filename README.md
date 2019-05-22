@@ -27,6 +27,7 @@ $ USE_HSTS=false PORT=8080 npm run startprod
 - [Express.js](https://expressjs.com) - Web application framework. The ubiquitous Node.js web server.
 - [Sequelize](http://docs.sequelizejs.com) - Node.js ORM for PostgreSQL, MySQL, MariaDB, SQLite and Microsoft SQL Server.
 - [Socket.IO](https://socket.io) - Library to enable realtime bi-directional communication between clients and servers.
+- [Nodemailer](https://nodemailer.com) - Node.js SMTP library for sending email notifications.
 - [Vault](https://www.vaultproject.io]) - The secrets engine behind the application.
 
 ### And More...
