@@ -7,13 +7,11 @@
   cache:
     paths:
     - node_modules/
-    - build_version
 
 stages:
   - test
   - build
   - deploy
-  - clean
 
 # Executes eslint and runs unit tests.
 test:
@@ -30,11 +28,23 @@ build:
   <<: *node_definition
   stage: build
   <<: *branch_definition
+  variables:
+    ZIP_FILE: "vault-pam-ui.zip"
+    S3_BUCKET: "elasticbeanstalk-us-east-1-163714151155"
   script:
     - npm run build
+    - export BUILD_VERSION=`date "+%Y-%m-%d-%H-%M-%S"`
+    - echo Setting build version to $BUILD_VERSION
+    - export VERSIONED_ZIP_FILE=$BUILD_VERSION.zip
+    - echo BUILD_VERSION=$BUILD_VERSION >> build_version
+    - echo VERSIONED_ZIP_FILE=$VERSIONED_ZIP_FILE >> build_version
+    - echo S3_BUCKET=$S3_BUCKET >> build_version
+    - echo Renaming $ZIP_FILE to $VERSIONED_ZIP_FILE
+    - mv $ZIP_FILE $VERSIONED_ZIP_FILE
+    - aws s3 cp $VERSIONED_ZIP_FILE "s3://$S3_BUCKET"
   artifacts:
     paths:
-    - vault-pam-ui.zip
+    - build_version
     expire_in: 10 mins
 
 # Deploys the zip to Elastic Beanstalk.
@@ -46,19 +56,14 @@ deploy_enterprise:
     AWS_DEFAULT_REGION: "us-east-1"
     EB_APP_NAME: "vault-pam-ui"
     EB_APP_ENV: "development"
-    ZIP_FILE: "vault-pam-ui.zip"
-    S3_BUCKET: "elasticbeanstalk-us-east-1-163714151155"
   before_script:
     - echo Installing AWS CLI
     - pip install awscli --ignore-installed six
   script:
-    - export BUILD_VERSION=`date "+%Y-%m-%d-%H-%M-%S"`
-    - echo Setting build version to $BUILD_VERSION
-    - echo BUILD_VERSION=$BUILD_VERSION >> build_version
-    - export VERSIONED_ZIP_FILE=$BUILD_VERSION.zip
-    - echo Renaming $ZIP_FILE to $VERSIONED_ZIP_FILE
-    - mv $ZIP_FILE $VERSIONED_ZIP_FILE
-    - aws s3 cp $VERSIONED_ZIP_FILE "s3://$S3_BUCKET"
+    - source build_version
+    - export BUILD_VERSION
+    - export VERSIONED_ZIP_FILE
+    - export S3_BUCKET
     - export EB_VERSION=v.$BUILD_VERSION
     - echo Creating ElasticBeanstalk Application Version $EB_VERSION Environment $EB_APP_ENV
     - aws elasticbeanstalk create-application-version --application-name $EB_APP_NAME --version-label $EB_VERSION --source-bundle S3Bucket=$S3_BUCKET,S3Key=$VERSIONED_ZIP_FILE --auto-create-application
@@ -74,13 +79,14 @@ deploy_standard:
     AWS_DEFAULT_REGION: "us-east-1"
     EB_APP_NAME: "vault-pam-ui"
     EB_APP_ENV: "development-standard"
-    S3_BUCKET: "elasticbeanstalk-us-east-1-163714151155"
   before_script:
     - echo Installing AWS CLI
     - pip install awscli --ignore-installed six
   script:
     - source build_version
     - export BUILD_VERSION
+    - export VERSIONED_ZIP_FILE
+    - export S3_BUCKET
     - export EB_VERSION=v.$BUILD_VERSION
     - export VERSIONED_ZIP_FILE=$BUILD_VERSION.zip
     - echo Creating ElasticBeanstalk Application Version $EB_VERSION Environment $EB_APP_ENV
@@ -88,9 +94,3 @@ deploy_standard:
     - echo Updating ElasticBeanstalk Application Version $EB_VERSION Environment $EB_APP_ENV
     - aws elasticbeanstalk update-environment --application-name $EB_APP_NAME --environment-name $EB_APP_ENV --version-label $EB_VERSION
     - echo Done! Deployed!
-
-clean_up:
-  stage: clean
-  script:
-    - rm build_version
-  when: always
