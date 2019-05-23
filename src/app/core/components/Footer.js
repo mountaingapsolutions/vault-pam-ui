@@ -32,6 +32,8 @@ class Footer extends Component {
      */
     render() {
         const {classes, activeVaultDomain, vaultVersion} = this.props;
+        const {SHOW_BUILD_NUMBER: showBuildNumber, EB_VERSION: buildNumber} = process.env;
+        console.info(showBuildNumber);
         return (
             <div className={classes.footerRootContainer}>
                 <AppBar className={classes.footer} position='fixed'>
@@ -51,6 +53,16 @@ class Footer extends Component {
                         <Typography inline className={classes.text} variant='caption'>
                             {`Vault ${vaultVersion}`}
                         </Typography>
+                        { showBuildNumber === 'true' &&
+                        <React.Fragment>
+                            <Typography inline className={classes.textSeparator} variant='caption'>
+                                |
+                            </Typography>
+                            <Typography inline className={classes.text} variant='caption'>
+                                {`Build ${buildNumber}`}
+                            </Typography>
+                        </React.Fragment>
+                        }
                     </div>
                 </AppBar>
             </div>

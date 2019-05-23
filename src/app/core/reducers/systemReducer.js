@@ -16,15 +16,18 @@ import systemAction from 'app/core/actions/systemAction';
 export default (previousState = {
     config: {},
     selfCapabilities: {},
-    sealStatus: {}
+    sealStatus: {},
+    build: {}
 }, action) => {
+    const {SHOW_BUILD_NUMBER: showBuildNumber, EB_VERSION: buildNumber} = process.env;
+
     switch (action.type) {
         case systemAction.ACTION_TYPES.GET_CONFIG:
             return {...previousState, config: action.data || {}, action};
         case systemAction.ACTION_TYPES.GET_SELF_CAPABILITIES:
             return {...previousState, selfCapabilities: action.data || {}, action};
         case systemAction.ACTION_TYPES.GET_SEAL_STATUS:
-            return {...previousState, sealStatus: action.data || {}, action};
+            return {...previousState, sealStatus: action.data, build: {showBuildNumber, buildNumber} || {}, action};
         default:
             return {...previousState};
     }
