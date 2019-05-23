@@ -26,6 +26,7 @@ test:
 # Builds the application and zips it up.
 build:
   <<: *node_definition
+  image: python:3.5
   stage: build
   <<: *branch_definition
   variables:
