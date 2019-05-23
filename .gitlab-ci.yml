@@ -14,6 +14,7 @@
 stages:
   - test
   - build
+  - upload
   - deploy
 
 # Executes eslint and runs unit tests.
@@ -28,8 +29,19 @@ test:
 
 # Builds the application and zips it up.
 build:
-  <<: *python_definition
+  <<: *node_definition
   stage: build
+  <<: *branch_definition
+  script:
+    - npm run build
+  artifacts:
+    paths:
+    - vault-pam-ui.zip
+    expire_in: 10 mins
+
+upload:
+  <<: *python_definition
+  stage: upload
   <<: *branch_definition
   variables:
     AWS_DEFAULT_REGION: "us-east-1"
@@ -40,7 +52,6 @@ build:
     - echo Installing AWS CLI
     - pip install awscli --ignore-installed six
   script:
-    - npm run build
     - export BUILD_VERSION=`date "+%Y-%m-%d-%H-%M-%S"`
     - echo Setting build version to $BUILD_VERSION
     - export VERSIONED_ZIP_FILE=$BUILD_VERSION.zip
@@ -54,7 +65,7 @@ build:
     - aws s3 cp $VERSIONED_ZIP_FILE "s3://$S3_BUCKET"
   artifacts:
     paths:
-    - build_vars
+      - build_vars
     expire_in: 10 mins
 
 # Deploys the zip to Elastic Beanstalk.
