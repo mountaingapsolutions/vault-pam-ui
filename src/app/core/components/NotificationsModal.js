@@ -15,9 +15,9 @@ import {
     ListItemSecondaryAction,
     ListItemText,
     ListSubheader,
+    Menu,
     MenuItem,
     Paper,
-    TextField,
     Tooltip,
     Typography
 } from '@material-ui/core';
@@ -49,13 +49,15 @@ class NotificationsModal extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            filter: 'ALL',
-            selectedRequestPath: null
+            anchorEl: null,
+            selectedFilterIndex: 0,
+            selectedRequestPath: null,
         };
 
         this._onRequestDetails = this._onRequestDetails.bind(this);
-        this._handleChangeFilter = this._handleChangeFilter.bind(this);
-
+        this._handleFilterClickListItem = this._handleFilterClickListItem.bind(this);
+        this._handleFilterMenuItemClick = this._handleFilterMenuItemClick.bind(this);
+        this._handleFilterClose = this._handleFilterClose.bind(this);
     }
 
     /**
@@ -94,15 +96,33 @@ class NotificationsModal extends Component {
     }
 
     /**
-     * Handle for filter change .
+     * Handle for filter click.
      *
      * @private
      * @param {SyntheticMouseEvent} event The event.
      */
-    _handleChangeFilter(event) {
-        const {name, value} = event.target;
-        this.setState({[name]: value});
+    _handleFilterClickListItem(event) {
+        this.setState({anchorEl: event.currentTarget});
+    }
 
+    /**
+     * Handle for filter select.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     * @param {number} index The filter option index.
+     */
+    _handleFilterMenuItemClick(event, index) {
+        this.setState({selectedFilterIndex: index, anchorEl: null});
+    }
+
+    /**
+     * Handle for filter close.
+     *
+     * @private
+     */
+    _handleFilterClose() {
+        this.setState({anchorEl: null});
     }
 
     /**
@@ -207,10 +227,15 @@ class NotificationsModal extends Component {
      */
     render() {
         const {authorizeRequest, classes, inProgress, onClose, open, deleteRequest, secretsRequests = [], vaultLookupSelf} = this.props;
-        const {filter, selectedRequestPath} = this.state;
-        const {APPROVED, PENDING} = Constants.REQUEST_STATUS;
+        const {anchorEl, selectedFilterIndex, selectedRequestPath} = this.state;
         const {entity_id: entityIdSelf} = unwrap(safeWrap(vaultLookupSelf).data.data) || {};
         const selectedRequest = secretsRequests.length > 0 ? secretsRequests.find((request) => request.requestPath === selectedRequestPath) : undefined;
+        const filterOptions = [
+            'All',
+            'Approved',
+            'Pending',
+        ];
+
         return <Dialog
             fullWidth
             aria-describedby='notifications-dialog-description'
@@ -249,34 +274,53 @@ class NotificationsModal extends Component {
                                     Pending requests
                                 </ListSubheader>
                             </Grid>
+                            {secretsRequests.length > 0 &&
                             <Grid item style={{textAlign: 'right'}} xs={6}>
                                 <ListSubheader>
-                                    <TextField
-                                        select
-                                        className={classes.filter}
-                                        id='filter'
-                                        label='Filter by status'
-                                        name='filter'
-                                        value={filter}
-                                        variant='outlined'
-                                        onChange={this._handleChangeFilter}
+                                    <List component="nav">
+                                        <ListItem
+                                            button
+                                            aria-controls='lock-menu'
+                                            aria-haspopup='true'
+                                            aria-label='Filter By'
+                                            className={classes.filter}
+                                            onClick={this._handleFilterClickListItem}
+                                        >
+                                            <ListItemText
+                                                primary={<Typography variant='overline'>Filter By</Typography>}
+                                                secondary={<Typography
+                                                    variant='caption'>{filterOptions[selectedFilterIndex]}</Typography>}
+                                            />
+                                        </ListItem>
+                                    </List>
+                                    <Menu
+                                        anchorEl={anchorEl}
+                                        id='lock-menu'
+                                        open={Boolean(anchorEl)}
+                                        onClose={this._handleFilterClose}
                                     >
-                                        <MenuItem value='ALL'>
-                                            <em>All</em>
-                                        </MenuItem>
-                                        <MenuItem value={APPROVED}>Approved</MenuItem>
-                                        <MenuItem value={PENDING}>Pending</MenuItem>
-                                    </TextField>
+                                        {filterOptions.map((option, index) =>
+                                            <MenuItem
+                                                disabled={index === selectedFilterIndex}
+                                                key={option}
+                                                selected={index === selectedFilterIndex}
+                                                onClick={event => this._handleFilterMenuItemClick(event, index)}
+                                            >
+                                                <Typography variant='caption'>{option}</Typography>
+                                            </MenuItem>
+                                        )}
+                                    </Menu>
                                 </ListSubheader>
                             </Grid>
+                            }
                         </Grid>
                         {
                             secretsRequests.length > 0 ?
                                 secretsRequests.filter(d => {
-                                    switch (filter) {
-                                        case APPROVED:
+                                    switch (selectedFilterIndex) {
+                                        case 1:
                                             return d.approved;
-                                        case PENDING:
+                                        case 2:
                                             return !d.approved;
                                         default:
                                             return true;
@@ -455,8 +499,11 @@ const _styles = (theme) => ({
         display: 'block',
     },
     filter: {
-        width: 120,
-        textAlign: 'center'
+        float: 'right',
+        paddingTop: 0,
+        paddingBottom: 0,
+        width: 150,
+        textAlign: 'left'
     },
     loader: {
         margin: 50
