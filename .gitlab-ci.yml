@@ -8,6 +8,9 @@
     paths:
     - node_modules/
 
+.python_template: &python_definition
+  image: python:3.5
+
 stages:
   - test
   - build
@@ -25,8 +28,7 @@ test:
 
 # Builds the application and zips it up.
 build:
-  <<: *node_definition
-  image: python:3.5
+  <<: *python_definition
   stage: build
   <<: *branch_definition
   variables:
@@ -57,7 +59,7 @@ build:
 
 # Deploys the zip to Elastic Beanstalk.
 deploy_enterprise:
-  image: python:3.5
+  <<: *python_definition
   stage: deploy
   <<: *branch_definition
   variables:
@@ -80,7 +82,7 @@ deploy_enterprise:
     - echo Done! Deployed!
 
 deploy_standard:
-  image: python:3.5
+  <<: *python_definition
   stage: deploy
   <<: *branch_definition
   variables:
