@@ -290,6 +290,7 @@ class NotificationsModal extends Component {
                                                 primary={<Typography variant='overline'>Filter By</Typography>}
                                                 secondary={<Typography
                                                     variant='caption'>{filterOptions[selectedFilterIndex]}</Typography>}
+                                                style={{textAlign: 'right'}}
                                             />
                                         </ListItem>
                                     </List>
@@ -504,6 +505,9 @@ const _styles = (theme) => ({
         paddingBottom: 0,
         width: 150,
         textAlign: 'left'
+    },
+    filterSelected: {
+        textAlign: 'right'
     },
     loader: {
         margin: 50
