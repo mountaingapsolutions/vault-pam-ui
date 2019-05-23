@@ -145,11 +145,11 @@ const authenticatedRoutes = require('express').Router()
                         sendJsonResponse(req, res, body, response.statusCode);
                         return;
                     }
-                    const {entity_id: entityId, id: clientToken, meta = {}} = body.data || {};
+                    const {display_name: displayName, entity_id: entityId, id: clientToken, meta} = body.data || {};
                     setSessionData(req, {
                         token: clientToken,
                         entityId,
-                        username: meta.username
+                        username: (meta || {}).username || displayName
                     });
                     res.cookie('entity_id', entityId, {
                         httpOnly: true
