@@ -106,7 +106,8 @@ deploy_standard:
     - export AWS_DEFAULT_REGION
     - export EB_APP_NAME
     - export EB_VERSION=v.$BUILD_VERSION
-    - export VERSIONED_ZIP_FILE=$BUILD_VERSION.zip
+    - echo Creating ElasticBeanstalk Application Version $EB_VERSION
+    - aws elasticbeanstalk create-application-version --application-name $EB_APP_NAME --version-label $EB_VERSION --source-bundle S3Bucket=$S3_BUCKET,S3Key=$VERSIONED_ZIP_FILE --auto-create-application
     - echo Updating ElasticBeanstalk Application Version $EB_VERSION Environment $EB_APP_ENV
     - aws elasticbeanstalk update-environment --application-name $EB_APP_NAME --environment-name $EB_APP_ENV --version-label $EB_VERSION --option-settings Namespace=aws:elasticbeanstalk:application:environment,OptionName=EB_VERSION,Value=$EB_VERSION
     - echo Done! Deployed!
