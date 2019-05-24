@@ -52,7 +52,7 @@ class Footer extends Component {
                         <Typography inline className={classes.text} variant='caption'>
                             {`Vault ${vaultVersion}`}
                         </Typography>
-                        { showBuildNumber === 'true' &&
+                        { showBuildNumber === 'true' && buildNumber &&
                         <React.Fragment>
                             <Typography inline className={classes.textSeparator} variant='caption'>
                                 |
