@@ -108,7 +108,7 @@ const _mapDispatchToProps = (dispatch) => {
     return {
         approveRequestData: (requestData) => dispatch(secretAction.approveRequestData(requestData)),
         createRequestData: (requestData) => dispatch(secretAction.createRequestData(requestData)),
-        removeRequestData: (accessor) => dispatch(secretAction.removeRequestData(accessor))
+        removeRequestData: (requestData) => dispatch(secretAction.removeRequestData(requestData))
     };
 };
 

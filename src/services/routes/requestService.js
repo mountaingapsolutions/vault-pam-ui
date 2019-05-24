@@ -52,10 +52,7 @@ const _authorizeRequest = async (req, entityId, path) => {
     const isApprover = await _checkIfApprover(req);
     let remappedData;
     if (isApprover) {
-        const {type} = (await getRequest({
-            entityId,
-            path
-        })).dataValues || {};
+        const {type} = (await _getRequest(entityId, path)).dataValues || {};
         if (!type) {
             throw new Error('Request not found');
         }
@@ -143,15 +140,18 @@ const _injectEntityNameIntoRequestResponse = (req, entityId, requestPromise) => 
  * @private
  * @param {string} entityId The requester entity id.
  * @param {string} path The request secrets path.
- * @param {string} type The request type.
+ * @param {string} [type] The request type.
  * @returns {Promise}
  */
 const _getRequest = async (entityId, path, type) => {
-    return await getRequest({
+    const requestParams = {
         entityId,
-        path,
-        type
-    });
+        path
+    };
+    if (type) {
+        requestParams.type = type;
+    }
+    return await getRequest(requestParams);
 };
 
 /**
@@ -846,13 +846,20 @@ const router = require('express').Router()
         logger.audit(req, res);
         let result;
         try {
-            //TODO CONTINUE HERE!
-            result = await require('vault-pam-premium').unwrapRequest(req);
-            (result.groups || []).forEach((groupName) => {
-                logger.info(`Emit read-approved-request accessor ${result.accessor} to ${groupName}.`);
-                notificationsManager.getInstance().to(groupName).emit('read-approved-request', result.accessor);
-            });
-            sendJsonResponse(req, res, result.body, result.statusCode);
+            const {entityId, token} = req.session.user;
+            const {path} = req.body;
+            const {token: unwrapToken} = ((await _getRequest(entityId, path)).dataValues || {}).referenceData || {};
+            if (path && unwrapToken) {
+                console.warn('UNWRAP FOR ', token, ' -- ', path, ' -- ', unwrapToken);
+                result = await require('vault-pam-premium').unwrapRequest(token, path, unwrapToken);
+                (result.body.groups || []).forEach((groupName) => {
+                    logger.info(`Emit read-approved-request accessor ${result.accessor} to ${groupName}.`);
+                    notificationsManager.getInstance().to(groupName).emit('read-approved-request', path);
+                });
+                sendJsonResponse(req, res, result.body, result.statusCode);
+            } else {
+                sendError(req, res, 'Invalid request');
+            }
         } catch (err) {
             sendError(req, res, err.message, null, err.statusCode);
         }
