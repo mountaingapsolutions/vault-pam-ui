@@ -162,7 +162,7 @@ const router = require('express').Router()
                                 if (wrapInfo) {
                                     try {
                                         // Just immediately revoke the accessor. A new one will be generated upon a user requesting access. The initial wrap_info accessor is only to inform the user that this secret is wrapped.
-                                        require('vault-pam-premium').revokeAccessor(req, wrapInfo.accessor);
+                                        require('vault-pam-premium').revokeAccessor(wrapInfo.accessor);
                                     } catch (err) {
                                         logger.error(`Error occurred. The package vault-pam-premium possibly unavailable: ${err.toString()}`);
                                     }

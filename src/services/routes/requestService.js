@@ -1,12 +1,84 @@
 const {safeWrap, unwrap} = require('@mountaingapsolutions/objectutil');
 const logger = require('services/logger');
 const notificationsManager = require('services/notificationsManager');
-const {approveRequest, cancelRequest, getRequests, initiateRequest, rejectRequest} = require('services/db/controllers/requestsController');
+const {approveRequest, cancelRequest, deleteRequest, getRequest, getRequests, initiateRequest, rejectRequest} = require('services/db/controllers/requestsController');
 const {sendMailFromTemplate} = require('services/mail/smtpClient');
 const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, sendJsonResponse, setSessionData, wrapData} = require('services/utils');
 const {createCredential} = require('services/routes/dynamicSecretRequestService');
 const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
 const addRequestId = require('express-request-id')();
+
+/**
+ * Authorizes a secrets requested via Control Groups.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @param {string} entityId The requester entity id.
+ * @param {string} path The secrets request path.
+ * @returns {Promise}
+ */
+const _authorizeControlGroupRequest = async (req, entityId, path) => {
+    const {groups, token} = req.session.user;
+    const {accessor} = ((await _getRequest(entityId, path, REQUEST_TYPES.CONTROL_GROUP)).dataValues || {}).referenceData || {};
+    let remappedData;
+    if (accessor) {
+        // Inject the accessor into the post body.
+        req.body.accessor = accessor;
+        const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path));
+        // Inject the Control Group authorization result into the data set.
+        data.requestInfoData = await require('vault-pam-premium').authorizeRequest(token, accessor);
+        remappedData = _remapSecretsRequest(data);
+        logger.info(`Emit approve-request data ${JSON.stringify(remappedData)} to ${entityId} and the following groups: ${groups.join(', ')}.`);
+        notificationsManager.getInstance().to(entityId).emit('approve-request', remappedData);
+        groups.forEach((groupName) => {
+            notificationsManager.getInstance().to(groupName).emit('approve-request', remappedData);
+        });
+    } else {
+        throw new Error('Request not found');
+    }
+    return remappedData;
+};
+
+/**
+ * Authorizes a secrets requested via standard or dynamic request.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @param {string} entityId The requester entity id.
+ * @param {string} path The secrets request path.
+ * @returns {Promise}
+ */
+const _authorizeRequest = async (req, entityId, path) => {
+    const isApprover = await _checkIfApprover(req);
+    let remappedData;
+    if (isApprover) {
+        const {type} = (await getRequest({
+            entityId,
+            path
+        })).dataValues || {};
+        if (!type) {
+            throw new Error('Request not found');
+        }
+        if (type === REQUEST_TYPES.DYNAMIC_REQUEST) {
+            // TODO - Uncomment this out and continue from here!
+            // const {body} = await createCredential(req);
+            // if (body.lease_id) {
+            //     dynamicRequest = body.data;
+            //     leaseId = body.lease_id;
+            // }
+        }
+        const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path));
+        remappedData = _remapSecretsRequest(data);
+        logger.info(`Emit approve-request data ${JSON.stringify(remappedData)} to ${entityId} and pam-approvers.`);
+        notificationsManager.getInstance().to(entityId).emit('approve-request', remappedData);
+        notificationsManager.getInstance().to('pam-approver').emit('approve-request', remappedData);
+    } else {
+        const unauthorizedError = new Error('Unauthorized');
+        unauthorizedError.statusCode = 403;
+        throw unauthorizedError;
+    }
+    return remappedData;
+};
 
 /**
  * Check if user is a member of approver group.
@@ -62,6 +134,23 @@ const _injectEntityNameIntoRequestResponse = (req, entityId, requestPromise) => 
                 }
             })
             .catch(reject);
+    });
+};
+
+/**
+ * Helper method to return the specified secrets request.
+ *
+ * @private
+ * @param {string} entityId The requester entity id.
+ * @param {string} path The request secrets path.
+ * @param {string} type The request type.
+ * @returns {Promise}
+ */
+const _getRequest = async (entityId, path, type) => {
+    return await getRequest({
+        entityId,
+        path,
+        type
     });
 };
 
@@ -199,10 +288,27 @@ const _cancelRequest = (req) => {
             const approverGroupPromises = [];
             // Control Group request cancellation.
             if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP) {
-                const {groups = []} = await require('vault-pam-premium').deleteRequest(req);
-                groups.forEach(group => {
-                    approverGroupPromises.push(_getUsersByGroupName(req, group.data.name));
-                });
+                const {accessor} = ((await _getRequest(entityId, path, type)).dataValues || {}).referenceData || {};
+                if (accessor) {
+                    // Inject the accessor into the query.
+                    const {groups = []} = await require('vault-pam-premium').deleteRequest(entityId, accessor, path);
+                    groups.forEach(group => {
+                        approverGroupPromises.push(_getUsersByGroupName(req, group));
+                    });
+                    // Control Group requests operate differently in that it needs to be deleted, since the Vault accessor is revoked.
+                    logger.warn(`Deleting the record with accessor ${accessor} from database.`);
+                    deleteRequest({
+                        referenceData: {
+                            accessor
+                        }
+                    });
+                } else {
+                    reject({
+                        message: 'Request not found',
+                        statusCode: 404
+                    });
+                    return;
+                }
             }
             // Standard Request cancellation.
             else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
@@ -264,14 +370,30 @@ const _rejectRequest = (req) => {
         try {
             // Control Group rejection.
             if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP) {
-                const {groups = []} = await require('vault-pam-premium').deleteRequest(req);
-
-                groups.forEach(group => {
-                    const {name} = group.data;
-                    // Notify the group of the rejection.
-                    logger.info(`Emit ${requestType} of accessor ${path} to ${name}.`);
-                    notificationsManager.getInstance().to(name).emit(requestType, path);
-                });
+                const {accessor} = ((await _getRequest(entityId, path, type)).dataValues || {}).referenceData || {};
+                if (accessor) {
+                    const {entityId: entityIdSelf} = req.session.user;
+                    const {groups = []} = await require('vault-pam-premium').deleteRequest(entityIdSelf, accessor, path, entityId);
+                    groups.forEach(name => {
+                        // Notify the group of the rejection.
+                        logger.info(`Emit ${requestType} of accessor ${path} to ${name}.`);
+                        notificationsManager.getInstance().to(name).emit(requestType, path);
+                    });
+                    // Control Group requests operate differently in that it needs to be deleted, since the Vault accessor is revoked.
+                    logger.warn(`Deleting the record with accessor ${accessor} from database.`);
+                    deleteRequest({
+                        path,
+                        referenceData: {
+                            accessor
+                        }
+                    });
+                } else {
+                    reject({
+                        message: 'Request not found',
+                        statusCode: 404
+                    });
+                    return;
+                }
             }
             // Standard Request rejection.
             else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
@@ -329,44 +451,36 @@ const _rejectRequest = (req) => {
  * @returns {Object}
  */
 const _remapSecretsRequest = (secretsRequest) => {
-    if (secretsRequest.request_info) {
-        const {approved, authorizations, request_entity: requestEntity, request_path: requestPath} = secretsRequest.request_info.data;
-        const {accessor, creation_time: creationTime, token} = secretsRequest.wrap_info || {};
-        return {
-            accessor,
-            approved,
-            authorizations: authorizations ? authorizations.map((authorization) => {
-                const {entity_id: id, entity_name: name} = authorization;
-                return {
-                    id,
-                    name
-                };
-            }) : [],
-            creationTime,
-            isWrapped: true,
-            requestEntity,
-            requestPath,
-            token
-        };
-    } else if (secretsRequest.dataValues) {
-        const {createdAt: creationTime, requestData: requestPath, entityId: id, name, responses = [], type} = secretsRequest.dataValues;
-        return {
-            approved: responses.some((response) => response.type === REQUEST_STATUS.APPROVED),
-            creationTime,
-            authorizations: responses.filter((response) => [REQUEST_STATUS.APPROVED, REQUEST_STATUS.REJECTED].includes(response.type)),
-            isWrapped: false,
-            requestEntity: {
-                id,
-                name
-            },
-            requestPath,
-            responses,
-            type
-        };
+    const {createdAt: creationTime, entityId: id, name, path, referenceData = {}, responses = [], type} = secretsRequest.dataValues;
+    let approved, authorizations;
+    if (secretsRequest.requestInfoData) {
+        const {data} = secretsRequest.requestInfoData;
+        approved = !!data.approved;
+        authorizations = data.authorizations ? data.authorizations.map((authorization) => {
+            const {entity_id, entity_name} = authorization;
+            return {
+                entityId: entity_id,
+                name: entity_name
+            };
+        }) : [];
     } else {
-        logger.error(`Unknown request type: ${JSON.stringify(secretsRequest)}`);
-        return {};
+        approved = responses.some((response) => response.type === REQUEST_STATUS.APPROVED);
+        authorizations = responses.filter((response) => [REQUEST_STATUS.APPROVED, REQUEST_STATUS.REJECTED].includes(response.type));
     }
+    return {
+        approved,
+        creationTime,
+        authorizations,
+        isWrapped: type === 'control-group',
+        path,
+        referenceData,
+        requestEntity: {
+            id,
+            name
+        },
+        responses,
+        type
+    };
 };
 
 /* eslint-disable new-cap */
@@ -395,7 +509,7 @@ const router = require('express').Router()
      *   get:
      *     tags:
      *       - Requests
-     *     summary: Retrieves active requests
+     *     summary: Retrieves the session user's active requests.
      *     responses:
      *       200:
      *         description: Success.
@@ -404,75 +518,49 @@ const router = require('express').Router()
      */
     .get('/requests', async (req, res) => {
         logger.audit(req, res);
-        let requests = [];
-        if (req.app.locals.features['control-groups']) {
-            try {
-                const controlGroupRequests = await require('vault-pam-premium').getRequests(req);
-                requests = requests.concat(controlGroupRequests);
-            } catch (err) {
-                sendError(req, res, err);
-                return;
-            }
-        }
-        try {
-            const standardRequests = await _getRequests(req);
-            requests = requests.concat(standardRequests);
-        } catch (err) {
-            sendError(req, res, err);
-            return;
-        }
-        sendJsonResponse(req, res, requests);
-    })
-    /**
-     * @swagger
-     * /rest/secret/requests/all:
-     *   get:
-     *     tags:
-     *       - Requests
-     *     summary: Retrieves active requests and user's active requests
-     *     responses:
-     *       200:
-     *         description: Success.
-     *       403:
-     *         description: Unauthorized.
-     */
-    .get('/requests/all', async (req, res) => {
-        logger.audit(req, res);
-        let requests = [];
+        const requests = [];
         const promises = [];
-        if (req.app.locals.features['control-groups']) {
-            const {getRequests: premiumGetRequests, getActiveRequests} = require('vault-pam-premium');
-            // TODO CONTINUE HERE
-            const reqs = await _getRequests(req);
-            console.warn('hi: ', JSON.stringify(reqs));
-            Promise.all(reqs.filter((requestRecord) => requestRecord.dataValues.type === 'control-group').map((requestRecord) => {
-                const accessor = requestRecord.dataValues.referenceId;
-                const {entityId, token} = req.session.user;
-                return asyncRequest({
+        // Retrieve requests.
+        (await _getRequests(req)).forEach((requestRecord) => {
+            const {referenceData, type} = requestRecord.dataValues;
+            const {accessor} = referenceData || {};
+            const {entityId, token} = req.session.user;
+            if (accessor && type === 'control-group') {
+                // For Control Group requests, also validate the accessor.
+                const controlGroupRequest = asyncRequest({
                     ...initApiRequest(token, `${getDomain()}/v1/sys/control-group/request`, entityId, true),
                     method: 'POST',
                     json: {
                         accessor
                     }
                 });
-            })).then((results) => {
-                results.forEach((result) => {
-                    console.warn('RESULT: ', JSON.stringify(result.body));
+                controlGroupRequest.then((response) => {
+                    const requestData = response.body.data;
+                    if (!requestData) {
+                        logger.warn(`Invalid accessor ${accessor}. Deleting from database.`);
+                        deleteRequest({
+                            referenceData: {
+                                accessor
+                            }
+                        });
+                    } else {
+                        requests.push(_remapSecretsRequest({
+                            requestData,
+                            ...requestRecord
+                        }));
+                    }
                 });
-            });
-            promises.push(premiumGetRequests(req));
-            promises.push(getActiveRequests(req));
-        }
-        promises.push(getRequests(req));
+                promises.push(controlGroupRequest);
+            } else {
+                requests.push(_remapSecretsRequest(requestRecord));
+            }
+        });
         Promise.all(promises)
-            .then(results => {
-                results.forEach((currentRequests) => {
-                    requests = requests.concat(currentRequests);
-                });
-                sendJsonResponse(req, res, requests.map(_remapSecretsRequest));
+            .then(() => {
+                sendJsonResponse(req, res, requests);
             })
             .catch((err) => {
-                logger.error(err);
+                logger.error(err.toString(), req, res, null, err);
                 sendJsonResponse(req, res, [], 500);
             });
     })
@@ -512,7 +600,7 @@ const router = require('express').Router()
         const {entityId, path, type} = req.query;
         const {entityId: entityIdSelf} = req.session.user;
         if (!path || !type) {
-            sendError(req, res, 'Invalid request', 400);
+            sendError(req, res, 'Invalid request', null, 400);
             return;
         }
 
@@ -564,36 +652,34 @@ const router = require('express').Router()
     .post('/request', async (req, res) => {
         logger.audit(req, res);
         const {path, type} = req.body;
-        const {entityId} = req.session.user;
+        const {entityId, token: sessionToken} = req.session.user;
         const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = REQUEST_TYPES;
         try {
             const approverGroupPromises = [];
-            let requestData;
+            let referenceData = null;
             if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP) {
-                const {groups = [], data} = await require('vault-pam-premium').createRequest(req);
-                console.warn('data ', data);
-                console.warn('data string', JSON.stringify(data));
-
-                requestData = _remapSecretsRequest(await _injectEntityNameIntoRequestResponse(req, entityId, initiateRequest(req, {
-                    referenceId: data.accessor,
-                    requestData: path,
-                    type
-                })));
-                console.warn('request data: ', JSON.stringify(requestData));
-
+                // Need to generate an accessor and token to be stored as referenceData if it's a Control Group request.
+                const {groups = [], accessor, token} = await require('vault-pam-premium').createRequest(sessionToken, path);
+                referenceData = {
+                    accessor,
+                    token
+                };
                 groups.forEach((groupName) => {
                     approverGroupPromises.push(_getUsersByGroupName(req, groupName));
                 });
             } else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
-                requestData = _remapSecretsRequest(await _injectEntityNameIntoRequestResponse(req, entityId, initiateRequest(req, {
-                    requestData: path,
-                    type
-                })));
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             } else {
                 sendError(req, res, 'Invalid request', 400);
                 return;
             }
+
+            const requestData = _remapSecretsRequest(await _injectEntityNameIntoRequestResponse(req, entityId, initiateRequest(req, {
+                referenceData,
+                path,
+                type
+            })));
+
             const approvers = {};
             Promise.all(approverGroupPromises).then((groups) => {
                 // Notify self as well as groups.
@@ -651,70 +737,32 @@ const router = require('express').Router()
      */
     .post('/request/authorize', async (req, res) => {
         logger.audit(req, res);
-        let {accessor, entityId, path, type} = req.body;
-        const {groups} = req.session.user;
-        const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = REQUEST_TYPES;
-        //DYNAMIC SECRET
-        let dynamicRequest = null;
-        let leaseId = '';
-        let resolveDynamicSecret = type !== REQUEST_TYPES.DYNAMIC_REQUEST;
+        let {entityId, path, type} = req.body;
+
+        if (!entityId || !path) {
+            sendError(req, res, 'Invalid request');
+            return;
+        }
+        let responseData;
         try {
-            if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP && accessor) {
-                const {data} = await require('vault-pam-premium').authorizeRequest(req);
-                path = unwrap(safeWrap(data).request_info.data.request_path);
-                entityId = unwrap(safeWrap(data).request_info.data.request_entity.id);
-                if (entityId) {
-                    const remappedData = _remapSecretsRequest(data);
-                    logger.info(`Emit approve-request data ${JSON.stringify(remappedData)} to ${entityId} and the following groups: ${groups.join(', ')}.`);
-                    notificationsManager.getInstance().to(entityId).emit('approve-request', remappedData);
-                    groups.forEach((groupName) => {
-                        notificationsManager.getInstance().to(groupName).emit('approve-request', remappedData);
+            if (req.app.locals.features['control-groups'] && type === REQUEST_TYPES.CONTROL_GROUP) {
+                responseData = await _authorizeControlGroupRequest(req, entityId, path);
+            } else {
+                responseData = await _authorizeRequest(req, entityId, path);
+            }
+            _getUserByEntityId(req, entityId).then((user) => {
+                if (user.metadata && user.metadata.email) {
+                    sendMailFromTemplate(req, 'approve-request', {
+                        to: user.metadata.email,
+                        secretsPath: path.replace('/data/', '/')
                     });
                 }
-            } else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
-                const isApprover = await _checkIfApprover(req);
-                if (isApprover) {
-                    if (type === DYNAMIC_REQUEST) {
-                        const {body} = await createCredential(req);
-                        if (body.lease_id) {
-                            resolveDynamicSecret = true;
-                            dynamicRequest = body.data;
-                            leaseId = body.lease_id;
-                        }
-                    }
-                    const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path, leaseId));
-                    const {dataValues = {}} = data;
-                    path = dataValues.requestData;
-                    entityId = dataValues.entityId;
-                    const remappedData = _remapSecretsRequest(data);
-                    logger.info(`Emit approve-request data ${JSON.stringify(remappedData)} to ${entityId} and pam-approvers.`);
-                    notificationsManager.getInstance().to(entityId).emit('approve-request', remappedData);
-                    notificationsManager.getInstance().to('pam-approver').emit('approve-request', remappedData);
-                } else {
-                    sendError(req.originalUrl, res, 'Unauthorized', 403);
-                    return;
-                }
-            } else {
-                sendError(req, res, 'Invalid request', 400);
-                return;
-            }
-            if (entityId && path && resolveDynamicSecret) {
-                _getUserByEntityId(req, entityId).then((user) => {
-                    if (user.metadata && user.metadata.email) {
-                        sendMailFromTemplate(req, 'approve-request', {
-                            to: user.metadata.email,
-                            secretsPath: path.replace('/data/', '/')
-                        });
-                    }
-                });
-            }
+            });
         } catch (err) {
             sendError(req, res, err.message, null, err.statusCode);
             return;
         }
-        sendJsonResponse(req, res, {
-            status: 'ok'
-        });
+        sendJsonResponse(req, res, responseData);
     })
     /**
      * @swagger
@@ -754,7 +802,7 @@ const router = require('express').Router()
                 const approvedRequests = results[0];
                 const secrets = (results[1] || {}).body;
                 if (Array.isArray(approvedRequests) && secrets) {
-                    const isApproved = approvedRequests.some((approvedRequest) => approvedRequest.dataValues.requestData === path);
+                    const isApproved = approvedRequests.some((approvedRequest) => approvedRequest.dataValues.path === path);
                     if (isApproved) {
                         sendJsonResponse(req, res, secrets);
                     } else {
@@ -798,6 +846,7 @@ const router = require('express').Router()
         logger.audit(req, res);
         let result;
         try {
+            //TODO CONTINUE HERE!
             result = await require('vault-pam-premium').unwrapRequest(req);
             (result.groups || []).forEach((groupName) => {
                 logger.info(`Emit read-approved-request accessor ${result.accessor} to ${groupName}.`);

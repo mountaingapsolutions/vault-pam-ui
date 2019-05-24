@@ -1,10 +1,10 @@
 const request = require('request');
 const {initApiRequest, getDomain, sendError, unwrapData} = require('services/utils');
-const RequestController = require('services/controllers/Request');
+//const RequestController = require('services/controllers/Request');
 const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
-const {
-    getRequests
-} = require('services/routes/standardRequestService');
+// const {
+//     getRequests
+// } = require('services/routes/standardRequestService');
 
 /**
  * Get dynamic engine roles.
@@ -143,18 +143,18 @@ const router = require('express').Router()
         try {
             const response = await _getLease(req);
             const leaseKeys = ((response.body || {}).data || {}).keys || [];
-            const dbRequests = await getRequests(req, [REQUEST_STATUS.OPENED]);
+            //const dbRequests = await getRequests(req, [REQUEST_STATUS.OPENED]);
             let mappedData = {};
-            leaseKeys.forEach(key => {
-                const dataInDB = dbRequests.find(dbReq => {
-                    const isLease = (dbReq.engineType || '').split('/')[1] === key;
-                    const isDynamicRequest = dbReq.type === REQUEST_TYPES.DYNAMIC_REQUEST;
-                    const isSameMount = dbReq.requestData === enginePath;
-                    return isLease && isDynamicRequest && isSameMount;
-                });
-                const {id, requesterName} = (dataInDB || {}).dataValues || {};
-                mappedData[key] = {requestId: id, leaseId: `${mount}/creds/${role}/${key}`, requesterName};
-            });
+            // leaseKeys.forEach(key => {
+            //     const dataInDB = dbRequests.find(dbReq => {
+            //         const isLease = (dbReq.engineType || '').split('/')[1] === key;
+            //         const isDynamicRequest = dbReq.type === REQUEST_TYPES.DYNAMIC_REQUEST;
+            //         const isSameMount = dbReq.requestData === enginePath;
+            //         return isLease && isDynamicRequest && isSameMount;
+            //     });
+            //     const {id, requesterName} = (dataInDB || {}).dataValues || {};
+            //     mappedData[key] = {requestId: id, leaseId: `${mount}/creds/${role}/${key}`, requesterName};
+            // });
             response.body.data = mappedData;
             res.status(response.statusCode).json(response.body);
         } catch (err) {
@@ -189,7 +189,7 @@ const router = require('express').Router()
         const {lease_id, requestId} = req.body;
         try {
             const response = await _revokeLease(lease_id);
-            requestId && await RequestController.updateDataById(requestId, {status: REQUEST_STATUS.REVOKED, engineType: null});
+            //requestId && await RequestController.updateDataById(requestId, {status: REQUEST_STATUS.REVOKED, engineType: null});
             res.status(response.statusCode).json(response.body);
         } catch (err) {
             sendError(req.originalUrl, res, err);
@@ -224,7 +224,7 @@ const router = require('express').Router()
         const {requestId, token} = req.body;
         try {
             const response = await unwrapData(token);
-            await RequestController.updateDataById(requestId, {status: REQUEST_STATUS.OPENED});
+            //await RequestController.updateDataById(requestId, {status: REQUEST_STATUS.OPENED});
             res.status(response.statusCode).json(response.body);
         } catch (err) {
             sendError(req.originalUrl, res, err.message, err.statusCode);

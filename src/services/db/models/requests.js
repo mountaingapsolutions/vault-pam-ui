@@ -14,13 +14,13 @@ module.exports = class Requests extends Model {
                 type: DataTypes.STRING,
                 allowNull: false
             },
-            referenceId: {
-                type: DataTypes.STRING,
-                allowNull: true
-            },
-            requestData: {
+            path: {
                 type: DataTypes.STRING,
                 allowNull: false
+            },
+            referenceData: {
+                type: DataTypes.JSONB,
+                allowNull: true
             },
             type: {
                 type: DataTypes.STRING,

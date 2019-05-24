@@ -676,7 +676,7 @@ const _mapStateToProps = (state, ownProps) => {
             let referenceId = '';
             const requiresRequest = !capabilities.includes('read');
             let secondaryText = 'Request type: Dynamic Request';
-            const activeDynamicRequest = secretsRequests.find(request => request.requestPath === engineNameRole);
+            const activeDynamicRequest = secretsRequests.find(request => request.path === engineNameRole);
             if (activeDynamicRequest) {
                 const {approved, authorizations, creationTime, referenceId: refId, requestId: reqId} = activeDynamicRequest;
                 isApproved = approved;
@@ -719,8 +719,8 @@ const _mapStateToProps = (state, ownProps) => {
             if (requiresRequest) {
                 secondaryText = `Request type: ${isWrapped ? 'Control Groups' : 'Standard Request'}`;
                 // Check for any active requests.
-                const requestPath = `${mount}${isV2 ? '/data/' : '/'}${currentPath}`;
-                activeRequest = secretsRequests.find((request) => request.requestPath === requestPath);
+                const secretsPath = `${mount}${isV2 ? '/data/' : '/'}${currentPath}`;
+                activeRequest = secretsRequests.find((request) => request.path === secretsPath);
                 if (activeRequest) {
                     const {approved, authorizations, creationTime, token} = activeRequest;
                     isApproved = approved;
