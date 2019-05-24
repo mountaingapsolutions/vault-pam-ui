@@ -31,9 +31,8 @@ class Footer extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, activeVaultDomain, vaultVersion} = this.props;
-        const {SHOW_BUILD_NUMBER: showBuildNumber, EB_VERSION: buildNumber} = process.env;
-        console.info(showBuildNumber);
+        const {classes, activeVaultDomain, buildInfo, vaultVersion} = this.props;
+        const {showBuildNumber, buildNumber} = buildInfo;
         return (
             <div className={classes.footerRootContainer}>
                 <AppBar className={classes.footer} position='fixed'>
@@ -72,11 +71,13 @@ class Footer extends Component {
 
 Footer.defaultProps = {
     activeVaultDomain: '',
+    buildInfo: {},
     vaultVersion: ''
 };
 
 Footer.propTypes = {
     activeVaultDomain: PropTypes.string.isRequired,
+    buildInfo: PropTypes.object.isRequired,
     classes: PropTypes.object.isRequired,
     getConfig: PropTypes.func.isRequired,
     vaultVersion: PropTypes.string.isRequired
@@ -106,7 +107,8 @@ const _mapStateToProps = (state) => {
     const {systemReducer} = state;
     return {
         activeVaultDomain: systemReducer.config && systemReducer.config.domain,
-        vaultVersion: systemReducer.sealStatus && systemReducer.sealStatus.version
+        buildInfo: systemReducer.config && systemReducer.config.build,
+        vaultVersion: systemReducer.sealStatus && systemReducer.sealStatus.version,
     };
 };
 
