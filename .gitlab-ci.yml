@@ -10,6 +10,9 @@
 
 .python_template: &python_definition
   image: python:3.5
+  before_script:
+    - echo Installing AWS CLI
+    - pip install awscli --ignore-installed six
 
 stages:
   - test
@@ -75,9 +78,6 @@ deploy_enterprise:
   <<: *branch_definition
   variables:
     EB_APP_ENV: "development"
-  before_script:
-    - echo Installing AWS CLI
-    - pip install awscli --ignore-installed six
   script:
     - source build_vars
     - export BUILD_VERSION
@@ -90,6 +90,8 @@ deploy_enterprise:
     - aws elasticbeanstalk create-application-version --application-name $EB_APP_NAME --version-label $EB_VERSION --source-bundle S3Bucket=$S3_BUCKET,S3Key=$VERSIONED_ZIP_FILE --auto-create-application
     - echo Updating ElasticBeanstalk Application Version $EB_VERSION Environment $EB_APP_ENV
     - aws elasticbeanstalk update-environment --application-name $EB_APP_NAME --environment-name $EB_APP_ENV --version-label $EB_VERSION
+    - echo Updating ElasticBeanstalk Environment Variable
+    - eb setenv EB_VERSION=$EB_VERSION
     - echo Done! Deployed!
 
 deploy_standard:
@@ -98,9 +100,6 @@ deploy_standard:
   <<: *branch_definition
   variables:
     EB_APP_ENV: "development-standard"
-  before_script:
-    - echo Installing AWS CLI
-    - pip install awscli --ignore-installed six
   script:
     - source build_vars
     - export BUILD_VERSION
@@ -112,4 +111,6 @@ deploy_standard:
     - export VERSIONED_ZIP_FILE=$BUILD_VERSION.zip
     - echo Updating ElasticBeanstalk Application Version $EB_VERSION Environment $EB_APP_ENV
     - aws elasticbeanstalk update-environment --application-name $EB_APP_NAME --environment-name $EB_APP_ENV --version-label $EB_VERSION
+    - echo Updating ElasticBeanstalk Environment Variable
+    - eb setenv EB_VERSION=$EB_VERSION
     - echo Done! Deployed!
