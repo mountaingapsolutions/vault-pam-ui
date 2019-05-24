@@ -524,17 +524,10 @@ const router = require('express').Router()
         (await _getRequests(req)).forEach((requestRecord) => {
             const {referenceData, type} = requestRecord.dataValues;
             const {accessor} = referenceData || {};
-            const {entityId, token} = req.session.user;
             if (accessor && type === 'control-group') {
                 // For Control Group requests, also validate the accessor.
-                const controlGroupRequest = asyncRequest({
-                    ...initApiRequest(token, `${getDomain()}/v1/sys/control-group/request`, entityId, true),
-                    method: 'POST',
-                    json: {
-                        accessor
-                    }
-                });
-                controlGroupRequest.then((response) => {
+                const accessorValidationPromise = require('vault-pam-premium').validateAccessor(accessor);
+                accessorValidationPromise.then((response) => {
                     const requestData = response.body.data;
                     if (!requestData) {
                         logger.warn(`Invalid accessor ${accessor}. Deleting from database.`);
@@ -550,7 +543,7 @@ const router = require('express').Router()
                         }));
                     }
                 });
-                promises.push(controlGroupRequest);
+                promises.push(accessorValidationPromise);
             } else {
                 requests.push(_remapSecretsRequest(requestRecord));
             }
@@ -844,19 +837,31 @@ const router = require('express').Router()
      */
     .post('/unwrap', async (req, res) => {
         logger.audit(req, res);
-        let result;
         try {
             const {entityId, token} = req.session.user;
             const {path} = req.body;
-            const {token: unwrapToken} = ((await _getRequest(entityId, path)).dataValues || {}).referenceData || {};
+            const {referenceData, type} = (await _getRequest(entityId, path)).dataValues || {};
+            const {token: unwrapToken} = referenceData || {};
             if (path && unwrapToken) {
-                console.warn('UNWRAP FOR ', token, ' -- ', path, ' -- ', unwrapToken);
-                result = await require('vault-pam-premium').unwrapRequest(token, path, unwrapToken);
-                (result.body.groups || []).forEach((groupName) => {
-                    logger.info(`Emit read-approved-request accessor ${result.accessor} to ${groupName}.`);
-                    notificationsManager.getInstance().to(groupName).emit('read-approved-request', path);
+                const response = await asyncRequest({
+                    ...initApiRequest(token, `${getDomain()}/v1/sys/wrapping/unwrap`, entityId, true),
+                    method: 'POST',
+                    json: {
+                        token: unwrapToken
+                    }
                 });
-                sendJsonResponse(req, res, result.body, result.statusCode);
+                if (response.body) {
+                    if (req.app.locals.features['control-groups'] && type === REQUEST_TYPES.CONTROL_GROUP) {
+                        const groups = await require('vault-pam-premium').getApproverGroupsByPath(path);
+                        (groups || []).forEach((groupName) => {
+                            logger.info(`Emit read-approved-request path ${path} to ${groupName}.`);
+                            notificationsManager.getInstance().to(groupName).emit('read-approved-request', path);
+                        });
+                    }
+                    sendJsonResponse(req, res, response.body, response.statusCode);
+                } else {
+                    sendError(req, res, 'Invalid request');
+                }
             } else {
                 sendError(req, res, 'Invalid request');
             }
