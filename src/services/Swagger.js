@@ -4,11 +4,11 @@ const swaggerJSDoc = require('swagger-jsdoc');
 
 //swagger-ui-express custom options
 const disableAuthorizePlugin = () => {
-    return {
+    return typeof localStorage !== undefined && localStorage.getItem('vault-token') !== null ? {
         wrapComponents: {
             authorizeBtn: () => () => false
         }
-    };
+    } : null;
 };
 
 const hideOperationsUntilAuthorized = () => {
@@ -17,9 +17,7 @@ const hideOperationsUntilAuthorized = () => {
             operation: (Ori, system) => (props) => {
                 const isOperationSecured = !!props.operation.get('security').size;
                 const isOperationAuthorized = props.operation.get('isAuthorized');
-                const isAuthenticated = typeof localStorage !== undefined &&
-                    localStorage.getItem('vault-token');
-                if (!isOperationSecured || isOperationAuthorized && isAuthenticated) {
+                if (!isOperationSecured || isOperationAuthorized) {
                     return system.React.createElement(Ori, props);
                 }
                 return null;
@@ -36,7 +34,7 @@ const options = {
             hideOperationsUntilAuthorized
         ],
         onComplete: () => {
-            if (window && window.ui && typeof localStorage !== undefined) {
+            if (window && window.ui && typeof localStorage !== undefined && localStorage.getItem('vault-token') !== null ) {
                 window.ui.authActions.authorize({
                     'x-vault-token': {
                         name: 'x-vault-token',
