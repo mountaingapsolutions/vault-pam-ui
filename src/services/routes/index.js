@@ -2,6 +2,7 @@ const chalk = require('chalk');
 const request = require('request');
 const swaggerUi = require('swagger-ui-express');
 const {options, swaggerDoc} = require('services/Swagger');
+const {router: auditServiceRouter} = require('services/routes/auditService');
 const {router: secretsServiceRouter} = require('services/routes/secretsService');
 const {router: userServiceRouter} = require('services/routes/userService');
 const {router: requestServiceRouter} = require('services/routes/requestService');
@@ -44,9 +45,11 @@ const api = (req, res) => {
  */
 const config = (req, res) => {
     _disableCache(res);
+    const {SHOW_BUILD_NUMBER: showBuildNumber, EB_VERSION: buildNumber} = process.env;
     sendJsonResponse(req, res, {
+        build: {showBuildNumber, buildNumber},
         domain: process.env.VAULT_DOMAIN,
-        features: req.app.locals.features || {}
+        features: req.app.locals.features || {},
     });
 };
 
@@ -144,11 +147,11 @@ const authenticatedRoutes = require('express').Router()
                         sendJsonResponse(req, res, body, response.statusCode);
                         return;
                     }
-                    const {entity_id: entityId, id: clientToken, meta = {}} = body.data || {};
+                    const {display_name: displayName, entity_id: entityId, id: clientToken, meta} = body.data || {};
                     setSessionData(req, {
                         token: clientToken,
                         entityId,
-                        username: meta.username
+                        username: (meta || {}).username || displayName
                     });
                     res.cookie('entity_id', entityId, {
                         httpOnly: true
@@ -176,6 +179,7 @@ const authenticatedRoutes = require('express').Router()
             }
         }
     })
+    .use('/audit', auditServiceRouter)
     .use('/user', userServiceRouter)
     .use('/secret', requestServiceRouter)
     .use('/secrets', secretsServiceRouter)
@@ -259,11 +263,11 @@ const _sendTokenValidationResponse = (token, req, res) => {
         }
         try {
             if (!body.errors) {
-                const {entity_id: entityId, meta = {}} = body.data || {};
+                const {display_name: displayName, entity_id: entityId, meta} = body.data || {};
                 setSessionData(req, {
                     token,
                     entityId,
-                    username: meta.username
+                    username: (meta || {}).username || displayName
                 });
                 res.cookie('entity_id', entityId, {
                     httpOnly: true

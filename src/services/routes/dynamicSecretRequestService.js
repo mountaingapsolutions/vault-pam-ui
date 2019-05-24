@@ -5,6 +5,8 @@ const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
 // const {
 //     getRequests
 // } = require('services/routes/standardRequestService');
+const logger = require('services/logger');
+const addRequestId = require('express-request-id')();
 
 /**
  * Get dynamic engine roles.
@@ -110,6 +112,7 @@ const _revokeLease = lease_id => {
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
+    .use(addRequestId)
     /**
      * @swagger
      * /rest/dynamic/lease:
@@ -138,6 +141,7 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .get('/lease', async (req, res) => {
+        logger.audit(req, res);
         const {mount, role} = req.query;
         const enginePath = `${mount}/${role}`;
         try {
@@ -186,6 +190,7 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .put('/revoke', async (req, res) => {
+        logger.audit(req, res);
         const {lease_id, requestId} = req.body;
         try {
             const response = await _revokeLease(lease_id);
@@ -221,6 +226,7 @@ const router = require('express').Router()
      */
     //TODO CONSOLIDATE UNWRAPPING OF CONTROL GROUPS AND DYNAMIC SECRET
     .post('/unwrap', async (req, res) => {
+        logger.audit(req, res);
         const {requestId, token} = req.body;
         try {
             const response = await unwrapData(token);

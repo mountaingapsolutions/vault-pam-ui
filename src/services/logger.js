@@ -47,7 +47,9 @@ const _hashObject = (obj) => {
                 // eslint-disable-next-line new-cap
                 return typeof prop === 'string' ? cryptoJs.HmacSHA256(obj[key], apiToken).toString(cryptoJs.enc.Hex) : prop;
             }) :
-                hashedObject[key] = obj[key];
+                objProp !== null && typeof objProp === 'object' && objProp.constructor === Object && Object.entries(objProp).length > 0 ?
+                    hashedObject[key] = _hashObject(objProp)
+                    : hashedObject[key] = obj[key];
     });
     return hashedObject;
 };
@@ -57,26 +59,44 @@ const _hashObject = (obj) => {
  *
  * @private
  * @param {string} level - The log level.
- * @param {*} [data] - The data to log.
+ * @param {*} data - The data to log.
+ * @returns {Object}
+ */
+const _log = (level, data) => {
+    const logObject = typeof data === 'object' ? data : {
+        message: data
+    };
+
+    _logger.log({
+        ...logObject,
+        level
+    });
+    return logObject;
+};
+
+/**
+ * Audit logging method.
+ *
+ * @private
  * @param {Object} [req] - The Express req object.
  * @param {Object} [res] - The Express res object.
  * @param {Object} [response] the response object
  * @param {Object} [error] the error object
  * @returns {Object}
  */
-const _log = (level, data, req, res, response, error) => {
-    const logObject = typeof data === 'object' ? data : {
-        message: data
+const _logAudit = (req, res, response, error) => {
+    const logObject = {
+        message: response ? 'response' : error ? 'error' : 'request'
     };
 
     if (req) {
         const {method, originalUrl, params, query, session} = req;
         logObject.method = method;
         logObject.path = originalUrl;
-        if (params) {
+        if (params && Object.entries(params).length > 0) {
             logObject.params = params;
         }
-        if (query) {
+        if (query && Object.entries(query).length > 0) {
             logObject.query = query;
         }
         if (session && session.user) {
@@ -90,9 +110,11 @@ const _log = (level, data, req, res, response, error) => {
     }
 
     if (response) {
-        const {data: responseData} = response;
+        const {data: responseData, body} = response;
         if (responseData) {
             logObject.response = _hashObject(responseData);
+        } else if (body) {
+            logObject.body = _hashObject(body);
         } else {
             logObject.response = response;
         }
@@ -102,39 +124,23 @@ const _log = (level, data, req, res, response, error) => {
         logObject.error = error;
     }
 
-    logObject.level = level;
-
     _logger.log({
-        ...logObject
+        ...logObject,
+        level: 'audit'
     });
     return logObject;
-};
-
-/**
- * Audit logging method.
- *
- * @private
- * @param {string} level - The log level.
- * @param {Object} [req] - The Express req object.
- * @param {Object} [res] - The Express res object.
- * @param {Object} [response] the response object
- * @param {Object} [error] the error object
- * @returns {Object}
- */
-const _logAudit = (level, req, res, response, error) => {
-    return _log(level, response ? 'response' : error ? 'error' : 'request', req, res, response, error);
 };
 
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
     .post('/', async (req, res) => {
-        _logAudit('audit', req, res);
-        res.json(_log(req.body.level || 'info', req.body, req));
+        _logAudit(req, res);
+        res.json(_log(req.body.level || 'info', req.body));
     });
 
 module.exports = {
-    audit: _logAudit.bind(this, 'audit'),
+    audit: _logAudit.bind(this),
     info: _log.bind(this, 'info'),
     log: _log.bind(this, 'info'),
     warn: _log.bind(this, 'warn'),
