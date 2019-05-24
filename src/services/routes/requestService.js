@@ -58,10 +58,14 @@ const _authorizeRequest = async (req, entityId, path) => {
         }
         if (type === REQUEST_TYPES.DYNAMIC_REQUEST) {
             // TODO - Uncomment this out and continue from here!
-            // const {body} = await createCredential(req);
-            // if (body.lease_id) {
-            //     dynamicRequest = body.data;
-            //     leaseId = body.lease_id;
+            // if (type === DYNAMIC_REQUEST) {
+            //     const {body} = await createCredential(req);
+            //     if (body.lease_id) {
+            //         resolveDynamicSecret = true;
+            //         const leaseWrapToken = body.data && await _wrapData(req, body.data);
+            //         const leaseId = body.lease_id.split('/');
+            //         dynamicSecretRefId = leaseWrapToken && leaseId[leaseId.length - 1] && `${leaseWrapToken}/${leaseId[leaseId.length - 1]}`;
+            //     }
             // }
         }
         const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path));
@@ -481,6 +485,31 @@ const _remapSecretsRequest = (secretsRequest) => {
         responses,
         type
     };
+};
+
+
+/**
+ * Helper method for wrapping data.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @param {Object} data The data object to be wrapped.
+ * @returns {Promise}
+ */
+const _wrapData = async (req, data) => {
+    const {VAULT_API_TOKEN: apiToken} = process.env;
+    let apiRequest = initApiRequest(apiToken, `${getDomain()}/v1/sys/wrapping/wrap`, true);
+    // TODO TTL is currently hard-coded. Have this be configurable.
+    apiRequest.headers['x-vault-wrap-ttl'] = 60000;
+    const response = await asyncRequest({
+        ...apiRequest,
+        method: 'POST',
+        json: data
+    });
+    if (response.body) {
+        return response.body.wrap_info.token;
+    }
+    throw new Error('Invalid request');
 };
 
 /* eslint-disable new-cap */
