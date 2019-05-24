@@ -62,6 +62,7 @@ upload:
     - echo BUILD_VERSION=$BUILD_VERSION >> build_vars
     - echo VERSIONED_ZIP_FILE=$VERSIONED_ZIP_FILE >> build_vars
     - echo S3_BUCKET=$S3_BUCKET >> build_vars
+    - echo AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION >> build_vars
     - echo EB_APP_NAME=$EB_APP_NAME >> build_vars
     - echo Renaming $ZIP_FILE to $VERSIONED_ZIP_FILE
     - mv $ZIP_FILE $VERSIONED_ZIP_FILE
