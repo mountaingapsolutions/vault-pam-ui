@@ -50,6 +50,7 @@ const _authorizeControlGroupRequest = async (req, entityId, path) => {
  */
 const _authorizeRequest = async (req, entityId, path) => {
     const isApprover = await _checkIfApprover(req);
+    const {engineType} = req.body;
     let remappedData;
     if (isApprover) {
         const {type} = (await getRequest({
@@ -59,15 +60,18 @@ const _authorizeRequest = async (req, entityId, path) => {
         if (!type) {
             throw new Error('Request not found');
         }
+        //DYNAMIC SECRET
+        let dynamicSecretRefData = null;
         if (type === REQUEST_TYPES.DYNAMIC_REQUEST) {
             // TODO - Uncomment this out and continue from here!
-            // const {body} = await createCredential(req);
-            // if (body.lease_id) {
-            //     dynamicRequest = body.data;
-            //     leaseId = body.lease_id;
-            // }
+            const {body} = await createCredential(req);
+            if (body.lease_id) {
+                const {data, lease_id} = body;
+                const wraptoken = data && await wrapData(data);
+                dynamicSecretRefData = {engineType, wraptoken, leaseId: lease_id};
+            }
         }
-        const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path));
+        const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path, dynamicSecretRefData));
         remappedData = _remapSecretsRequest(data);
         logger.info(`Emit approve-request data ${JSON.stringify(remappedData)} to ${entityId} and pam-approvers.`);
         notificationsManager.getInstance().to(entityId).emit('approve-request', remappedData);
@@ -651,7 +655,7 @@ const router = require('express').Router()
      */
     .post('/request', async (req, res) => {
         logger.audit(req, res);
-        const {path, type} = req.body;
+        const {engineType, path, type} = req.body;
         const {entityId, token: sessionToken} = req.session.user;
         const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = REQUEST_TYPES;
         try {
@@ -662,12 +666,16 @@ const router = require('express').Router()
                 const {groups = [], accessor, token} = await require('vault-pam-premium').createRequest(sessionToken, path);
                 referenceData = {
                     accessor,
-                    token
+                    token,
+                    engineType //TODO IS THIS NEED HERE? RECHECK
                 };
                 groups.forEach((groupName) => {
                     approverGroupPromises.push(_getUsersByGroupName(req, groupName));
                 });
             } else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
+                referenceData = {
+                    engineType
+                };
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             } else {
                 sendError(req, res, 'Invalid request', 400);

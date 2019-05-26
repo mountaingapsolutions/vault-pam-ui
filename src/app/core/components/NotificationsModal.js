@@ -328,7 +328,7 @@ class NotificationsModal extends Component {
                                     }
                                 }).map((requestData, i) => {
                                     const {CONTROL_GROUP, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
-                                    const {approved, authorizations, creationTime, isWrapped, path, requestEntity = {}, type} = requestData;
+                                    const {approved, authorizations, creationTime, isWrapped, path, requestEntity = {}, type, referenceData = {}} = requestData;
                                     const {id, name} = requestEntity;
                                     const requestType = isWrapped ? 'Control Groups' : type === STANDARD_REQUEST ? 'Standard Request' : 'Dynamic Request';
                                     const isOwnRequest = id === entityIdSelf;
@@ -387,7 +387,7 @@ class NotificationsModal extends Component {
                                                             <Tooltip aria-label='Approve' title='Approve'>
                                                                 <IconButton
                                                                     color='primary'
-                                                                    onClick={() => authorizeRequest(path, id, isWrapped ? CONTROL_GROUP : type)}>
+                                                                    onClick={() => authorizeRequest(path, id, isWrapped ? CONTROL_GROUP : type, referenceData.engineType)}>
                                                                     <CheckIcon/>
                                                                 </IconButton>
                                                             </Tooltip>}
@@ -483,7 +483,7 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        authorizeRequest: (path, entityId, type) => dispatch(secretAction.authorizeRequest(path, entityId, type)),
+        authorizeRequest: (path, entityId, requestType, engineType) => dispatch(secretAction.authorizeRequest(path, entityId, requestType, engineType)),
         deleteRequest: (path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => dispatch(secretAction.deleteRequest(path, entityId, type))
     };
 };

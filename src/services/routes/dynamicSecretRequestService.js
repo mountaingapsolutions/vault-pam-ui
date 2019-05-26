@@ -1,10 +1,11 @@
 const request = require('request');
 const {initApiRequest, getDomain, sendError, unwrapData} = require('services/utils');
 //const RequestController = require('services/controllers/Request');
+const {revokeRequest} = require('services/db/controllers/requestsController');
 const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
-// const {
-//     getRequests
-// } = require('services/routes/standardRequestService');
+const {
+    getRequests
+} = require('services/db/controllers/requestsController');
 const logger = require('services/logger');
 const addRequestId = require('express-request-id')();
 
@@ -41,14 +42,14 @@ const getDynamicEngineRoles = engineName => {
 const createCredential = req => {
     return new Promise((resolve, reject) => {
         const domain = getDomain();
-        const {path} = req.body;
+        const {path, reqMethod} = req.body;
         const engineRole = path.split('/');
         //TODO what token to use API or user?
         const {VAULT_API_TOKEN: apiToken} = process.env;
         const apiUrl = `${domain}/v1/${engineRole[0]}/creds/${engineRole[1]}`;
         request({
             ...initApiRequest(apiToken, apiUrl),
-            method: 'POST'
+            method: reqMethod
         }, (error, response) => {
             if (error) {
                 reject(error);
@@ -147,18 +148,21 @@ const router = require('express').Router()
         try {
             const response = await _getLease(req);
             const leaseKeys = ((response.body || {}).data || {}).keys || [];
-            //const dbRequests = await getRequests(req, [REQUEST_STATUS.OPENED]);
+            const dbRequests = await getRequests({});
             let mappedData = {};
-            // leaseKeys.forEach(key => {
-            //     const dataInDB = dbRequests.find(dbReq => {
-            //         const isLease = (dbReq.engineType || '').split('/')[1] === key;
-            //         const isDynamicRequest = dbReq.type === REQUEST_TYPES.DYNAMIC_REQUEST;
-            //         const isSameMount = dbReq.requestData === enginePath;
-            //         return isLease && isDynamicRequest && isSameMount;
-            //     });
-            //     const {id, requesterName} = (dataInDB || {}).dataValues || {};
-            //     mappedData[key] = {requestId: id, leaseId: `${mount}/creds/${role}/${key}`, requesterName};
-            // });
+            leaseKeys.forEach(key => {
+                const dataInDB = dbRequests.find(dbReq => {
+                    const {path, referenceData = {}, type} = dbReq.dataValues;
+                    const leaseId = ((referenceData || {}).leaseId || '').split('/') || [];
+                    const isLease = leaseId[leaseId.length - 1] === key;
+                    const isDynamicRequest = type === REQUEST_TYPES.DYNAMIC_REQUEST;
+                    const isSameMount = path === enginePath;
+                    return isLease && isDynamicRequest && isSameMount;
+                });
+                //TODO INCLUDE REQUESTER NAME
+                const {id, requesterName, entityId, path} = (dataInDB || {}).dataValues || {};
+                mappedData[key] = {requestId: id, leaseId: `${mount}/creds/${role}/${key}`, requesterName: entityId, entityId, path};
+            });
             response.body.data = mappedData;
             res.status(response.statusCode).json(response.body);
         } catch (err) {
@@ -191,10 +195,12 @@ const router = require('express').Router()
      */
     .put('/revoke', async (req, res) => {
         logger.audit(req, res);
-        const {lease_id, requestId} = req.body;
+        const {leaseId, requestId, entityId, path} = req.body;
         try {
-            const response = await _revokeLease(lease_id);
+            const response = await _revokeLease(leaseId);
+            //TODO UPDATE DB FOR REVOKED RECORD
             //requestId && await RequestController.updateDataById(requestId, {status: REQUEST_STATUS.REVOKED, engineType: null});
+            //requestId && await revokeRequest({id: requestId, entityId});
             res.status(response.statusCode).json(response.body);
         } catch (err) {
             sendError(req.originalUrl, res, err);

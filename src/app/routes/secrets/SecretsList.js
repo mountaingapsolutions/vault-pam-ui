@@ -191,13 +191,14 @@ class SecretsList extends Component {
      *
      * @param {string} mount The mount point.
      * @param {string} name The name of the secret to request.
-     * @param {string} type The type of secret being requested.
+     * @param {string} requestType The type of secret being requested.
+     * @param {string} engineType The engine type.
      * @private
      */
-    _openRequestModal(mount, name, type) {
+    _openRequestModal(mount, name, requestType, engineType) {
         const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
         let typeLabel = '';
-        switch (type) {
+        switch (requestType) {
             case CONTROL_GROUP:
                 typeLabel = 'Control Group';
                 break;
@@ -216,7 +217,7 @@ class SecretsList extends Component {
                 onClose: (confirm) => {
                     if (confirm) {
                         const {requestSecret} = this.props;
-                        requestSecret(name, this._getVersionFromMount(mount), type);
+                        requestSecret(name, this._getVersionFromMount(mount), requestType, engineType);
                     }
                     this.setState({
                         showConfirmationModal: false
@@ -378,7 +379,7 @@ class SecretsList extends Component {
         const {match, openApprovedSecret, setSecretsData} = this.props;
         const {params} = match;
         const {mount} = params;
-        const {isApproved, isPending, canOpen, canDelete, name, isWrapped, requiresRequest, secretsData, secretsPath, wrapInfoToken} = secret;
+        const {isApproved, isPending, canOpen, canDelete, engineType, name, isWrapped, requiresRequest, secretsData, secretsPath, wrapInfoToken} = secret;
         const isFolderPath = name.endsWith('/');
         const {CONTROL_GROUP, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
         if (isFolderPath) {
@@ -412,11 +413,11 @@ class SecretsList extends Component {
             </Tooltip>;
         } else if (requiresRequest) {
             const requestAccessLabel = isPending ? 'Cancel Request' : 'Request Access';
-            const type = isWrapped ? CONTROL_GROUP : STANDARD_REQUEST;
+            const requestType = isWrapped ? CONTROL_GROUP : STANDARD_REQUEST;
             return <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
                 <IconButton
                     aria-label={requestAccessLabel}
-                    onClick={() => isPending ? this._openRequestCancellationModal(mount, name, type) : this._openRequestModal(mount, name, type)}>
+                    onClick={() => isPending ? this._openRequestCancellationModal(mount, name, requestType) : this._openRequestModal(mount, name, requestType, engineType)}>
                     <LockIcon/>
                 </IconButton>
             </Tooltip>;
@@ -444,8 +445,7 @@ class SecretsList extends Component {
      * @private
      */
     _revokeLease(item) {
-        const {leaseId, requestId} = item;
-        this.props.revokeLease(leaseId, requestId);
+        this.props.revokeLease(item);
     }
 
     /**
@@ -475,7 +475,7 @@ class SecretsList extends Component {
         } else if (secretsList.length > 0) {
             return <List>{
                 secretsList.map((secret, i) => {
-                    const {authorizationsText, canOpen, canUpdate, isApproved, isPending, isWrapped, name, requiresRequest, secondaryText, secretsData, secretsPath, url, wrapInfoToken} = secret;
+                    const {authorizationsText, canOpen, canUpdate, engineType, isApproved, isPending, isWrapped, name, requiresRequest, secondaryText, secretsData, secretsPath, url, wrapInfoToken} = secret;
                     return <ListItem button component={(props) => <Link to={url} {...props} onClick={event => {
                         event.preventDefault();
                         if (name.includes('/')) {
@@ -496,11 +496,11 @@ class SecretsList extends Component {
                                     openApprovedSecret(name, this._getVersionFromMount(mount));
                                 }
                             } else if (requiresRequest) {
-                                const type = isWrapped ? CONTROL_GROUP : STANDARD_REQUEST;
+                                const requestType = isWrapped ? CONTROL_GROUP : STANDARD_REQUEST;
                                 if (isPending) {
-                                    this._openRequestCancellationModal(mount, name, type);
+                                    this._openRequestCancellationModal(mount, name, requestType);
                                 } else {
-                                    this._openRequestModal(mount, name, type);
+                                    this._openRequestModal(mount, name, requestType, engineType);
                                 }
                             }
                         }
@@ -531,7 +531,7 @@ class SecretsList extends Component {
             //DYNAMIC SECRET
             return <List>
                 {dynamicSecretRole.map((role, i) => {
-                    const {isApproved, isPending, requiresRequest, referenceId, requestId, role: engineRole, secondaryText} = role;
+                    const {engineType, isApproved, isPending, requiresRequest, referenceId, requestId, role: engineRole, secondaryText} = role;
                     return <ListItem button key={i} onClick={() => {
                         if (requiresRequest) {
                             if (isPending) {
@@ -539,7 +539,7 @@ class SecretsList extends Component {
                             } else if (isApproved) {
                                 this._openApprovedRequestModal(mount, engineRole, engineRole, referenceId, DYNAMIC_REQUEST, requestId);
                             } else {
-                                this._openRequestModal(mount, engineRole, DYNAMIC_REQUEST);
+                                this._openRequestModal(mount, engineRole, DYNAMIC_REQUEST, engineType);
                             }
                         } else {
                             getLeaseList(mount, engineRole);
@@ -693,6 +693,7 @@ const _mapStateToProps = (state, ownProps) => {
             return {
                 role,
                 engineNameRole,
+                engineType: type,
                 activeDynamicRequest,
                 isApproved,
                 requiresRequest,
@@ -739,6 +740,7 @@ const _mapStateToProps = (state, ownProps) => {
                 canDelete: capabilities.includes('delete'),
                 canOpen: capabilities.includes('read') && !name.endsWith('/') && !isWrapped,
                 canUpdate: capabilities.some(capability => capability === 'update' || capability === 'root'),
+                engineType: type,
                 isApproved,
                 isPending: !!activeRequest && !isApproved,
                 isWrapped,
@@ -851,13 +853,14 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
             return dispatch(secretAction.openApprovedSecret(fullPath));
         },
-        requestSecret: (name, version, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => {
+        requestSecret: (name, version, type = Constants.REQUEST_TYPES.STANDARD_REQUEST, engineType) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
             const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
             return new Promise((resolve, reject) => {
                 let requestData = {
+                    engineType,
                     path: fullPath,
                     type
                 };
@@ -875,10 +878,10 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                     .catch(reject);
             });
         },
-        revokeLease: (leaseId, requestId) => {
+        revokeLease: leaseData => {
             return new Promise((resolve, reject) => {
-                const data = leaseId.split('/');
-                dispatch(secretAction.revokeLease(leaseId, requestId))
+                const data = leaseData.leaseId.split('/');
+                dispatch(secretAction.revokeLease(leaseData))
                     .then(() => {
                         dispatch(secretAction.getLeaseList(data[0], data[2]))
                             .then(resolve)
