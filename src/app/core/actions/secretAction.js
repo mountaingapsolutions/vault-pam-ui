@@ -226,13 +226,12 @@ class SecretAction extends _Actions {
     /**
      * Unwraps a wrapped secret.
      *
-     * @param {string} name The secret name.
-     * @param {string} token The token to unwrap.
+     * @param {string} path Specifies the path of the approved secrets to unwrap.
      * @returns {function} Redux dispatch function.
      */
-    unwrapSecret(name, token) {
+    unwrapSecret(path) {
         return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/secret/unwrap', {
-            token
+            path
         });
     }
 

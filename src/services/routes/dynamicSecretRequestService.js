@@ -1,5 +1,5 @@
 const request = require('request');
-const {initApiRequest, getDomain, sendError, unwrapData} = require('services/utils');
+const {initApiRequest, getDomain, sendError} = require('services/utils');
 //const RequestController = require('services/controllers/Request');
 const {revokeRequest} = require('services/db/controllers/requestsController');
 const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
@@ -204,42 +204,6 @@ const router = require('express').Router()
             res.status(response.statusCode).json(response.body);
         } catch (err) {
             sendError(req.originalUrl, res, err);
-        }
-    })
-    /**
-     * @swagger
-     * /rest/dynamic/unwrap:
-     *   post:
-     *     tags:
-     *       - Dynamic Secrets
-     *     summary: Unwrap Secret Lease.
-     *     requestBody:
-     *       required: true
-     *       content:
-     *         application/json:
-     *           schema:
-     *             type: object
-     *             properties:
-     *               requestId:
-     *                 type: string
-     *               token:
-     *                 type: string
-     *     responses:
-     *       200:
-     *         description: Success.
-     *       404:
-     *         description: Not found.
-     */
-    //TODO CONSOLIDATE UNWRAPPING OF CONTROL GROUPS AND DYNAMIC SECRET
-    .post('/unwrap', async (req, res) => {
-        logger.audit(req, res);
-        const {requestId, token} = req.body;
-        try {
-            const response = await unwrapData(token);
-            //await RequestController.updateDataById(requestId, {status: REQUEST_STATUS.OPENED});
-            res.status(response.statusCode).json(response.body);
-        } catch (err) {
-            sendError(req.originalUrl, res, err.message, err.statusCode);
         }
     });
 

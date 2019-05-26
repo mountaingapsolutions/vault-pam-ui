@@ -134,9 +134,9 @@ class NotificationsModal extends Component {
      */
     _renderRequestDetails(selectedRequest) {
         const {classes} = this.props;
-        const {approved, creationTime, path, requestEntity = {}, referenceData = {}} = selectedRequest;
-        const {accessor} = referenceData;
-        const {id, name} = requestEntity;
+        const {approved, creationTime, path, requestEntity, referenceData} = selectedRequest;
+        const {accessor} = referenceData || {};
+        const {id, name} = requestEntity || {};
         return <GridList cellHeight={'auto'} className={classes.listContainer} cols={2}>
             <ListItem alignItems='flex-start'>
                 <ListItemText
