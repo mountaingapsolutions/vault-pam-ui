@@ -110,6 +110,29 @@ const _revokeLease = lease_id => {
     });
 };
 
+/**
+ * Retrieves entity lists.
+ *
+ * @returns {Promise<void>}
+ */
+const _getEntityIdInfo = () => {
+    return new Promise((resolve, reject) => {
+        const domain = getDomain();
+        const {VAULT_API_TOKEN: apiToken} = process.env;
+        const apiUrl = `${domain}/v1/identity/entity/id?list=true`;
+        request({
+            ...initApiRequest(apiToken, apiUrl),
+            method: 'GET'
+        }, (error, response) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(response.body);
+            }
+        });
+    });
+};
+
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
@@ -149,6 +172,8 @@ const router = require('express').Router()
             const response = await _getLease(req);
             const leaseKeys = ((response.body || {}).data || {}).keys || [];
             const dbRequests = await getRequests({});
+            const {data = {}} = await _getEntityIdInfo();
+            const {key_info} = data;
             let mappedData = {};
             leaseKeys.forEach(key => {
                 const dataInDB = dbRequests.find(dbReq => {
@@ -159,11 +184,11 @@ const router = require('express').Router()
                     const isSameMount = path === enginePath;
                     return isLease && isDynamicRequest && isSameMount;
                 });
-                //TODO INCLUDE REQUESTER NAME - requesterName
                 if (dataInDB) {
                     const {id, entityId, path, responses} = dataInDB.dataValues;
                     const {entityId: approverId} = responses[0];
-                    mappedData[key] = {approverId, requestId: id, leaseId: `${mount}/creds/${role}/${key}`, requesterName: entityId, entityId, path};
+                    const {name} = key_info[entityId];
+                    mappedData[key] = {approverId, requestId: id, leaseId: `${mount}/creds/${role}/${key}`, requesterName: name, entityId, path};
                 }
             });
             response.body.data = mappedData;
