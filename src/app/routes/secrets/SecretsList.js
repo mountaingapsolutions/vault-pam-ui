@@ -105,14 +105,9 @@ class SecretsList extends Component {
      * @param {string} mount The mount point.
      * @param {string} currentPath The current path.
      * @param {string} name The name of the secret to open.
-     * @param {string} token The token to unwrap.
-     * @param {string} type The request type.
-     * @param {[number, string]} requestId The request id.
      * @private
      */
-    _openApprovedRequestModal(mount, currentPath, name, token, type = '', requestId = null) {
-        const {DYNAMIC_REQUEST} = Constants.REQUEST_TYPES;
-        const isDynamicSecret = DYNAMIC_REQUEST === type;
+    _openApprovedRequestModal(mount, currentPath, name) {
         this.setState({
             showConfirmationModal: true,
             confirmationModalData: {
@@ -123,8 +118,8 @@ class SecretsList extends Component {
                         showConfirmationModal: false
                     }, () => {
                         if (confirm) {
-                            const {unwrapSecret, unwrapDynamicSecret} = this.props;
-                            isDynamicSecret ? unwrapDynamicSecret(token, requestId) : unwrapSecret(name, this._getVersionFromMount(mount));
+                            const {unwrapSecret} = this.props;
+                            unwrapSecret(name, this._getVersionFromMount(mount));
                             this._toggleCreateUpdateSecretModal(`${mount}/${currentPath}`, 'read', true);
                         }
                     });
@@ -531,13 +526,13 @@ class SecretsList extends Component {
             //DYNAMIC SECRET
             return <List>
                 {dynamicSecretRole.map((role, i) => {
-                    const {engineType, isApproved, isPending, requiresRequest, referenceId, requestId, role: engineRole, secondaryText} = role;
+                    const {engineType, isApproved, isPending, requiresRequest, role: engineRole, secondaryText} = role;
                     return <ListItem button key={i} onClick={() => {
                         if (requiresRequest) {
                             if (isPending) {
                                 this._openRequestCancellationModal(mount, engineRole, DYNAMIC_REQUEST);
                             } else if (isApproved) {
-                                this._openApprovedRequestModal(mount, engineRole, engineRole, referenceId, DYNAMIC_REQUEST, requestId);
+                                this._openApprovedRequestModal(mount, engineRole, engineRole);
                             } else {
                                 this._openRequestModal(mount, engineRole, DYNAMIC_REQUEST, engineType);
                             }
@@ -639,7 +634,6 @@ SecretsList.propTypes = {
     secretsPaths: PropTypes.object,
     secretsRequests: PropTypes.array,
     setSecretsData: PropTypes.func.isRequired,
-    unwrapDynamicSecret: PropTypes.func.isRequired,
     unwrapSecret: PropTypes.func.isRequired
 };
 
@@ -673,20 +667,20 @@ const _mapStateToProps = (state, ownProps) => {
             const engineNameRole = mountData && `${mountData.name.slice(0, -1)}/${role}`;
             const {capabilities} = secretsPaths;
             let isApproved = false;
-            let referenceId = '';
+            let isOpened = false;
             const requiresRequest = !capabilities.includes('read');
             let secondaryText = 'Request type: Dynamic Request';
             const activeDynamicRequest = secretsRequests.find(request => request.path === engineNameRole);
             if (activeDynamicRequest) {
-                const {approved, authorizations, creationTime, referenceId: refId, requestId: reqId} = activeDynamicRequest;
-                isApproved = approved;
-                referenceId = refId;
+                const {approved, authorizations, creationTime, opened, requestId: reqId} = activeDynamicRequest;
+                isApproved = approved && !opened;
                 requestId = reqId;
-                if (approved) {
+                isOpened = opened;
+                if (isApproved) {
                     const namesList = authorizations.map((authorization) => authorization.name);
                     secondaryText = `Approved by ${namesList.join(', ')}.`;
                 }
-                if (creationTime) {
+                if (creationTime && !opened) {
                     secondaryText += ` (Requested at ${new Date(creationTime).toLocaleString()})`;
                 }
             }
@@ -694,14 +688,12 @@ const _mapStateToProps = (state, ownProps) => {
                 role,
                 engineNameRole,
                 engineType: type,
-                activeDynamicRequest,
                 isApproved,
                 requiresRequest,
                 name,
-                referenceId,
                 requestId,
                 secondaryText: requiresRequest ? secondaryText : 'Click to open list of active lease',
-                isPending: !!activeDynamicRequest && !isApproved
+                isPending: !!activeDynamicRequest && !isApproved && !isOpened
             };
         });
     } else {
@@ -890,13 +882,6 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
                             .then(resolve)
                             .catch(reject);
                     })
-                    .catch(reject);
-            });
-        },
-        unwrapDynamicSecret: (token, requestId) => {
-            return new Promise((resolve, reject) => {
-                dispatch(secretAction.unwrapDynamicSecret(token, requestId))
-                    .then(resolve)
                     .catch(reject);
             });
         }

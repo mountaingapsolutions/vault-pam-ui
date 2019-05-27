@@ -236,22 +236,6 @@ class SecretAction extends _Actions {
     }
 
     /**
-     * Unwraps a dynamic secret.
-     *
-     * @param {string} referenceId The token to unwrap.
-     * @param {number} requestId The request id.
-     * @returns {function} Redux dispatch function.
-     */
-    unwrapDynamicSecret(referenceId, requestId) {
-        //TODO SEPARATE WRAP ID AND LEASE ID IN NEW DB SCHEMA
-        const token = referenceId.split('/')[0];
-        return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/dynamic/unwrap', {
-            token,
-            requestId
-        });
-    }
-
-    /**
      * Encodes the path, excluding forward slash.
      *
      * @private

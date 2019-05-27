@@ -64,8 +64,8 @@ const _authorizeRequest = async (req, entityId, path) => {
             const {body} = await createCredential(req);
             if (body.lease_id) {
                 const {data, lease_id} = body;
-                const wraptoken = data && await _wrapData(req, data);
-                dynamicSecretRefData = {engineType, wraptoken, leaseId: lease_id};
+                const token = data && await _wrapData(req, data);
+                dynamicSecretRefData = {engineType, token, leaseId: lease_id};
             }
         }
         const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path, dynamicSecretRefData));
@@ -456,7 +456,7 @@ const _rejectRequest = (req) => {
  */
 const _remapSecretsRequest = (secretsRequest) => {
     const {createdAt: creationTime, entityId: id, name, path, referenceData = {}, responses = [], type} = secretsRequest.dataValues;
-    let approved, authorizations;
+    let approved, authorizations, opened;
     if (secretsRequest.requestInfoData) {
         const {data} = secretsRequest.requestInfoData;
         approved = !!data.approved;
@@ -469,6 +469,7 @@ const _remapSecretsRequest = (secretsRequest) => {
         }) : [];
     } else {
         approved = responses.some((response) => response.type === REQUEST_STATUS.APPROVED);
+        opened = responses.some((response) => response.type === REQUEST_STATUS.OPENED);
         authorizations = responses.filter((response) => [REQUEST_STATUS.APPROVED, REQUEST_STATUS.REJECTED].includes(response.type));
     }
     return {
@@ -476,6 +477,7 @@ const _remapSecretsRequest = (secretsRequest) => {
         creationTime,
         authorizations,
         isWrapped: type === 'control-group',
+        opened,
         path,
         referenceData,
         requestEntity: {
@@ -763,7 +765,6 @@ const router = require('express').Router()
      */
     .post('/request/authorize', async (req, res) => {
         logger.audit(req, res);
-        console.log('XXXXX = ' + JSON.stringify(req.body));
         let {entityId, path, type} = req.body;
 
         if (!entityId || !path) {
@@ -891,6 +892,8 @@ const router = require('express').Router()
                             logger.info(`Emit read-approved-request path ${path} to ${groupName}.`);
                             notificationsManager.getInstance().to(groupName).emit('read-approved-request', path);
                         });
+                    } else {
+                        //TODO DYNAMIC SECRET HERE UPDATE DB TO OPENED STATUS
                     }
                     sendJsonResponse(req, res, response.body, response.statusCode);
                 } else {

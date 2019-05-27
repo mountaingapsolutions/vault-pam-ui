@@ -159,9 +159,9 @@ const router = require('express').Router()
                     const isSameMount = path === enginePath;
                     return isLease && isDynamicRequest && isSameMount;
                 });
-                //TODO INCLUDE REQUESTER NAME
+                //TODO INCLUDE REQUESTER NAME - requesterName
                 if (dataInDB) {
-                    const {id, requesterName, entityId, path, responses} = dataInDB.dataValues;
+                    const {id, entityId, path, responses} = dataInDB.dataValues;
                     const {entityId: approverId} = responses[0];
                     mappedData[key] = {approverId, requestId: id, leaseId: `${mount}/creds/${role}/${key}`, requesterName: entityId, entityId, path};
                 }
