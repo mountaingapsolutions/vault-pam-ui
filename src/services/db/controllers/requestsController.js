@@ -237,6 +237,17 @@ const revokeRequest = async requestParams => {
     return await _updateRequestResponseType(entityId, path, approverId, REQUEST_STATUS.REVOKED);
 };
 
+/**
+ * Revoke a lease from the approver's perspective
+ *
+ * @param {Object} requestParams The request parameters.
+ * @returns {Promise}
+ */
+const openRequest = async requestParams => {
+    const {entityId, path} = requestParams;
+    return await _updateRequestResponseType(entityId, path, entityId, REQUEST_STATUS.OPENED);
+};
+
 module.exports = {
     approveRequest,
     cancelRequest,
@@ -244,6 +255,7 @@ module.exports = {
     getRequest,
     getRequests,
     initiateRequest,
+    openRequest,
     rejectRequest,
     revokeRequest
 };

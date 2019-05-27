@@ -1,7 +1,7 @@
 const {safeWrap, unwrap} = require('@mountaingapsolutions/objectutil');
 const logger = require('services/logger');
 const notificationsManager = require('services/notificationsManager');
-const {approveRequest, cancelRequest, deleteRequest, getRequest, getRequests, initiateRequest, rejectRequest} = require('services/db/controllers/requestsController');
+const {approveRequest, cancelRequest, deleteRequest, getRequest, getRequests, initiateRequest, openRequest, rejectRequest} = require('services/db/controllers/requestsController');
 const {sendMailFromTemplate} = require('services/mail/smtpClient');
 const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, sendJsonResponse, setSessionData} = require('services/utils');
 const {createCredential} = require('services/routes/dynamicSecretRequestService');
@@ -893,7 +893,8 @@ const router = require('express').Router()
                             notificationsManager.getInstance().to(groupName).emit('read-approved-request', path);
                         });
                     } else {
-                        //TODO DYNAMIC SECRET HERE UPDATE DB TO OPENED STATUS
+                        //DYNAMIC SECRET, UPDATE STATUS TO OPENED
+                        await openRequest({path, entityId});
                     }
                     sendJsonResponse(req, res, response.body, response.statusCode);
                 } else {
