@@ -16,7 +16,7 @@ module.exports = class RequestResponses extends Model {
             },
             type: {
                 /* eslint-disable new-cap */
-                type: DataTypes.ENUM('APPROVED', 'CANCELED', 'DELETED', 'PENDING', 'REQUESTED', 'REJECTED'),
+                type: DataTypes.ENUM('APPROVED', 'CANCELED', 'DELETED', 'PENDING', 'REQUESTED', 'REJECTED', 'REVOKED'),
                 /* eslint-enable new-cap */
                 allowNull: true
             }

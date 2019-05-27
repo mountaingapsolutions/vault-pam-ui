@@ -64,7 +64,7 @@ const _updateOrCreateRequestResponse = async (request, entityId, requestResponse
  * @param {Object} referenceData The reference data.
  * @returns {Promise}
  */
-const _updateRequestResponseType = async (requesterEntityId, path, responderEntityId, responseType, referenceData = null) => {
+const _updateRequestResponseType = async (requesterEntityId, path, responderEntityId, responseType, referenceData) => {
     const request = (await requests.findCreateFind({
         where: {
             entityId: requesterEntityId,
@@ -76,8 +76,10 @@ const _updateRequestResponseType = async (requesterEntityId, path, responderEnti
     }))[0];
 
     //TODO SHOULD THIS BE HERE?
-    request.set('referenceData', referenceData);
-    await request.save();
+    if (referenceData) {
+        request.set('referenceData', referenceData);
+        await request.save();
+    }
     // Update the requester's request response status.
     await _updateOrCreateRequestResponse(request, responderEntityId, responseType);
 
@@ -227,15 +229,12 @@ const rejectRequest = async (req, requesterEntityId, path) => {
 /**
  * Revoke a lease from the approver's perspective
  *
- * @param {Object} requestParams The request params.
- * @param {Object} updateParams The update params.
+ * @param {Object} requestParams The request parameters.
  * @returns {Promise}
  */
-//TODO STILL NOT FUNCTIONAL
 const revokeRequest = async requestParams => {
-    const {entityId, path} = requestParams;
-
-    return await _updateRequestResponseType(entityId, path, entityId, REQUEST_STATUS.REVOKED);
+    const {approverId, entityId, path} = requestParams;
+    return await _updateRequestResponseType(entityId, path, approverId, REQUEST_STATUS.REVOKED);
 };
 
 module.exports = {

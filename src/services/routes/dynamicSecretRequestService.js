@@ -2,7 +2,7 @@ const request = require('request');
 const {initApiRequest, getDomain, sendError} = require('services/utils');
 //const RequestController = require('services/controllers/Request');
 const {revokeRequest} = require('services/db/controllers/requestsController');
-const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
+const {REQUEST_TYPES} = require('services/constants');
 const {
     getRequests
 } = require('services/db/controllers/requestsController');
@@ -160,8 +160,11 @@ const router = require('express').Router()
                     return isLease && isDynamicRequest && isSameMount;
                 });
                 //TODO INCLUDE REQUESTER NAME
-                const {id, requesterName, entityId, path} = (dataInDB || {}).dataValues || {};
-                mappedData[key] = {requestId: id, leaseId: `${mount}/creds/${role}/${key}`, requesterName: entityId, entityId, path};
+                if (dataInDB) {
+                    const {id, requesterName, entityId, path, responses} = dataInDB.dataValues;
+                    const {entityId: approverId} = responses[0];
+                    mappedData[key] = {approverId, requestId: id, leaseId: `${mount}/creds/${role}/${key}`, requesterName: entityId, entityId, path};
+                }
             });
             response.body.data = mappedData;
             res.status(response.statusCode).json(response.body);
@@ -195,12 +198,10 @@ const router = require('express').Router()
      */
     .put('/revoke', async (req, res) => {
         logger.audit(req, res);
-        const {leaseId, requestId, entityId, path} = req.body;
+        const {leaseId, requestId, entityId, path, approverId} = req.body;
         try {
             const response = await _revokeLease(leaseId);
-            //TODO UPDATE DB FOR REVOKED RECORD
-            //requestId && await RequestController.updateDataById(requestId, {status: REQUEST_STATUS.REVOKED, engineType: null});
-            //requestId && await revokeRequest({id: requestId, entityId});
+            requestId && await revokeRequest({approverId, id: requestId, entityId, path});
             res.status(response.statusCode).json(response.body);
         } catch (err) {
             sendError(req.originalUrl, res, err);
