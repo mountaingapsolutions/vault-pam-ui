@@ -118,7 +118,7 @@ const router = require('express').Router()
         if (isDynamicEngine) {
             //GET ROLES HERE
             const response = await getDynamicEngineRoles(listUrlParts);
-            dynamicSecretRoles = [...response.body.data.keys];
+            dynamicSecretRoles = ((response.body || {}).data || {}).keys && [...response.body.data.keys];
         }
 
         // Maintain the list of paths as a key/value map as well for easier access later.
