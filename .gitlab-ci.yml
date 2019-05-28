@@ -72,7 +72,7 @@ upload:
       - build_vars
     expire_in: 15 mins
 
-# Deploys the zip to Elastic Beanstalk.
+# Deploys the zip to Elastic Beanstalk and create the application.
 create_app:
   <<: *python_definition
   stage: create_app
@@ -89,7 +89,7 @@ create_app:
     - aws elasticbeanstalk create-application-version --application-name $EB_APP_NAME --version-label $EB_VERSION --source-bundle S3Bucket=$S3_BUCKET,S3Key=$VERSIONED_ZIP_FILE --auto-create-application
     - echo Application Created!
 
-# Deploys the zip to Elastic Beanstalk.
+# Update the enterprise Elastic Beanstalk environment with the latest build.
 deploy_enterprise:
   <<: *python_definition
   stage: deploy
@@ -108,6 +108,7 @@ deploy_enterprise:
     - aws elasticbeanstalk update-environment --application-name $EB_APP_NAME --environment-name $EB_APP_ENV --version-label $EB_VERSION --option-settings Namespace=aws:elasticbeanstalk:application:environment,OptionName=EB_VERSION,Value=$EB_VERSION
     - echo Done! Deployed!
 
+# Update the standard Elastic Beanstalk environment with the latest build.
 deploy_standard:
   <<: *python_definition
   stage: deploy
