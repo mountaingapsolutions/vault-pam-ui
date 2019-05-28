@@ -549,6 +549,7 @@ class SecretsList extends Component {
             }</List>;
         } else if (dynamicSecretRole.length > 0 ) {
             //DYNAMIC SECRET
+            // 👆 TODO - Refer to the other TODO as well. This massive disparate block of logic really needs to be cleaned up. -JH
             return <List>
                 {dynamicSecretRole.map((role, i) => {
                     const {isApproved, isPending, requiresRequest, role: engineRole, secondaryText} = role;
@@ -688,9 +689,9 @@ const _mapStateToProps = (state, ownProps) => {
     // TODO CONSOLIDATE DYNAMIC AND STANDARD REQUEST CODE?
     // ☝️ 100%. Yes. This hurts my eyes. -JH
     if (isDynamicSecret) {
-        dynamicSecretRole = (secretsPaths.dynamicSecretRoles || []).map(role => {
-            const engineNameRole = mountData && `${mountData.name.slice(0, -1)}/${role}`;
-            const {capabilities} = secretsPaths;
+        dynamicSecretRole = (secretsPaths.secrets || []).map(role => {
+            const {capabilities, name} = role;
+            const engineNameRole = mountData && `${mountData.name.slice(0, -1)}/${name}`;
             let isApproved = false;
             let isOpened = false;
             const requiresRequest = !capabilities.includes('read');
@@ -710,7 +711,7 @@ const _mapStateToProps = (state, ownProps) => {
                 }
             }
             return {
-                role,
+                role: name,
                 engineNameRole,
                 isApproved,
                 requiresRequest,

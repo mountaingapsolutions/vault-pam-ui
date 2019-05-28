@@ -6,34 +6,10 @@ const logger = require('services/logger');
 const addRequestId = require('express-request-id')();
 
 /**
- * Get dynamic engine roles.
- *
- * @param {string} engineName The engine.
- * @returns {Promise<void>}
- */
-const getDynamicEngineRoles = engineName => {
-    return new Promise((resolve, reject) => {
-        const domain = getDomain();
-        const {VAULT_API_TOKEN: apiToken} = process.env;
-        const apiUrl = `${domain}/v1/${engineName}/roles?list=true`;
-        request({
-            ...initApiRequest(apiToken, apiUrl),
-            method: 'GET'
-        }, (error, response) => {
-            if (error) {
-                reject(error);
-            } else {
-                resolve(response);
-            }
-        });
-    });
-};
-
-/**
  * Get active lease of certain role.
  *
  * @param {Object} req The HTTP request object.
- * @returns {Promise<void>}
+ * @returns {Promise}
  */
 const _getLease = req => {
     return new Promise((resolve, reject) => {
@@ -58,7 +34,7 @@ const _getLease = req => {
  * Revokes a lease.
  *
  * @param {string} lease_id The lease id.
- * @returns {Promise<void>}
+ * @returns {Promise}
  */
 const _revokeLease = lease_id => {
     return new Promise((resolve, reject) => {
@@ -82,7 +58,7 @@ const _revokeLease = lease_id => {
 /**
  * Retrieves entity lists.
  *
- * @returns {Promise<void>}
+ * @returns {Promise}
  */
 const _getEntityIdInfo = () => {
     return new Promise((resolve, reject) => {
@@ -204,6 +180,5 @@ const router = require('express').Router()
     });
 
 module.exports = {
-    getDynamicEngineRoles,
     router
 };

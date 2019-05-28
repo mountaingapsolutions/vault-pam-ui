@@ -297,7 +297,7 @@ const saveUserpass = (req, userData) => {
  *
  * @param {Object} req The HTTP request object.
  * @param {string} id The id of the user to delete.
- * @returns {Promise<void>}
+ * @returns {Promise}
  */
 const deleteUser = (req, id) => {
     return new Promise((resolve, reject) => {
