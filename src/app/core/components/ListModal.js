@@ -28,6 +28,16 @@ class ListModal extends Component {
      */
     _renderContent() {
         const {classes, buttonTitle, items, onClick, primaryTextPropName, secondaryTextPropName} = this.props;
+        if (Object.entries(items).length === 0) {
+            return <Paper className={classes.paper} elevation={2}>
+                {
+                    <Typography className={classes.paperMessage} color='textSecondary'
+                        variant='h5'>
+                        There are no active leases at this time.
+                    </Typography>
+                }
+            </Paper>;
+        }
         return <Paper className={classes.paper} elevation={2}>
             {Object.keys(items).map((item, index) => {
                 const data = items[item];
@@ -128,6 +138,9 @@ const _styles = () => ({
     },
     paper: {
         margin: 10
+    },
+    paperMessage: {
+        padding: 40
     }
 });
 
