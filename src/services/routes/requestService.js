@@ -227,7 +227,6 @@ const _getUserByEntityId = async (req, entityId) => {
  *
  * @private
  * @param {Object} req The HTTP request object.
- * @param {string} entityId The entity id.
  * @returns {Promise}
  */
 const _getUserEntityIds = async (req) => {
