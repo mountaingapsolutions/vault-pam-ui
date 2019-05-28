@@ -232,7 +232,7 @@ const rejectRequest = async (req, requesterEntityId, path) => {
  * @param {Object} requestParams The request parameters.
  * @returns {Promise}
  */
-const revokeRequest = async requestParams => {
+const revokeRequest = async (requestParams) => {
     const {approverId, entityId, path} = requestParams;
     return await _updateRequestResponseType(entityId, path, approverId, REQUEST_STATUS.REVOKED);
 };
@@ -243,7 +243,7 @@ const revokeRequest = async requestParams => {
  * @param {Object} requestParams The request parameters.
  * @returns {Promise}
  */
-const openRequest = async requestParams => {
+const openRequest = async (requestParams) => {
     const {entityId, path} = requestParams;
     return await _updateRequestResponseType(entityId, path, entityId, REQUEST_STATUS.OPENED);
 };

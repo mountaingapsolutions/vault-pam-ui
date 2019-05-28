@@ -60,7 +60,6 @@ const _authorizeRequest = async (req, entityId, path) => {
         //DYNAMIC SECRET
         let dynamicSecretRefData = null;
         if (type === REQUEST_TYPES.DYNAMIC_REQUEST) {
-            // TODO - Uncomment this out and continue from here!
             const {body} = await createCredential(req);
             if (body.lease_id) {
                 const {data, lease_id} = body;
