@@ -50,7 +50,6 @@ const _authorizeControlGroupRequest = async (req, entityId, path) => {
  */
 const _authorizeRequest = async (req, entityId, path) => {
     const isApprover = await _checkIfApprover(req);
-    const {engineType} = req.body;
     let remappedData;
     if (isApprover) {
         const {type} = (await _getRequest(entityId, path)).dataValues || {};
@@ -62,9 +61,9 @@ const _authorizeRequest = async (req, entityId, path) => {
         if (type === REQUEST_TYPES.DYNAMIC_REQUEST) {
             const {body} = await createCredential(req);
             if (body.lease_id) {
-                const {data, lease_id} = body;
-                const token = data && await _wrapData(req, data);
-                dynamicSecretRefData = {engineType, token, leaseId: lease_id};
+                // const {data, lease_id} = body;
+                // const token = data && await _wrapData(req, data);
+                // dynamicSecretRefData = {engineType, token, leaseId: lease_id};
             }
         }
         const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path, dynamicSecretRefData));
@@ -135,6 +134,32 @@ const _injectEntityNameIntoRequestResponse = (req, entityId, requestPromise) => 
             })
             .catch(reject);
     });
+};
+
+/**
+ * Returns the engine type from the provided secrets path.
+ *
+ * @private
+ * @param {string} entityId The session user entity id.
+ * @param {string} path The secrets request path.
+ * @returns {Promise}
+ */
+const _getEngineType = async (entityId, path) => {
+    const {VAULT_API_TOKEN: apiToken} = process.env;
+
+    // Retrieve the list of Vault engine mounts.
+    const mounts = (await asyncRequest(initApiRequest(apiToken, `${getDomain()}/v1/sys/mounts`, entityId, true))).body;
+
+    // Check the engine type from the provided path.
+    const mountFromPath = `${path.split('/')[0]}/`;
+    const mount = mounts[mountFromPath];
+    if (!mount) {
+        const error = new Error(`Invalid mount: ${mountFromPath}`);
+        error.statusCode = 400;
+        throw error;
+    }
+
+    return mount.type;
 };
 
 /**
@@ -284,12 +309,19 @@ const _getUsersByGroupName = async (req, groupName) => {
 const _cancelRequest = (req) => {
     const {path, type} = req.query;
     const {entityId} = req.session.user;
-    const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = REQUEST_TYPES;
     return new Promise(async (resolve, reject) => {
+        if (!path || !type) {
+            reject({
+                message: 'Invalid request',
+                statusCode: 400
+            });
+            return;
+        }
+
         try {
             const approverGroupPromises = [];
             // Control Group request cancellation.
-            if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP) {
+            if (type === REQUEST_TYPES.CONTROL_GROUP) {
                 const {accessor} = ((await _getRequest(entityId, path, type)).dataValues || {}).referenceData || {};
                 if (accessor) {
                     // Inject the accessor into the query.
@@ -311,19 +343,9 @@ const _cancelRequest = (req) => {
                     });
                     return;
                 }
-            }
-            // Standard Request cancellation.
-            else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
+            } else {
                 cancelRequest(req, path);
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
-            }
-            // Invalid type provided.
-            else {
-                reject({
-                    message: 'Invalid request',
-                    statusCode: 400
-                });
-                return;
             }
 
             // Non-blocking call to send out emails and notifications.
@@ -366,12 +388,18 @@ const _cancelRequest = (req) => {
  */
 const _rejectRequest = (req) => {
     const {entityId, path, type} = req.query;
-    const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = REQUEST_TYPES;
     return new Promise(async (resolve, reject) => {
+        if (!path || !type) {
+            reject({
+                message: 'Invalid request',
+                statusCode: 400
+            });
+            return;
+        }
+
         const requestType = 'reject-request';
         try {
-            // Control Group rejection.
-            if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP) {
+            if (type === REQUEST_TYPES.CONTROL_GROUP) {
                 const {accessor} = ((await _getRequest(entityId, path, type)).dataValues || {}).referenceData || {};
                 if (accessor) {
                     const {entityId: entityIdSelf} = req.session.user;
@@ -396,9 +424,7 @@ const _rejectRequest = (req) => {
                     });
                     return;
                 }
-            }
-            // Standard Request rejection.
-            else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
+            } else {
                 const isApprover = await _checkIfApprover(req);
                 if (isApprover) {
                     rejectRequest(req, entityId, path);
@@ -413,14 +439,6 @@ const _rejectRequest = (req) => {
                     });
                     return;
                 }
-            }
-            // Invalid type provided.
-            else {
-                reject({
-                    message: 'Invalid request',
-                    statusCode: 400
-                });
-                return;
             }
 
             logger.info(`Emit reject-request of path ${path} to ${entityId}.`);
@@ -659,8 +677,6 @@ const router = require('express').Router()
      *                 type: string
      *               status:
      *                 type: string
-     *               engineType:
-     *                 type: string
      *     responses:
      *       200:
      *         description: Success.
@@ -673,31 +689,31 @@ const router = require('express').Router()
      */
     .post('/request', async (req, res) => {
         logger.audit(req, res);
-        const {engineType, path, type} = req.body;
+        const {path, type} = req.body;
+        if (!path || !type) {
+            sendError(req, res, 'Invalid request. Params path and type must be provided.', 400);
+            return;
+        }
         const {entityId, token: sessionToken} = req.session.user;
-        const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = REQUEST_TYPES;
         try {
             const approverGroupPromises = [];
-            let referenceData = null;
-            if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP) {
+
+            let referenceData = {
+                engineType: await _getEngineType(entityId, path)
+            };
+            if (type === REQUEST_TYPES.CONTROL_GROUP) {
                 // Need to generate an accessor and token to be stored as referenceData if it's a Control Group request.
                 const {groups = [], accessor, token} = await require('vault-pam-premium').createRequest(sessionToken, path);
                 referenceData = {
+                    ...referenceData,
                     accessor,
-                    token,
-                    engineType //TODO IS THIS NEED HERE? RECHECK
+                    token
                 };
                 groups.forEach((groupName) => {
                     approverGroupPromises.push(_getUsersByGroupName(req, groupName));
                 });
-            } else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
-                referenceData = {
-                    engineType
-                };
-                approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             } else {
-                sendError(req, res, 'Invalid request', 400);
-                return;
+                approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             }
 
             const requestData = _remapSecretsRequest(await _injectEntityNameIntoRequestResponse(req, entityId, initiateRequest(req, {

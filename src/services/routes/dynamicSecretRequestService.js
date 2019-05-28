@@ -40,16 +40,17 @@ const getDynamicEngineRoles = engineName => {
  * @returns {Promise<void>}
  */
 const createCredential = req => {
+    // TODO CONTINUE FROM HERE.
     return new Promise((resolve, reject) => {
         const domain = getDomain();
-        const {path, reqMethod} = req.body;
+        const {path} = req.body;
         const engineRole = path.split('/');
+        console.warn('hi : ', path, ' :: ', engineRole);
         //TODO what token to use API or user?
         const {VAULT_API_TOKEN: apiToken} = process.env;
         const apiUrl = `${domain}/v1/${engineRole[0]}/creds/${engineRole[1]}`;
         request({
-            ...initApiRequest(apiToken, apiUrl),
-            method: reqMethod
+            ...initApiRequest(apiToken, apiUrl)
         }, (error, response) => {
             if (error) {
                 reject(error);
