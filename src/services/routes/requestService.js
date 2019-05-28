@@ -1,9 +1,9 @@
 const {safeWrap, unwrap} = require('@mountaingapsolutions/objectutil');
 const logger = require('services/logger');
 const notificationsManager = require('services/notificationsManager');
-const {approveRequest, cancelRequest, deleteRequest, getRequest, getRequests, initiateRequest, rejectRequest} = require('services/db/controllers/requestsController');
+const {approveRequest, cancelRequest, deleteRequest, getRequest, getRequests, initiateRequest, openRequest, rejectRequest} = require('services/db/controllers/requestsController');
 const {sendMailFromTemplate} = require('services/mail/smtpClient');
-const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, sendJsonResponse, setSessionData, wrapData} = require('services/utils');
+const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, sendJsonResponse, setSessionData} = require('services/utils');
 const {createCredential} = require('services/routes/dynamicSecretRequestService');
 const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
 const addRequestId = require('express-request-id')();
@@ -50,25 +50,25 @@ const _authorizeControlGroupRequest = async (req, entityId, path) => {
  */
 const _authorizeRequest = async (req, entityId, path) => {
     const isApprover = await _checkIfApprover(req);
+    const {engineType} = req.body;
     let remappedData;
     if (isApprover) {
         const {type} = (await _getRequest(entityId, path)).dataValues || {};
         if (!type) {
             throw new Error('Request not found');
         }
+        //DYNAMIC SECRET
+        let dynamicSecretRefData = null;
         if (type === REQUEST_TYPES.DYNAMIC_REQUEST) {
             // TODO - Uncomment this out and continue from here!
-            // if (type === DYNAMIC_REQUEST) {
-            //     const {body} = await createCredential(req);
-            //     if (body.lease_id) {
-            //         resolveDynamicSecret = true;
-            //         const leaseWrapToken = body.data && await _wrapData(req, body.data);
-            //         const leaseId = body.lease_id.split('/');
-            //         dynamicSecretRefId = leaseWrapToken && leaseId[leaseId.length - 1] && `${leaseWrapToken}/${leaseId[leaseId.length - 1]}`;
-            //     }
-            // }
+            const {body} = await createCredential(req);
+            if (body.lease_id) {
+                const {data, lease_id} = body;
+                const token = data && await _wrapData(req, data);
+                dynamicSecretRefData = {engineType, token, leaseId: lease_id};
+            }
         }
-        const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path));
+        const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path, dynamicSecretRefData));
         remappedData = _remapSecretsRequest(data);
         logger.info(`Emit approve-request data ${JSON.stringify(remappedData)} to ${entityId} and pam-approvers.`);
         notificationsManager.getInstance().to(entityId).emit('approve-request', remappedData);
@@ -455,7 +455,7 @@ const _rejectRequest = (req) => {
  */
 const _remapSecretsRequest = (secretsRequest) => {
     const {createdAt: creationTime, entityId: id, name, path, referenceData = {}, responses = [], type} = secretsRequest.dataValues;
-    let approved, authorizations;
+    let approved, authorizations, opened;
     if (secretsRequest.requestInfoData) {
         const {data} = secretsRequest.requestInfoData;
         approved = !!data.approved;
@@ -468,6 +468,7 @@ const _remapSecretsRequest = (secretsRequest) => {
         }) : [];
     } else {
         approved = responses.some((response) => response.type === REQUEST_STATUS.APPROVED);
+        opened = responses.some((response) => response.type === REQUEST_STATUS.OPENED);
         authorizations = responses.filter((response) => [REQUEST_STATUS.APPROVED, REQUEST_STATUS.REJECTED].includes(response.type));
     }
     return {
@@ -475,6 +476,7 @@ const _remapSecretsRequest = (secretsRequest) => {
         creationTime,
         authorizations,
         isWrapped: type === 'control-group',
+        opened,
         path,
         referenceData,
         requestEntity: {
@@ -672,7 +674,7 @@ const router = require('express').Router()
      */
     .post('/request', async (req, res) => {
         logger.audit(req, res);
-        const {path, type} = req.body;
+        const {engineType, path, type} = req.body;
         const {entityId, token: sessionToken} = req.session.user;
         const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = REQUEST_TYPES;
         try {
@@ -683,12 +685,16 @@ const router = require('express').Router()
                 const {groups = [], accessor, token} = await require('vault-pam-premium').createRequest(sessionToken, path);
                 referenceData = {
                     accessor,
-                    token
+                    token,
+                    engineType //TODO IS THIS NEED HERE? RECHECK
                 };
                 groups.forEach((groupName) => {
                     approverGroupPromises.push(_getUsersByGroupName(req, groupName));
                 });
             } else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
+                referenceData = {
+                    engineType
+                };
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             } else {
                 sendError(req, res, 'Invalid request', 400);
@@ -885,6 +891,9 @@ const router = require('express').Router()
                             logger.info(`Emit read-approved-request path ${path} to ${groupName}.`);
                             notificationsManager.getInstance().to(groupName).emit('read-approved-request', path);
                         });
+                    } else {
+                        //DYNAMIC SECRET, UPDATE STATUS TO OPENED
+                        await openRequest({path, entityId});
                     }
                     sendJsonResponse(req, res, response.body, response.statusCode);
                 } else {

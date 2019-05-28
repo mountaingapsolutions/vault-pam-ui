@@ -10,13 +10,14 @@ const requestResponses = require('services/db/models/requestResponses');
  * @returns {Object}
  */
 const _getPlainResult = (result) => {
-    const {createdAt, entityId, path, referenceData, RequestResponses: responses = [], type, updatedAt} = result.get({
+    const {createdAt, entityId, id, path, referenceData, RequestResponses: responses = [], type, updatedAt} = result.get({
         plain: true
     });
     return {
         dataValues: {
             createdAt,
             entityId,
+            id,
             path,
             referenceData,
             responses,
@@ -60,9 +61,10 @@ const _updateOrCreateRequestResponse = async (request, entityId, requestResponse
  * @param {string} path The request secrets path.
  * @param {string} responderEntityId The response's entity id.
  * @param {string} responseType The response type.
+ * @param {Object} referenceData The reference data.
  * @returns {Promise}
  */
-const _updateRequestResponseType = async (requesterEntityId, path, responderEntityId, responseType) => {
+const _updateRequestResponseType = async (requesterEntityId, path, responderEntityId, responseType, referenceData) => {
     const request = (await requests.findCreateFind({
         where: {
             entityId: requesterEntityId,
@@ -73,6 +75,11 @@ const _updateRequestResponseType = async (requesterEntityId, path, responderEnti
         }]
     }))[0];
 
+    //TODO SHOULD THIS BE HERE?
+    if (referenceData) {
+        request.set('referenceData', referenceData);
+        await request.save();
+    }
     // Update the requester's request response status.
     await _updateOrCreateRequestResponse(request, responderEntityId, responseType);
 
@@ -85,12 +92,13 @@ const _updateRequestResponseType = async (requesterEntityId, path, responderEnti
  * @param {Object} req The HTTP request object.
  * @param {string} requesterEntityId The requester's entity id.
  * @param {string} path The request secrets path.
+ * @param {Object} referenceData The reference data of approved request.
  * @returns {Promise}
  */
-const approveRequest = async (req, requesterEntityId, path) => {
+const approveRequest = async (req, requesterEntityId, path, referenceData = null) => {
     const {entityId} = req.session.user;
 
-    return await _updateRequestResponseType(requesterEntityId, path, entityId, REQUEST_STATUS.APPROVED);
+    return await _updateRequestResponseType(requesterEntityId, path, entityId, REQUEST_STATUS.APPROVED, referenceData);
 };
 
 /**
@@ -218,6 +226,28 @@ const rejectRequest = async (req, requesterEntityId, path) => {
     return await _updateRequestResponseType(requesterEntityId, path, entityId, REQUEST_STATUS.REJECTED);
 };
 
+/**
+ * Revoke a lease from the approver's perspective
+ *
+ * @param {Object} requestParams The request parameters.
+ * @returns {Promise}
+ */
+const revokeRequest = async requestParams => {
+    const {approverId, entityId, path} = requestParams;
+    return await _updateRequestResponseType(entityId, path, approverId, REQUEST_STATUS.REVOKED);
+};
+
+/**
+ * Revoke a lease from the approver's perspective
+ *
+ * @param {Object} requestParams The request parameters.
+ * @returns {Promise}
+ */
+const openRequest = async requestParams => {
+    const {entityId, path} = requestParams;
+    return await _updateRequestResponseType(entityId, path, entityId, REQUEST_STATUS.OPENED);
+};
+
 module.exports = {
     approveRequest,
     cancelRequest,
@@ -225,5 +255,7 @@ module.exports = {
     getRequest,
     getRequests,
     initiateRequest,
-    rejectRequest
+    openRequest,
+    rejectRequest,
+    revokeRequest
 };

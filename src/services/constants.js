@@ -16,7 +16,8 @@ const REQUEST_TYPES = {
     STANDARD_REQUEST: 'standard-request'
 };
 const DYNAMIC_ENGINES = [
-    'aws'
+    'aws',
+    'azure'
 ];
 
 // Logger levels

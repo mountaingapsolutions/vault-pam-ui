@@ -38,13 +38,21 @@ class SecretAction extends _Actions {
      * @param {string} path Specifies the path of the request to authorize.
      * @param {string} entityId The user entity id.
      * @param {string} [type] The request type.
+     * @param {string} engineType The secret engine type.
      * @returns {function} Redux dispatch function.
      */
-    authorizeRequest(path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) {
+    authorizeRequest(path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST, engineType) {
+        let reqMethod = 'POST';
+        //TODO IMPROVE CHECKING METHOD
+        if (engineType === 'azure') {
+            reqMethod = 'GET';
+        }
         return this._dispatchPost(this.ACTION_TYPES.AUTHORIZE_REQUEST, '/rest/secret/request/authorize', {
             path,
             entityId,
-            type
+            type,
+            reqMethod,
+            engineType
         });
     }
 
@@ -135,12 +143,12 @@ class SecretAction extends _Actions {
     /**
      * Revokes a lease.
      *
-     * @param {string} [lease_id] The Lease id.
+     * @param {string} [leaseData] The Lease data.
      * @param {number} [requestId] The request id in database.
      * @returns {function} Redux dispatch function.
      */
-    revokeLease(lease_id, requestId) {
-        return this._dispatchPut(this.ACTION_TYPES.REVOKE_LEASE, '/rest/dynamic/revoke', {lease_id, requestId});
+    revokeLease(leaseData) {
+        return this._dispatchPut(this.ACTION_TYPES.REVOKE_LEASE, '/rest/dynamic/revoke', leaseData);
     }
 
     /**
@@ -224,22 +232,6 @@ class SecretAction extends _Actions {
     unwrapSecret(path) {
         return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/secret/unwrap', {
             path
-        });
-    }
-
-    /**
-     * Unwraps a dynamic secret.
-     *
-     * @param {string} referenceId The token to unwrap.
-     * @param {number} requestId The request id.
-     * @returns {function} Redux dispatch function.
-     */
-    unwrapDynamicSecret(referenceId, requestId) {
-        //TODO SEPARATE WRAP ID AND LEASE ID IN NEW DB SCHEMA
-        const token = referenceId.split('/')[0];
-        return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/dynamic/unwrap', {
-            token,
-            requestId
         });
     }
 
