@@ -126,6 +126,33 @@ class NotificationsModal extends Component {
     }
 
     /**
+     * Renders the reject button.
+     *
+     * @private
+     * @param {Object} buttonData Request data.
+     * @returns {React.ReactElement}
+     */
+    _renderRejectButton(buttonData = {}) {
+        const {CONTROL_GROUP: controlGroup} = Constants.REQUEST_TYPES;
+        const {alreadyApprovedBySelf, approved, isOwnRequest, path, id, isWrapped, type} = buttonData;
+        const {deleteRequest} = this.props;
+        const deleteText = isOwnRequest ? 'Cancel' : 'Reject';
+
+        return <Tooltip aria-label={deleteText} title={deleteText}>
+            <IconButton disabled={alreadyApprovedBySelf ? !approved : approved}
+                onClick={() => {
+                    /* eslint-disable no-alert */
+                    if (window.confirm(`Are you sure you want to ${isOwnRequest ? 'cancel your' : `reject ${name}'s`} request to ${path}?`)) {
+                        deleteRequest(path, id, isWrapped ? controlGroup : type);
+                    }
+                    /* eslint-enable no-alert */
+                }}>
+                <ClearIcon/>
+            </IconButton>
+        </Tooltip>;
+    }
+
+    /**
      * Renders request details
      *
      * @private
@@ -227,7 +254,7 @@ class NotificationsModal extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {authorizeRequest, classes, inProgress, onClose, open, deleteRequest, secretsRequests = [], vaultLookupSelf} = this.props;
+        const {authorizeRequest, classes, inProgress, onClose, open, secretsRequests = [], vaultLookupSelf} = this.props;
         const {anchorEl, selectedFilterIndex, selectedRequestPath} = this.state;
         const {entity_id: entityIdSelf} = unwrap(safeWrap(vaultLookupSelf).data.data) || {};
         const selectedRequest = secretsRequests.length > 0 ? secretsRequests.find((request) => request.path === selectedRequestPath) : undefined;
@@ -327,13 +354,13 @@ class NotificationsModal extends Component {
                                             return true;
                                     }
                                 }).map((requestData, i) => {
-                                    const {CONTROL_GROUP, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
+                                    const {CONTROL_GROUP: controlGroup, STANDARD_REQUEST: standardRequest} = Constants.REQUEST_TYPES;
                                     const {approved, authorizations, creationTime, isWrapped, path, requestEntity = {}, type, referenceData = {}} = requestData;
                                     const {id, name} = requestEntity;
-                                    const requestType = isWrapped ? 'Control Groups' : type === STANDARD_REQUEST ? 'Standard Request' : 'Dynamic Request';
+                                    const requestType = isWrapped ? 'Control Groups' : type === standardRequest ? 'Standard Request' : 'Dynamic Request';
                                     const isOwnRequest = id === entityIdSelf;
-                                    const deleteText = isOwnRequest ? 'Cancel' : 'Reject';
                                     const alreadyApprovedBySelf = authorizations && authorizations.some((authorization) => authorization.entityId === entityIdSelf);
+                                    const buttonData = {alreadyApprovedBySelf, approved, id, isOwnRequest, isWrapped, name, path};
                                     return <React.Fragment key={`${path}-${i}`}>
                                         <ListItem alignItems='flex-start'>
                                             <ListItemAvatar>
@@ -372,18 +399,7 @@ class NotificationsModal extends Component {
                                                         <IconButton disabled color='primary'>
                                                             <CheckIcon/>
                                                         </IconButton>
-                                                        <Tooltip aria-label={deleteText} title={deleteText}>
-                                                            <IconButton disabled={!approved}
-                                                                onClick={() => {
-                                                                    /* eslint-disable no-alert */
-                                                                    if (window.confirm(`Are you sure you want to ${isOwnRequest ? 'cancel your' : `reject ${name}'s`} request to ${path}?`)) {
-                                                                        deleteRequest(path, id, isWrapped ? CONTROL_GROUP : type);
-                                                                    }
-                                                                    /* eslint-enable no-alert */
-                                                                }}>
-                                                                <ClearIcon/>
-                                                            </IconButton>
-                                                        </Tooltip>
+                                                        {this._renderRejectButton(buttonData)}
                                                     </ListItemSecondaryAction>
                                                     :
                                                     <ListItemSecondaryAction>
@@ -396,22 +412,11 @@ class NotificationsModal extends Component {
                                                             <Tooltip aria-label='Approve' title='Approve'>
                                                                 <IconButton
                                                                     color='primary'
-                                                                    onClick={() => authorizeRequest(path, id, isWrapped ? CONTROL_GROUP : type, referenceData.engineType)}>
+                                                                    onClick={() => authorizeRequest(path, id, isWrapped ? controlGroup : type, referenceData.engineType)}>
                                                                     <CheckIcon/>
                                                                 </IconButton>
                                                             </Tooltip>}
-                                                        <Tooltip aria-label={deleteText} title={deleteText}>
-                                                            <IconButton disabled={approved}
-                                                                onClick={() => {
-                                                                    /* eslint-disable no-alert */
-                                                                    if (window.confirm(`Are you sure you want to ${isOwnRequest ? 'cancel your' : `reject ${name}'s`} request to ${path}?`)) {
-                                                                        deleteRequest(path, id, isWrapped ? CONTROL_GROUP : type);
-                                                                    }
-                                                                    /* eslint-enable no-alert */
-                                                                }}>
-                                                                <ClearIcon/>
-                                                            </IconButton>
-                                                        </Tooltip>
+                                                        {this._renderRejectButton(buttonData)}
                                                     </ListItemSecondaryAction>
                                             }
                                         </ListItem>
