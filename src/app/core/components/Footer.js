@@ -24,6 +24,18 @@ class Footer extends Component {
     }
 
     /**
+     * Returns a static Hyper Link component
+     *
+     * @private
+     * @param {string|Object} to path to link to.
+     * @returns {React.ReactElement}
+     */
+    // eslint-disable-next-line react/display-name
+    _renderHyperLink = React.forwardRef((itemProps, ref) =>
+        <a {...itemProps} ref={ref}/>
+    );
+
+    /**
      * Required React Component lifecycle method. Returns a tree of React components that will render to HTML.
      *
      * @protected
@@ -37,7 +49,7 @@ class Footer extends Component {
             <div className={classes.footerRootContainer}>
                 <AppBar className={classes.footer} position='fixed'>
                     <div className={classes.footerTextContainer}>
-                        <Typography inline className={classes.text} component={(props) => <a href='/rest/api' {...props}>API</a>} variant='caption'>
+                        <Typography inline className={classes.text} component={this._renderHyperLink} variant='caption' {...{href: '/rest/api', title: 'API'}}>
                             API
                         </Typography>
                         <Typography inline className={classes.textSeparator} variant='caption'>

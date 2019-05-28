@@ -100,6 +100,48 @@ class SecretsList extends Component {
     }
 
     /**
+     * Handle for when a secret item is pressed.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} secret The secret object.
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _onClickSecret(secret, event) {
+        event.preventDefault();
+        const {canOpen, canUpdate, isApproved, isPending, isWrapped, name, requiresRequest, secretsData, secretsPath, url} = secret;
+        const {getSecrets, history, listSecretsAndCapabilities, match, openApprovedSecret, setSecretsData} = this.props;
+        const {params} = match;
+        const {mount} = params;
+        const {CONTROL_GROUP, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
+        if (name.includes('/')) {
+            history.push(url);
+            listSecretsAndCapabilities(secretsPath, this._getVersionFromMount(mount));
+        } else {
+            if (canUpdate) {
+                this._toggleCreateUpdateSecretModal(`${mount}/${secretsPath}`, 'update');
+                getSecrets(name, this._getVersionFromMount(mount));
+            } else if (canOpen) {
+                this._toggleCreateUpdateSecretModal(`${mount}/${secretsPath}`, 'read');
+                secretsData ? setSecretsData(secretsData) : getSecrets(name, this._getVersionFromMount(mount));
+            } else if (isApproved) {
+                if (isWrapped) {
+                    this._openApprovedRequestModal(mount, secretsPath, name);
+                } else {
+                    this._toggleCreateUpdateSecretModal(`${mount}/${secretsPath}`, 'read');
+                    openApprovedSecret(name, this._getVersionFromMount(mount));
+                }
+            } else if (requiresRequest) {
+                const requestType = isWrapped ? CONTROL_GROUP : STANDARD_REQUEST;
+                if (isPending) {
+                    this._openRequestCancellationModal(mount, name, requestType);
+                } else {
+                    this._openRequestModal(mount, name, requestType);
+                }
+            }
+        }
+    }
+
+    /**
      * Sets the confirmation modal data in state for opening an approved secret.
      *
      * @param {string} mount The mount point.
@@ -222,6 +264,18 @@ class SecretsList extends Component {
     }
 
     /**
+     * Returns a static Link component
+     *
+     * @private
+     * @param {string|Object} to path to link to.
+     * @returns {React.ReactElement}
+     */
+    // eslint-disable-next-line react/display-name
+    _renderLink = React.forwardRef((itemProps, ref) =>
+        <Link {...itemProps} ref={ref}/>
+    );
+
+    /**
      * Toggles the create/update secret modal.
      *
      * @private
@@ -316,8 +370,8 @@ class SecretsList extends Component {
                     <Button
                         className={`${classes.disableMinWidth} ${classes.disablePadding}`}
                         color='inherit'
-                        component={props => <Link to='/' {...props}/>} variant='text'
-                    >
+                        component={this._renderLink} variant='text'
+                        {...{to: '/'}}>
                         <ListItemIcon>
                             <ListIcon/>
                         </ListItemIcon>
@@ -449,10 +503,10 @@ class SecretsList extends Component {
      * @returns {React.ReactElement}
      */
     _renderSecretsListArea() {
-        const {classes, pageError, getLeaseList, getSecrets, history, inProgress, listSecretsAndCapabilities, match, openApprovedSecret, secretsList, setSecretsData, dynamicSecretRole} = this.props;
+        const {classes, pageError, getLeaseList, inProgress, match, secretsList, dynamicSecretRole} = this.props;
         const {params} = match;
         const {mount, path = ''} = params;
-        const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
+        const {DYNAMIC_REQUEST} = Constants.REQUEST_TYPES;
         if (inProgress) {
             return <Grid container justify='center'>
                 <Grid item>
@@ -469,36 +523,8 @@ class SecretsList extends Component {
         } else if (secretsList.length > 0) {
             return <List>{
                 secretsList.map((secret, i) => {
-                    const {authorizationsText, canOpen, canUpdate, isApproved, isPending, isWrapped, name, requiresRequest, secondaryText, secretsData, secretsPath, url} = secret;
-                    return <ListItem button component={(props) => <Link to={url} {...props} onClick={event => {
-                        event.preventDefault();
-                        if (name.includes('/')) {
-                            history.push(url);
-                            listSecretsAndCapabilities(secretsPath, this._getVersionFromMount(mount));
-                        } else {
-                            if (canUpdate) {
-                                this._toggleCreateUpdateSecretModal(`${mount}/${secretsPath}`, 'update');
-                                getSecrets(name, this._getVersionFromMount(mount));
-                            } else if (canOpen) {
-                                this._toggleCreateUpdateSecretModal(`${mount}/${secretsPath}`, 'read');
-                                secretsData ? setSecretsData(secretsData) : getSecrets(name, this._getVersionFromMount(mount));
-                            } else if (isApproved) {
-                                if (isWrapped) {
-                                    this._openApprovedRequestModal(mount, secretsPath, name);
-                                } else {
-                                    this._toggleCreateUpdateSecretModal(`${mount}/${secretsPath}`, 'read');
-                                    openApprovedSecret(name, this._getVersionFromMount(mount));
-                                }
-                            } else if (requiresRequest) {
-                                const requestType = isWrapped ? CONTROL_GROUP : STANDARD_REQUEST;
-                                if (isPending) {
-                                    this._openRequestCancellationModal(mount, name, requestType);
-                                } else {
-                                    this._openRequestModal(mount, name, requestType);
-                                }
-                            }
-                        }
-                    }}/>} key={`key-${i}`}>
+                    const {authorizationsText, name, secondaryText, url} = secret;
+                    return <ListItem button component={this._renderLink} key={`key-${i}`} {...{onClick: this._onClickSecret.bind(this, secret), to: url}}>
                         <ListItemAvatar>
                             <Avatar>{
                                 name.endsWith('/') ? <FolderIcon/> : <FileCopyIcon/>

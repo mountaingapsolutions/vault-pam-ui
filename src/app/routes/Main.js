@@ -78,6 +78,18 @@ class Main extends Component {
     }
 
     /**
+     * Returns a static Link component
+     *
+     * @private
+     * @param {string|Object} to path to link to.
+     * @returns {React.ReactElement}
+     */
+    // eslint-disable-next-line react/display-name
+    _renderLink = React.forwardRef((itemProps, ref) =>
+        <Link {...itemProps} ref={ref}/>
+    );
+
+    /**
      * Handle for when a close event from the snackbar is triggered.
      *
      * @private
@@ -230,7 +242,7 @@ class Main extends Component {
         return <div>
             <AppBar position='static'>
                 <Toolbar>
-                    <Button color='inherit' component={props => <Link to='/' {...props}/>} variant='text'>
+                    <Button color='inherit' component={this._renderLink} variant='text' {...{to: '/'}}>
                         <img alt='logo' className='mr-1' src='/assets/vault-dark.svg'/>
                         <Typography noWrap className={classes.title} color='inherit' variant='h6'>{
                             Constants.APP_TITLE
@@ -303,8 +315,9 @@ class Main extends Component {
                                     const {description, name, type} = mount;
                                     return <ListItem
                                         button
-                                        component={(props) => <Link to={{pathname: `secrets/${name}`, state: {type}}} {...props}/>}
-                                        key={name}>
+                                        component={this._renderLink}
+                                        key={name}
+                                        {...{to: {pathname: `secrets/${name}`, state: {type}}}}>
                                         <ListItemIcon>{
                                             this._renderIconFromType(type)
                                         }</ListItemIcon>
@@ -439,9 +452,6 @@ const _styles = (theme) => ({
     },
     sectionDesktop: {
         display: 'flex'
-    },
-    textCenter: {
-        textAlign: 'center'
     },
     userNameDivider: {
         borderRight: '0.1em solid white',
