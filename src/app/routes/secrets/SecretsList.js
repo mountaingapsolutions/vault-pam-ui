@@ -692,7 +692,7 @@ const _mapStateToProps = (state, ownProps) => {
                 requiresRequest,
                 name,
                 requestId,
-                secondaryText: requiresRequest ? secondaryText : 'Click to open list of active lease',
+                secondaryText: requiresRequest ? secondaryText : 'Click to open the active leases',
                 isPending: !!activeDynamicRequest && !isApproved && !isOpened
             };
         });
