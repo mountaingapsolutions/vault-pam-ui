@@ -153,7 +153,6 @@ class NotificationsModal extends Component {
      * @returns {React.ReactElement}
      */
     _renderRejectButton(buttonData = {}) {
-        const {CONTROL_GROUP: controlGroup} = Constants.REQUEST_TYPES;
         const {alreadyApprovedBySelf, approved, isOwnRequest, path, id, type} = buttonData;
         const {deleteRequest} = this.props;
         const deleteText = isOwnRequest ? 'Cancel' : 'Reject';
