@@ -659,9 +659,9 @@ const _mapStateToProps = (state, ownProps) => {
     let dynamicSecretRole = [];
     let secretsList = [];
     let requestId = null;
-    //TODO CONSOLIDATE DYNAMIC AND STANDARD REQUEST CODE?
+    // TODO CONSOLIDATE DYNAMIC AND STANDARD REQUEST CODE?
+    // ☝️ 100%. Yes. This hurts my eyes. -JH
     if (isDynamicSecret) {
-        //DYNAMIC SECRET
         dynamicSecretRole = (secretsPaths.dynamicSecretRoles || []).map(role => {
             const engineNameRole = mountData && `${mountData.name.slice(0, -1)}/${role}`;
             const {capabilities} = secretsPaths;

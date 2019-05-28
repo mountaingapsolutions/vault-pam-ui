@@ -1,11 +1,7 @@
 const request = require('request');
 const {initApiRequest, getDomain, sendError} = require('services/utils');
-//const RequestController = require('services/controllers/Request');
-const {revokeRequest} = require('services/db/controllers/requestsController');
 const {REQUEST_TYPES} = require('services/constants');
-const {
-    getRequests
-} = require('services/db/controllers/requestsController');
+const {getRequests, revokeRequest} = require('services/db/controllers/requestsController');
 const logger = require('services/logger');
 const addRequestId = require('express-request-id')();
 
@@ -23,34 +19,6 @@ const getDynamicEngineRoles = engineName => {
         request({
             ...initApiRequest(apiToken, apiUrl),
             method: 'GET'
-        }, (error, response) => {
-            if (error) {
-                reject(error);
-            } else {
-                resolve(response);
-            }
-        });
-    });
-};
-
-/**
- * Request credential for dynamic secret.
- *
- * @param {Object} req The HTTP request object.
- * @returns {Promise<void>}
- */
-const createCredential = req => {
-    // TODO CONTINUE FROM HERE.
-    return new Promise((resolve, reject) => {
-        const domain = getDomain();
-        const {path} = req.body;
-        const engineRole = path.split('/');
-        console.warn('hi : ', path, ' :: ', engineRole);
-        //TODO what token to use API or user?
-        const {VAULT_API_TOKEN: apiToken} = process.env;
-        const apiUrl = `${domain}/v1/${engineRole[0]}/creds/${engineRole[1]}`;
-        request({
-            ...initApiRequest(apiToken, apiUrl)
         }, (error, response) => {
             if (error) {
                 reject(error);
@@ -172,21 +140,22 @@ const router = require('express').Router()
         try {
             const response = await _getLease(req);
             const leaseKeys = ((response.body || {}).data || {}).keys || [];
-            const dbRequests = await getRequests({});
+            const dynamicRequests = await getRequests({
+                type: REQUEST_TYPES.DYNAMIC_REQUEST
+            });
             const {data = {}} = await _getEntityIdInfo();
             const {key_info} = data;
             let mappedData = {};
             leaseKeys.forEach(key => {
-                const dataInDB = dbRequests.find(dbReq => {
-                    const {path, referenceData = {}, type} = dbReq.dataValues;
+                const requestData = dynamicRequests.find(dbReq => {
+                    const {path, referenceData = {}} = dbReq.dataValues;
                     const leaseId = ((referenceData || {}).leaseId || '').split('/') || [];
                     const isLease = leaseId[leaseId.length - 1] === key;
-                    const isDynamicRequest = type === REQUEST_TYPES.DYNAMIC_REQUEST;
                     const isSameMount = path === enginePath;
-                    return isLease && isDynamicRequest && isSameMount;
+                    return isLease && isSameMount;
                 });
-                if (dataInDB) {
-                    const {id, entityId, path, responses} = dataInDB.dataValues;
+                if (requestData) {
+                    const {id, entityId, path, responses} = requestData.dataValues;
                     const {entityId: approverId} = responses[0];
                     const {name} = key_info[entityId];
                     mappedData[key] = {approverId, requestId: id, leaseId: `${mount}/creds/${role}/${key}`, requesterName: name, entityId, path};
@@ -235,7 +204,6 @@ const router = require('express').Router()
     });
 
 module.exports = {
-    createCredential,
     getDynamicEngineRoles,
     router
 };

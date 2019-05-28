@@ -61,10 +61,9 @@ const _updateOrCreateRequestResponse = async (request, entityId, requestResponse
  * @param {string} path The request secrets path.
  * @param {string} responderEntityId The response's entity id.
  * @param {string} responseType The response type.
- * @param {Object} referenceData The reference data.
  * @returns {Promise}
  */
-const _updateRequestResponseType = async (requesterEntityId, path, responderEntityId, responseType, referenceData) => {
+const _updateRequestResponseType = async (requesterEntityId, path, responderEntityId, responseType) => {
     const request = (await requests.findCreateFind({
         where: {
             entityId: requesterEntityId,
@@ -75,11 +74,6 @@ const _updateRequestResponseType = async (requesterEntityId, path, responderEnti
         }]
     }))[0];
 
-    //TODO SHOULD THIS BE HERE?
-    if (referenceData) {
-        request.set('referenceData', referenceData);
-        await request.save();
-    }
     // Update the requester's request response status.
     await _updateOrCreateRequestResponse(request, responderEntityId, responseType);
 
@@ -92,13 +86,28 @@ const _updateRequestResponseType = async (requesterEntityId, path, responderEnti
  * @param {Object} req The HTTP request object.
  * @param {string} requesterEntityId The requester's entity id.
  * @param {string} path The request secrets path.
- * @param {Object} referenceData The reference data of approved request.
+ * @param {Object} [referenceData] The reference data of approved request.
  * @returns {Promise}
  */
-const approveRequest = async (req, requesterEntityId, path, referenceData = null) => {
+const approveRequest = async (req, requesterEntityId, path, referenceData) => {
     const {entityId} = req.session.user;
 
-    return await _updateRequestResponseType(requesterEntityId, path, entityId, REQUEST_STATUS.APPROVED, referenceData);
+    if (referenceData) {
+        const request = (await requests.findCreateFind({
+            where: {
+                entityId: requesterEntityId,
+                path
+            }
+        }))[0];
+        const previousReferenceData = request.get('referenceData') || {};
+        request.set('referenceData', {
+            ...previousReferenceData,
+            ...referenceData
+        });
+        await request.save();
+    }
+
+    return await _updateRequestResponseType(requesterEntityId, path, entityId, REQUEST_STATUS.APPROVED);
 };
 
 /**

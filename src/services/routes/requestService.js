@@ -4,7 +4,6 @@ const notificationsManager = require('services/notificationsManager');
 const {approveRequest, cancelRequest, deleteRequest, getRequest, getRequests, initiateRequest, openRequest, rejectRequest} = require('services/db/controllers/requestsController');
 const {sendMailFromTemplate} = require('services/mail/smtpClient');
 const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, sendJsonResponse, setSessionData} = require('services/utils');
-const {createCredential} = require('services/routes/dynamicSecretRequestService');
 const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
 const addRequestId = require('express-request-id')();
 
@@ -56,17 +55,19 @@ const _authorizeRequest = async (req, entityId, path) => {
         if (!type) {
             throw new Error('Request not found');
         }
-        //DYNAMIC SECRET
-        let dynamicSecretRefData = null;
+        let referenceData = null;
         if (type === REQUEST_TYPES.DYNAMIC_REQUEST) {
-            const {body} = await createCredential(req);
-            if (body.lease_id) {
-                // const {data, lease_id} = body;
-                // const token = data && await _wrapData(req, data);
-                // dynamicSecretRefData = {engineType, token, leaseId: lease_id};
+            const {data, lease_id: leaseId} = await _createCredentials(req, path);
+            if (data && leaseId) {
+                const token = data && await _wrapData(req, data);
+                referenceData = {token, leaseId};
+            } else {
+                const error = new Error('Invalid request');
+                error.statusCode = 400;
+                throw error;
             }
         }
-        const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path, dynamicSecretRefData));
+        const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path, referenceData));
         remappedData = _remapSecretsRequest(data);
         logger.info(`Emit approve-request data ${JSON.stringify(remappedData)} to ${entityId} and pam-approvers.`);
         notificationsManager.getInstance().to(entityId).emit('approve-request', remappedData);
@@ -105,6 +106,25 @@ const _checkIfApprover = async (req) => {
 };
 
 /**
+ * Generates credentials for dynamic secrets approval. Refer to https://www.vaultproject.io/api/secret/aws/index.html or
+ * https://www.vaultproject.io/api/secret/azure/index.html for additional information.
+ *
+ * @param {Object} req The HTTP request object.
+ * @param {string} path The secrets request path.
+ * @returns {Promise}
+ */
+const _createCredentials = async (req, path) => {
+    const {entityId} = req.session.user;
+    const {VAULT_API_TOKEN: apiToken} = process.env;
+
+    const pathSplit = path.split('/');
+    const engineName = pathSplit[0];
+    const roleName = pathSplit[1];
+    const response = (await asyncRequest(initApiRequest(apiToken, `${getDomain()}/v1/${engineName}/creds/${roleName}`, entityId, true))).body;
+    return response;
+};
+
+/**
  * Updates or creates a request record and injects the requester name into the result.
  *
  * @param {Object} req The HTTP request object.
@@ -140,11 +160,12 @@ const _injectEntityNameIntoRequestResponse = (req, entityId, requestPromise) => 
  * Returns the engine type from the provided secrets path.
  *
  * @private
- * @param {string} entityId The session user entity id.
+ * @param {Object} req The HTTP request object.
  * @param {string} path The secrets request path.
  * @returns {Promise}
  */
-const _getEngineType = async (entityId, path) => {
+const _getEngineType = async (req, path) => {
+    const {entityId} = req.session.user;
     const {VAULT_API_TOKEN: apiToken} = process.env;
 
     // Retrieve the list of Vault engine mounts.
@@ -699,7 +720,7 @@ const router = require('express').Router()
             const approverGroupPromises = [];
 
             let referenceData = {
-                engineType: await _getEngineType(entityId, path)
+                engineType: await _getEngineType(req, path)
             };
             if (type === REQUEST_TYPES.CONTROL_GROUP) {
                 // Need to generate an accessor and token to be stored as referenceData if it's a Control Group request.
