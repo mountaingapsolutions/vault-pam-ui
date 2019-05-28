@@ -27,7 +27,7 @@ module.exports = class Requests extends Model {
                 allowNull: true
             }
         }, {
-            tableName: 'requestsNew',
+            tableName: 'requests',
             sequelize
         });
     }
