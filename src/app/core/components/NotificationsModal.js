@@ -372,9 +372,18 @@ class NotificationsModal extends Component {
                                                         <IconButton disabled color='primary'>
                                                             <CheckIcon/>
                                                         </IconButton>
-                                                        <IconButton disabled>
-                                                            <ClearIcon/>
-                                                        </IconButton>
+                                                        <Tooltip aria-label={deleteText} title={deleteText}>
+                                                            <IconButton disabled={!approved}
+                                                                onClick={() => {
+                                                                    /* eslint-disable no-alert */
+                                                                    if (window.confirm(`Are you sure you want to ${isOwnRequest ? 'cancel your' : `reject ${name}'s`} request to ${path}?`)) {
+                                                                        deleteRequest(path, id, isWrapped ? CONTROL_GROUP : type);
+                                                                    }
+                                                                    /* eslint-enable no-alert */
+                                                                }}>
+                                                                <ClearIcon/>
+                                                            </IconButton>
+                                                        </Tooltip>
                                                     </ListItemSecondaryAction>
                                                     :
                                                     <ListItemSecondaryAction>
