@@ -1,11 +1,12 @@
 const request = require('request');
-const {initApiRequest, getDomain, sendError, unwrapData} = require('services/utils');
-const RequestController = require('services/controllers/Request');
-const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
-const logger = require('services/logger');
+const {initApiRequest, getDomain, sendError} = require('services/utils');
+//const RequestController = require('services/controllers/Request');
+const {revokeRequest} = require('services/db/controllers/requestsController');
+const {REQUEST_TYPES} = require('services/constants');
 const {
     getRequests
-} = require('services/routes/standardRequestService');
+} = require('services/db/controllers/requestsController');
+const logger = require('services/logger');
 const addRequestId = require('express-request-id')();
 
 /**
@@ -41,14 +42,14 @@ const getDynamicEngineRoles = engineName => {
 const createCredential = req => {
     return new Promise((resolve, reject) => {
         const domain = getDomain();
-        const {path} = req.body;
+        const {path, reqMethod} = req.body;
         const engineRole = path.split('/');
         //TODO what token to use API or user?
         const {VAULT_API_TOKEN: apiToken} = process.env;
         const apiUrl = `${domain}/v1/${engineRole[0]}/creds/${engineRole[1]}`;
         request({
             ...initApiRequest(apiToken, apiUrl),
-            method: 'POST'
+            method: reqMethod
         }, (error, response) => {
             if (error) {
                 reject(error);
@@ -109,6 +110,29 @@ const _revokeLease = lease_id => {
     });
 };
 
+/**
+ * Retrieves entity lists.
+ *
+ * @returns {Promise<void>}
+ */
+const _getEntityIdInfo = () => {
+    return new Promise((resolve, reject) => {
+        const domain = getDomain();
+        const {VAULT_API_TOKEN: apiToken} = process.env;
+        const apiUrl = `${domain}/v1/identity/entity/id?list=true`;
+        request({
+            ...initApiRequest(apiToken, apiUrl),
+            method: 'GET'
+        }, (error, response) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(response.body);
+            }
+        });
+    });
+};
+
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
@@ -147,17 +171,25 @@ const router = require('express').Router()
         try {
             const response = await _getLease(req);
             const leaseKeys = ((response.body || {}).data || {}).keys || [];
-            const dbRequests = await getRequests(req, [REQUEST_STATUS.OPENED]);
+            const dbRequests = await getRequests({});
+            const {data = {}} = await _getEntityIdInfo();
+            const {key_info} = data;
             let mappedData = {};
             leaseKeys.forEach(key => {
                 const dataInDB = dbRequests.find(dbReq => {
-                    const isLease = (dbReq.engineType || '').split('/')[1] === key;
-                    const isDynamicRequest = dbReq.type === REQUEST_TYPES.DYNAMIC_REQUEST;
-                    const isSameMount = dbReq.requestData === enginePath;
+                    const {path, referenceData = {}, type} = dbReq.dataValues;
+                    const leaseId = ((referenceData || {}).leaseId || '').split('/') || [];
+                    const isLease = leaseId[leaseId.length - 1] === key;
+                    const isDynamicRequest = type === REQUEST_TYPES.DYNAMIC_REQUEST;
+                    const isSameMount = path === enginePath;
                     return isLease && isDynamicRequest && isSameMount;
                 });
-                const {id, requesterName} = (dataInDB || {}).dataValues || {};
-                mappedData[key] = {requestId: id, leaseId: `${mount}/creds/${role}/${key}`, requesterName};
+                if (dataInDB) {
+                    const {id, entityId, path, responses} = dataInDB.dataValues;
+                    const {entityId: approverId} = responses[0];
+                    const {name} = key_info[entityId];
+                    mappedData[key] = {approverId, requestId: id, leaseId: `${mount}/creds/${role}/${key}`, requesterName: name, entityId, path};
+                }
             });
             response.body.data = mappedData;
             res.status(response.statusCode).json(response.body);
@@ -191,49 +223,13 @@ const router = require('express').Router()
      */
     .put('/revoke', async (req, res) => {
         logger.audit(req, res);
-        const {lease_id, requestId} = req.body;
+        const {leaseId, requestId, entityId, path, approverId} = req.body;
         try {
-            const response = await _revokeLease(lease_id);
-            requestId && await RequestController.updateDataById(requestId, {status: REQUEST_STATUS.REVOKED, engineType: null});
+            const response = await _revokeLease(leaseId);
+            requestId && await revokeRequest({approverId, id: requestId, entityId, path});
             res.status(response.statusCode).json(response.body);
         } catch (err) {
             sendError(req.originalUrl, res, err);
-        }
-    })
-    /**
-     * @swagger
-     * /rest/dynamic/unwrap:
-     *   post:
-     *     tags:
-     *       - Dynamic Secrets
-     *     summary: Unwrap Secret Lease.
-     *     requestBody:
-     *       required: true
-     *       content:
-     *         application/json:
-     *           schema:
-     *             type: object
-     *             properties:
-     *               requestId:
-     *                 type: string
-     *               token:
-     *                 type: string
-     *     responses:
-     *       200:
-     *         description: Success.
-     *       404:
-     *         description: Not found.
-     */
-    //TODO CONSOLIDATE UNWRAPPING OF CONTROL GROUPS AND DYNAMIC SECRET
-    .post('/unwrap', async (req, res) => {
-        logger.audit(req, res);
-        const {requestId, token} = req.body;
-        try {
-            const response = await unwrapData(token);
-            await RequestController.updateDataById(requestId, {status: REQUEST_STATUS.OPENED});
-            res.status(response.statusCode).json(response.body);
-        } catch (err) {
-            sendError(req.originalUrl, res, err.message, err.statusCode);
         }
     });
 

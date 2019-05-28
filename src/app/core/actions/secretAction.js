@@ -24,7 +24,6 @@ class SecretAction extends _Actions {
             LIST_SECRETS_AND_CAPABILITIES: 'LIST_SECRETS_AND_CAPABILITIES',
             LIST_REQUESTS: 'LIST_REQUESTS',
             OPEN_APPROVED_SECRET: 'OPEN_APPROVED_SECRET',
-            REJECT_REQUEST: 'REJECT_REQUEST',
             REMOVE_REQUEST_DATA: 'REMOVE_REQUEST_DATA',
             REQUEST_SECRET: 'REQUEST_SECRET',
             REVOKE_LEASE: 'REVOKE_LEASE',
@@ -36,18 +35,24 @@ class SecretAction extends _Actions {
     /**
      * Authorizes a secrets request.
      *
-     * @param {string} accessor The request accessor value.
      * @param {string} path Specifies the path of the request to authorize.
      * @param {string} entityId The user entity id.
      * @param {string} [type] The request type.
+     * @param {string} engineType The secret engine type.
      * @returns {function} Redux dispatch function.
      */
-    authorizeRequest(accessor, path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) {
+    authorizeRequest(path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST, engineType) {
+        let reqMethod = 'POST';
+        //TODO IMPROVE CHECKING METHOD
+        if (engineType === 'azure') {
+            reqMethod = 'GET';
+        }
         return this._dispatchPost(this.ACTION_TYPES.AUTHORIZE_REQUEST, '/rest/secret/request/authorize', {
-            accessor,
             path,
             entityId,
-            type
+            type,
+            reqMethod,
+            engineType
         });
     }
 
@@ -138,12 +143,12 @@ class SecretAction extends _Actions {
     /**
      * Revokes a lease.
      *
-     * @param {string} [lease_id] The Lease id.
+     * @param {string} [leaseData] The Lease data.
      * @param {number} [requestId] The request id in database.
      * @returns {function} Redux dispatch function.
      */
-    revokeLease(lease_id, requestId) {
-        return this._dispatchPut(this.ACTION_TYPES.REVOKE_LEASE, '/rest/dynamic/revoke', {lease_id, requestId});
+    revokeLease(leaseData) {
+        return this._dispatchPut(this.ACTION_TYPES.REVOKE_LEASE, '/rest/dynamic/revoke', leaseData);
     }
 
     /**
@@ -175,17 +180,17 @@ class SecretAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     listRequests() {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_REQUESTS, '/rest/secret/requests/all');
+        return this._dispatchGet(this.ACTION_TYPES.LIST_REQUESTS, '/rest/secret/requests');
     }
 
     /**
      * Removes the request data in the client data model.
      *
-     * @param {string} requestPath The request path to remove.
+     * @param {Object} data The request data to remove.
      * @returns {function} Redux dispatch function.
      */
-    removeRequestData(requestPath) {
-        return this._createResourceData(this.ACTION_TYPES.REMOVE_REQUEST_DATA, undefined, requestPath, false);
+    removeRequestData(data) {
+        return this._createResourceData(this.ACTION_TYPES.REMOVE_REQUEST_DATA, undefined, data, false);
     }
 
     /**
@@ -221,29 +226,12 @@ class SecretAction extends _Actions {
     /**
      * Unwraps a wrapped secret.
      *
-     * @param {string} name The secret name.
-     * @param {string} token The token to unwrap.
+     * @param {string} path Specifies the path of the approved secrets to unwrap.
      * @returns {function} Redux dispatch function.
      */
-    unwrapSecret(name, token) {
+    unwrapSecret(path) {
         return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/secret/unwrap', {
-            token
-        });
-    }
-
-    /**
-     * Unwraps a dynamic secret.
-     *
-     * @param {string} referenceId The token to unwrap.
-     * @param {number} requestId The request id.
-     * @returns {function} Redux dispatch function.
-     */
-    unwrapDynamicSecret(referenceId, requestId) {
-        //TODO SEPARATE WRAP ID AND LEASE ID IN NEW DB SCHEMA
-        const token = referenceId.split('/')[0];
-        return this._dispatchPost(this.ACTION_TYPES.UNWRAP_SECRET, '/rest/dynamic/unwrap', {
-            token,
-            requestId
+            path
         });
     }
 

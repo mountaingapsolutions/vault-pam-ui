@@ -65,12 +65,12 @@ class NotificationsModal extends Component {
      *
      * @private
      * @param {SyntheticMouseEvent} event The event.
-     * @param {string} requestPath The request path.
+     * @param {string} secretsPath The request secrets path.
      */
-    _onRequestDetails(event, requestPath) {
+    _onRequestDetails(event, secretsPath) {
         event.preventDefault();
         this.setState({
-            selectedRequestPath: requestPath
+            selectedRequestPath: secretsPath
         });
     }
 
@@ -85,8 +85,8 @@ class NotificationsModal extends Component {
         const {classes, vaultLookupSelf} = this.props;
         const {entity_id: entityIdSelf} = unwrap(safeWrap(vaultLookupSelf).data.data) || {};
         // Exclude self from names list. If the user did approve the request, then that user will be listed first.
-        const namesList = authorizations.filter((authorization) => authorization.id !== entityIdSelf).map((authorization) => authorization.name);
-        const alreadyAuthorizedBySelf = authorizations && authorizations.some((authorization) => authorization.id === entityIdSelf);
+        const namesList = authorizations.filter((authorization) => authorization.entityId !== entityIdSelf).map((authorization) => authorization.name);
+        const alreadyAuthorizedBySelf = authorizations && authorizations.some((authorization) => authorization.entityId === entityIdSelf);
         if (alreadyAuthorizedBySelf) {
             namesList.unshift('you');
         }
@@ -134,8 +134,9 @@ class NotificationsModal extends Component {
      */
     _renderRequestDetails(selectedRequest) {
         const {classes} = this.props;
-        const {accessor, approved, creationTime, requestEntity = {}, requestPath} = selectedRequest;
-        const {id, name} = requestEntity;
+        const {approved, creationTime, path, requestEntity, referenceData} = selectedRequest;
+        const {accessor} = referenceData || {};
+        const {id, name} = requestEntity || {};
         return <GridList cellHeight={'auto'} className={classes.listContainer} cols={2}>
             <ListItem alignItems='flex-start'>
                 <ListItemText
@@ -197,7 +198,7 @@ class NotificationsModal extends Component {
                     secondary={
                         <React.Fragment>
                             <Typography className={classes.block} color='textSecondary' component='span'>
-                                {requestPath}
+                                {path}
                             </Typography>
                         </React.Fragment>
                     }
@@ -229,13 +230,12 @@ class NotificationsModal extends Component {
         const {authorizeRequest, classes, inProgress, onClose, open, deleteRequest, secretsRequests = [], vaultLookupSelf} = this.props;
         const {anchorEl, selectedFilterIndex, selectedRequestPath} = this.state;
         const {entity_id: entityIdSelf} = unwrap(safeWrap(vaultLookupSelf).data.data) || {};
-        const selectedRequest = secretsRequests.length > 0 ? secretsRequests.find((request) => request.requestPath === selectedRequestPath) : undefined;
+        const selectedRequest = secretsRequests.length > 0 ? secretsRequests.find((request) => request.path === selectedRequestPath) : undefined;
         const filterOptions = [
             'All',
             'Approved',
             'Pending',
         ];
-
         return <Dialog
             fullWidth
             aria-describedby='notifications-dialog-description'
@@ -328,13 +328,13 @@ class NotificationsModal extends Component {
                                     }
                                 }).map((requestData, i) => {
                                     const {CONTROL_GROUP, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
-                                    const {accessor, approved, authorizations, creationTime, isWrapped, requestEntity = {}, requestPath, type} = requestData;
+                                    const {approved, authorizations, creationTime, isWrapped, path, requestEntity = {}, type, referenceData = {}} = requestData;
                                     const {id, name} = requestEntity;
                                     const requestType = isWrapped ? 'Control Groups' : type === STANDARD_REQUEST ? 'Standard Request' : 'Dynamic Request';
                                     const isOwnRequest = id === entityIdSelf;
                                     const deleteText = isOwnRequest ? 'Cancel' : 'Reject';
-                                    const alreadyApprovedBySelf = authorizations && authorizations.some((authorization) => authorization.id === entityIdSelf);
-                                    return <React.Fragment key={`${requestPath}-${i}`}>
+                                    const alreadyApprovedBySelf = authorizations && authorizations.some((authorization) => authorization.entityId === entityIdSelf);
+                                    return <React.Fragment key={`${path}-${i}`}>
                                         <ListItem alignItems='flex-start'>
                                             <ListItemAvatar>
                                                 <Avatar>
@@ -349,7 +349,7 @@ class NotificationsModal extends Component {
                                                             className={classes.block}
                                                             color='textPrimary'
                                                             component='span'>
-                                                            {requestPath}
+                                                            {path}
                                                         </Typography>
                                                         <Typography
                                                             className={classes.block}
@@ -365,7 +365,7 @@ class NotificationsModal extends Component {
                                                 alreadyApprovedBySelf ?
                                                     <ListItemSecondaryAction>
                                                         <Button variant='text' onClick={(e) => {
-                                                            this._onRequestDetails(e, requestPath);
+                                                            this._onRequestDetails(e, path);
                                                         }}>
                                                             Details
                                                         </Button>
@@ -379,7 +379,7 @@ class NotificationsModal extends Component {
                                                     :
                                                     <ListItemSecondaryAction>
                                                         <Button variant='text' onClick={(e) => {
-                                                            this._onRequestDetails(e, requestPath);
+                                                            this._onRequestDetails(e, path);
                                                         }}>
                                                             Details
                                                         </Button>
@@ -387,7 +387,7 @@ class NotificationsModal extends Component {
                                                             <Tooltip aria-label='Approve' title='Approve'>
                                                                 <IconButton
                                                                     color='primary'
-                                                                    onClick={() => authorizeRequest(accessor, requestPath, id, isWrapped ? CONTROL_GROUP : type)}>
+                                                                    onClick={() => authorizeRequest(path, id, isWrapped ? CONTROL_GROUP : type, referenceData.engineType)}>
                                                                     <CheckIcon/>
                                                                 </IconButton>
                                                             </Tooltip>}
@@ -395,8 +395,8 @@ class NotificationsModal extends Component {
                                                             <IconButton disabled={approved}
                                                                 onClick={() => {
                                                                     /* eslint-disable no-alert */
-                                                                    if (window.confirm(`Are you sure you want to ${isOwnRequest ? 'cancel your' : `reject ${name}'s`} request to ${requestPath}?`)) {
-                                                                        deleteRequest(requestPath, id, isWrapped ? CONTROL_GROUP : type);
+                                                                    if (window.confirm(`Are you sure you want to ${isOwnRequest ? 'cancel your' : `reject ${name}'s`} request to ${path}?`)) {
+                                                                        deleteRequest(path, id, isWrapped ? CONTROL_GROUP : type);
                                                                     }
                                                                     /* eslint-enable no-alert */
                                                                 }}>
@@ -483,7 +483,7 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        authorizeRequest: (path, entityId, requestId, type) => dispatch(secretAction.authorizeRequest(path, entityId, requestId, type)),
+        authorizeRequest: (path, entityId, requestType, engineType) => dispatch(secretAction.authorizeRequest(path, entityId, requestType, engineType)),
         deleteRequest: (path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => dispatch(secretAction.deleteRequest(path, entityId, type))
     };
 };

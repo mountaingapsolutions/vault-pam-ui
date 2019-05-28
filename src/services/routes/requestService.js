@@ -1,17 +1,202 @@
 const {safeWrap, unwrap} = require('@mountaingapsolutions/objectutil');
 const logger = require('services/logger');
 const notificationsManager = require('services/notificationsManager');
+const {approveRequest, cancelRequest, deleteRequest, getRequest, getRequests, initiateRequest, openRequest, rejectRequest} = require('services/db/controllers/requestsController');
 const {sendMailFromTemplate} = require('services/mail/smtpClient');
-const {
-    createOrUpdateStatusByRequester,
-    getApprovedRequests,
-    getRequests,
-    updateStandardRequestByApprover
-} = require('services/routes/standardRequestService');
-const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, sendJsonResponse, setSessionData, wrapData} = require('services/utils');
+const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, sendJsonResponse, setSessionData} = require('services/utils');
 const {createCredential} = require('services/routes/dynamicSecretRequestService');
 const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
 const addRequestId = require('express-request-id')();
+
+/**
+ * Authorizes a secrets requested via Control Groups.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @param {string} entityId The requester entity id.
+ * @param {string} path The secrets request path.
+ * @returns {Promise}
+ */
+const _authorizeControlGroupRequest = async (req, entityId, path) => {
+    const {groups, token} = req.session.user;
+    const {accessor} = ((await _getRequest(entityId, path, REQUEST_TYPES.CONTROL_GROUP)).dataValues || {}).referenceData || {};
+    let remappedData;
+    if (accessor) {
+        // Inject the accessor into the post body.
+        req.body.accessor = accessor;
+        const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path));
+        // Inject the Control Group authorization result into the data set.
+        data.requestInfoData = await require('vault-pam-premium').authorizeRequest(token, accessor);
+        remappedData = _remapSecretsRequest(data);
+        logger.info(`Emit approve-request data ${JSON.stringify(remappedData)} to ${entityId} and the following groups: ${groups.join(', ')}.`);
+        notificationsManager.getInstance().to(entityId).emit('approve-request', remappedData);
+        groups.forEach((groupName) => {
+            notificationsManager.getInstance().to(groupName).emit('approve-request', remappedData);
+        });
+    } else {
+        throw new Error('Request not found');
+    }
+    return remappedData;
+};
+
+/**
+ * Authorizes a secrets requested via standard or dynamic request.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @param {string} entityId The requester entity id.
+ * @param {string} path The secrets request path.
+ * @returns {Promise}
+ */
+const _authorizeRequest = async (req, entityId, path) => {
+    const isApprover = await _checkIfApprover(req);
+    const {engineType} = req.body;
+    let remappedData;
+    if (isApprover) {
+        const {type} = (await _getRequest(entityId, path)).dataValues || {};
+        if (!type) {
+            throw new Error('Request not found');
+        }
+        //DYNAMIC SECRET
+        let dynamicSecretRefData = null;
+        if (type === REQUEST_TYPES.DYNAMIC_REQUEST) {
+            const {body} = await createCredential(req);
+            if (body.lease_id) {
+                const {data, lease_id} = body;
+                const token = data && await _wrapData(req, data);
+                dynamicSecretRefData = {engineType, token, leaseId: lease_id};
+            }
+        }
+        const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path, dynamicSecretRefData));
+        remappedData = _remapSecretsRequest(data);
+        logger.info(`Emit approve-request data ${JSON.stringify(remappedData)} to ${entityId} and pam-approvers.`);
+        notificationsManager.getInstance().to(entityId).emit('approve-request', remappedData);
+        notificationsManager.getInstance().to('pam-approver').emit('approve-request', remappedData);
+    } else {
+        const unauthorizedError = new Error('Unauthorized');
+        unauthorizedError.statusCode = 403;
+        throw unauthorizedError;
+    }
+    return remappedData;
+};
+
+/**
+ * Check if user is a member of approver group.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
+const _checkIfApprover = async (req) => {
+    const {entityId, token} = req.session.user;
+    const groupName = 'pam-approver';
+    try {
+        const response = await asyncRequest(initApiRequest(token, `${getDomain()}/v1/identity/group/name/${groupName}`, entityId, true));
+        if (response.body && response.body.data) {
+            const {member_entity_ids = []} = response.body.data;
+            return member_entity_ids.includes(entityId);
+        } else {
+            logger.error(`${groupName} group not found.`);
+            return false;
+        }
+    } catch (error) {
+        logger.error(error);
+        return false;
+    }
+};
+
+/**
+ * Updates or creates a request record and injects the requester name into the result.
+ *
+ * @param {Object} req The HTTP request object.
+ * @param {string} entityId The requester's entity id.
+ * @param {Promise} requestPromise The request promise.
+ * @returns {Promise}
+ * @private
+ */
+const _injectEntityNameIntoRequestResponse = (req, entityId, requestPromise) => {
+    return new Promise((resolve, reject) => {
+        Promise.all([_getUserEntityIds(req), requestPromise])
+            .then((results) => {
+                const userIdMap = results[0];
+                const request = results[1];
+                if (request && request.dataValues) {
+                    // Inject the requester name into the data value.
+                    request.dataValues.name = (userIdMap[entityId] || {}).name || `<${entityId}>`;
+                    // Inject the response creator's name into each of the responses.
+                    request.dataValues.responses.forEach((response) => {
+                        const {entityId: responderEntityId} = response;
+                        response.name = (userIdMap[responderEntityId] || {}).name || `<${responderEntityId}>`;
+                    });
+                    resolve(request);
+                } else {
+                    reject(request);
+                }
+            })
+            .catch(reject);
+    });
+};
+
+/**
+ * Helper method to return the specified secrets request.
+ *
+ * @private
+ * @param {string} entityId The requester entity id.
+ * @param {string} path The request secrets path.
+ * @param {string} [type] The request type.
+ * @returns {Promise}
+ */
+const _getRequest = async (entityId, path, type) => {
+    const requestParams = {
+        entityId,
+        path
+    };
+    if (type) {
+        requestParams.type = type;
+    }
+    return await getRequest(requestParams);
+};
+
+/**
+ * Retrieves the corresponding requests for the session user.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
+const _getRequests = (req) => {
+    return new Promise(async (resolve, reject) => {
+        const {entityId} = req.session.user;
+        const isApprover = await _checkIfApprover(req);
+        // If not an approver, only retrieve user's own requests.
+        Promise.all([_getUserEntityIds(req), getRequests(isApprover ? {} : {
+            entityId
+        })])
+            .then((results) => {
+                const userIdMap = results[0];
+                // Exclude any CANCELED or REJECTED requests.
+                const requests = (Array.isArray(results[1]) ? results[1] : []).filter((request) => {
+                    return !(request.dataValues.responses || []).some((response) => {
+                        return response.type === REQUEST_STATUS.CANCELED || response.type === REQUEST_STATUS.REJECTED;
+                    });
+                });
+                // Inject the requester name into each data value row.
+                requests.forEach((request) => {
+                    if (request.dataValues) {
+                        const {entityId: id} = request.dataValues;
+                        request.dataValues.name = (userIdMap[id] || {}).name || `<${id}>`;
+                        // Inject the response creator's name into each of the responses.
+                        request.dataValues.responses.forEach((response) => {
+                            const {entityId: responderEntityId} = response;
+                            response.name = (userIdMap[responderEntityId] || {}).name || `<${responderEntityId}>`;
+                        });
+                    }
+                });
+                resolve(requests.filter((request) => !(request.dataValues.responses || []).some((response) => response.type === REQUEST_STATUS.CANCELED)));
+            })
+            .catch(err => reject(err));
+    });
+};
 
 /**
  * Retrieves user data by entity id.
@@ -21,16 +206,42 @@ const addRequestId = require('express-request-id')();
  * @param {string} entityId The entity id.
  * @returns {Promise}
  */
-const _getUserByEntityId = (req, entityId) => {
+const _getUserByEntityId = async (req, entityId) => {
     const {entityId: sessionEntityId, token} = req.session.user;
-    return new Promise((resolve) => {
-        asyncRequest(initApiRequest(token, `${getDomain()}/v1/identity/entity/id/${entityId}`, sessionEntityId, true))
-            .then((response) => {
-                const responseBody = response.body;
-                resolve(responseBody && responseBody.data ? responseBody.data : responseBody);
-            })
-            .catch((error) => resolve(error));
-    });
+    try {
+        const response = await asyncRequest(initApiRequest(token, `${getDomain()}/v1/identity/entity/id/${entityId}`, sessionEntityId, true));
+        if (response.body && response.body.data) {
+            return response.body.data;
+        } else {
+            logger.error(response.body);
+        }
+    } catch (error) {
+        logger.error(error);
+    }
+    return {};
+};
+
+/**
+ * Retrieves all user entity ids.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @returns {Promise}
+ */
+const _getUserEntityIds = async (req) => {
+    const {entityId, token} = req.session.user;
+    try {
+        const response = await asyncRequest(initApiRequest(token, `${getDomain()}/v1/identity/entity/id?list=true`, entityId, true));
+        const keyInfo = unwrap(safeWrap(response.body).data.key_info);
+        if (keyInfo) {
+            return keyInfo;
+        } else {
+            logger.error(response.body);
+        }
+    } catch (error) {
+        logger.error(error);
+    }
+    return {};
 };
 
 /**
@@ -72,21 +283,38 @@ const _getUsersByGroupName = async (req, groupName) => {
  */
 const _cancelRequest = (req) => {
     const {path, type} = req.query;
-    const {entityId: requesterEntityId} = req.session.user;
+    const {entityId} = req.session.user;
     const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = REQUEST_TYPES;
     return new Promise(async (resolve, reject) => {
         try {
             const approverGroupPromises = [];
             // Control Group request cancellation.
             if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP) {
-                const {groups = []} = await require('vault-pam-premium').deleteRequest(req);
-                groups.forEach(group => {
-                    approverGroupPromises.push(_getUsersByGroupName(req, group.data.name));
-                });
+                const {accessor} = ((await _getRequest(entityId, path, type)).dataValues || {}).referenceData || {};
+                if (accessor) {
+                    // Inject the accessor into the query.
+                    const {groups = []} = await require('vault-pam-premium').deleteRequest(entityId, accessor, path);
+                    groups.forEach(group => {
+                        approverGroupPromises.push(_getUsersByGroupName(req, group));
+                    });
+                    // Control Group requests operate differently in that it needs to be deleted, since the Vault accessor is revoked.
+                    logger.warn(`Deleting the record with accessor ${accessor} from database.`);
+                    deleteRequest({
+                        referenceData: {
+                            accessor
+                        }
+                    });
+                } else {
+                    reject({
+                        message: 'Request not found',
+                        statusCode: 404
+                    });
+                    return;
+                }
             }
             // Standard Request cancellation.
             else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
-                await createOrUpdateStatusByRequester(req, requesterEntityId, path, REQUEST_STATUS.CANCELED);
+                cancelRequest(req, path);
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             }
             // Invalid type provided.
@@ -102,7 +330,7 @@ const _cancelRequest = (req) => {
             const recipients = {};
             Promise.all(approverGroupPromises).then((groups) => {
                 const requestType = 'cancel-request';
-                notificationsManager.getInstance().to(requesterEntityId).emit(requestType, path);
+                notificationsManager.getInstance().to(entityId).emit(requestType, path);
                 groups.forEach((groupData) => {
                     const {name, users = []} = groupData;
                     // Notify the group of the cancellation.
@@ -144,21 +372,47 @@ const _rejectRequest = (req) => {
         try {
             // Control Group rejection.
             if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP) {
-                const {groups = []} = await require('vault-pam-premium').deleteRequest(req);
-
-                groups.forEach(group => {
-                    const {name} = group.data;
-                    // Notify the group of the rejection.
-                    logger.info(`Emit ${requestType} of accessor ${path} to ${name}.`);
-                    notificationsManager.getInstance().to(name).emit(requestType, path);
-                });
+                const {accessor} = ((await _getRequest(entityId, path, type)).dataValues || {}).referenceData || {};
+                if (accessor) {
+                    const {entityId: entityIdSelf} = req.session.user;
+                    const {groups = []} = await require('vault-pam-premium').deleteRequest(entityIdSelf, accessor, path, entityId);
+                    groups.forEach(name => {
+                        // Notify the group of the rejection.
+                        logger.info(`Emit ${requestType} of accessor ${path} to ${name}.`);
+                        notificationsManager.getInstance().to(name).emit(requestType, path);
+                    });
+                    // Control Group requests operate differently in that it needs to be deleted, since the Vault accessor is revoked.
+                    logger.warn(`Deleting the record with accessor ${accessor} from database.`);
+                    deleteRequest({
+                        path,
+                        referenceData: {
+                            accessor
+                        }
+                    });
+                } else {
+                    reject({
+                        message: 'Request not found',
+                        statusCode: 404
+                    });
+                    return;
+                }
             }
             // Standard Request rejection.
             else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
-                await updateStandardRequestByApprover(req, entityId, path, REQUEST_STATUS.REJECTED);
-                // Notify the group of the rejection.
-                logger.info(`Emit ${requestType} of accessor ${path} to pam-approver.`);
-                notificationsManager.getInstance().to('pam-approver').emit(requestType, path);
+                const isApprover = await _checkIfApprover(req);
+                if (isApprover) {
+                    rejectRequest(req, entityId, path);
+
+                    // Notify the group of the rejection.
+                    logger.info(`Emit ${requestType} of accessor ${path} to pam-approver.`);
+                    notificationsManager.getInstance().to('pam-approver').emit(requestType, path);
+                } else {
+                    reject({
+                        message: 'Unauthorized',
+                        statusCode: 403
+                    });
+                    return;
+                }
             }
             // Invalid type provided.
             else {
@@ -199,49 +453,63 @@ const _rejectRequest = (req) => {
  * @returns {Object}
  */
 const _remapSecretsRequest = (secretsRequest) => {
-    if (secretsRequest.request_info) {
-        const {approved, authorizations, request_entity: requestEntity, request_path: requestPath} = secretsRequest.request_info.data;
-        const {accessor, creation_time: creationTime, token} = secretsRequest.wrap_info || {};
-        return {
-            accessor,
-            approved,
-            authorizations: authorizations ? authorizations.map((authorization) => {
-                const {entity_id: id, entity_name: name} = authorization;
-                return {
-                    id,
-                    name
-                };
-            }) : [],
-            creationTime,
-            isWrapped: true,
-            requestEntity,
-            requestPath,
-            token
-        };
-    } else if (secretsRequest.dataValues) {
-        //TODO CHANGE engineType to reference column, once DB is finalized.
-        const {approverEntityId, approverName, createdAt: creationTime, engineType: referenceId, id: requestId, requestData: requestPath, requesterEntityId: id, requesterName: name, status, type} = secretsRequest.dataValues;
-        return {
-            approved: status === REQUEST_STATUS.APPROVED,
-            creationTime,
-            authorizations: approverEntityId ? [{
-                id: approverEntityId,
-                name: approverName
-            }] : [],
-            isWrapped: false,
-            requestEntity: {
-                id,
-                name
-            },
-            referenceId,
-            requestId,
-            requestPath,
-            type
-        };
+    const {createdAt: creationTime, entityId: id, name, path, referenceData = {}, responses = [], type} = secretsRequest.dataValues;
+    let approved, authorizations, opened;
+    if (secretsRequest.requestInfoData) {
+        const {data} = secretsRequest.requestInfoData;
+        approved = !!data.approved;
+        authorizations = data.authorizations ? data.authorizations.map((authorization) => {
+            const {entity_id, entity_name} = authorization;
+            return {
+                entityId: entity_id,
+                name: entity_name
+            };
+        }) : [];
     } else {
-        logger.error(`Unknown request type: ${JSON.stringify(secretsRequest)}`);
-        return {};
+        approved = responses.some((response) => response.type === REQUEST_STATUS.APPROVED);
+        opened = responses.some((response) => response.type === REQUEST_STATUS.OPENED);
+        authorizations = responses.filter((response) => [REQUEST_STATUS.APPROVED, REQUEST_STATUS.REJECTED].includes(response.type));
     }
+    return {
+        approved,
+        creationTime,
+        authorizations,
+        isWrapped: type === 'control-group',
+        opened,
+        path,
+        referenceData,
+        requestEntity: {
+            id,
+            name
+        },
+        responses,
+        type
+    };
+};
+
+
+/**
+ * Helper method for wrapping data.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @param {Object} data The data object to be wrapped.
+ * @returns {Promise}
+ */
+const _wrapData = async (req, data) => {
+    const {VAULT_API_TOKEN: apiToken} = process.env;
+    let apiRequest = initApiRequest(apiToken, `${getDomain()}/v1/sys/wrapping/wrap`, true);
+    // TODO TTL is currently hard-coded. Have this be configurable.
+    apiRequest.headers['x-vault-wrap-ttl'] = 60000;
+    const response = await asyncRequest({
+        ...apiRequest,
+        method: 'POST',
+        json: data
+    });
+    if (response.body) {
+        return response.body.wrap_info.token;
+    }
+    throw new Error('Invalid request');
 };
 
 /* eslint-disable new-cap */
@@ -270,7 +538,7 @@ const router = require('express').Router()
      *   get:
      *     tags:
      *       - Requests
-     *     summary: Retrieves active requests
+     *     summary: Retrieves the session user's active requests.
      *     responses:
      *       200:
      *         description: Success.
@@ -279,57 +547,42 @@ const router = require('express').Router()
      */
     .get('/requests', async (req, res) => {
         logger.audit(req, res);
-        let requests = [];
-        if (req.app.locals.features['control-groups']) {
-            try {
-                const controlGroupRequests = await require('vault-pam-premium').getRequests(req);
-                requests = requests.concat(controlGroupRequests);
-            } catch (err) {
-                sendError(req, res, err);
-                return;
-            }
-        }
-        try {
-            const standardRequests = await getRequests(req);
-            requests = requests.concat(standardRequests);
-        } catch (err) {
-            sendError(req, res, err);
-            return;
-        }
-        sendJsonResponse(req, res, requests);
-    })
-    /**
-     * @swagger
-     * /rest/secret/requests/all:
-     *   get:
-     *     tags:
-     *       - Requests
-     *     summary: Retrieves active requests and user's active requests
-     *     responses:
-     *       200:
-     *         description: Success.
-     *       403:
-     *         description: Unauthorized.
-     */
-    .get('/requests/all', async (req, res) => {
-        logger.audit(req, res);
-        let requests = [];
+        const requests = [];
         const promises = [];
-        if (req.app.locals.features['control-groups']) {
-            const {getRequests: premiumGetRequests, getActiveRequests} = require('vault-pam-premium');
-            promises.push(premiumGetRequests(req));
-            promises.push(getActiveRequests(req));
-        }
-        promises.push(getRequests(req));
-        Promise.all(promises)
-            .then(results => {
-                results.forEach((currentRequests) => {
-                    requests = requests.concat(currentRequests);
+        // Retrieve requests.
+        (await _getRequests(req)).forEach((requestRecord) => {
+            const {referenceData, type} = requestRecord.dataValues;
+            const {accessor} = referenceData || {};
+            if (accessor && type === 'control-group') {
+                // For Control Group requests, also validate the accessor.
+                const accessorValidationPromise = require('vault-pam-premium').validateAccessor(accessor);
+                accessorValidationPromise.then((response) => {
+                    const requestData = response.body.data;
+                    if (!requestData) {
+                        logger.warn(`Invalid accessor ${accessor}. Deleting from database.`);
+                        deleteRequest({
+                            referenceData: {
+                                accessor
+                            }
+                        });
+                    } else {
+                        requests.push(_remapSecretsRequest({
+                            requestData,
+                            ...requestRecord
+                        }));
+                    }
                 });
-                sendJsonResponse(req, res, requests.map(_remapSecretsRequest));
+                promises.push(accessorValidationPromise);
+            } else {
+                requests.push(_remapSecretsRequest(requestRecord));
+            }
+        });
+        Promise.all(promises)
+            .then(() => {
+                sendJsonResponse(req, res, requests);
             })
             .catch((err) => {
-                logger.error(err);
+                logger.error(err.toString(), req, res, null, err);
                 sendJsonResponse(req, res, [], 500);
             });
     })
@@ -369,7 +622,7 @@ const router = require('express').Router()
         const {entityId, path, type} = req.query;
         const {entityId: entityIdSelf} = req.session.user;
         if (!path || !type) {
-            sendError(req, res, 'Invalid request');
+            sendError(req, res, 'Invalid request', null, 400);
             return;
         }
 
@@ -420,25 +673,39 @@ const router = require('express').Router()
      */
     .post('/request', async (req, res) => {
         logger.audit(req, res);
-        const {path, type} = req.body;
-        const {entityId} = req.session.user;
+        const {engineType, path, type} = req.body;
+        const {entityId, token: sessionToken} = req.session.user;
         const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = REQUEST_TYPES;
         try {
             const approverGroupPromises = [];
-            let requestData;
+            let referenceData = null;
             if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP) {
-                const {groups = [], data} = await require('vault-pam-premium').createRequest(req);
-                requestData = _remapSecretsRequest(data);
+                // Need to generate an accessor and token to be stored as referenceData if it's a Control Group request.
+                const {groups = [], accessor, token} = await require('vault-pam-premium').createRequest(sessionToken, path);
+                referenceData = {
+                    accessor,
+                    token,
+                    engineType //TODO IS THIS NEED HERE? RECHECK
+                };
                 groups.forEach((groupName) => {
                     approverGroupPromises.push(_getUsersByGroupName(req, groupName));
                 });
             } else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
-                requestData = _remapSecretsRequest(await createOrUpdateStatusByRequester(req, entityId, path, REQUEST_STATUS.PENDING, type));
+                referenceData = {
+                    engineType
+                };
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             } else {
-                sendError(req, res, 'Invalid request');
+                sendError(req, res, 'Invalid request', 400);
                 return;
             }
+
+            const requestData = _remapSecretsRequest(await _injectEntityNameIntoRequestResponse(req, entityId, initiateRequest(req, {
+                referenceData,
+                path,
+                type
+            })));
+
             const approvers = {};
             Promise.all(approverGroupPromises).then((groups) => {
                 // Notify self as well as groups.
@@ -496,65 +763,32 @@ const router = require('express').Router()
      */
     .post('/request/authorize', async (req, res) => {
         logger.audit(req, res);
-        let {accessor, entityId, path, type} = req.body;
-        const {groups} = req.session.user;
-        const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = REQUEST_TYPES;
-        //DYNAMIC SECRET
-        let dynamicSecretRefId = null;
-        let resolveDynamicSecret = type !== REQUEST_TYPES.DYNAMIC_REQUEST;
+        let {entityId, path, type} = req.body;
+
+        if (!entityId || !path) {
+            sendError(req, res, 'Invalid request');
+            return;
+        }
+        let responseData;
         try {
-            if (req.app.locals.features['control-groups'] && type === CONTROL_GROUP && accessor) {
-                const {data} = await require('vault-pam-premium').authorizeRequest(req);
-                path = unwrap(safeWrap(data).request_info.data.request_path);
-                entityId = unwrap(safeWrap(data).request_info.data.request_entity.id);
-                if (entityId) {
-                    const remappedData = _remapSecretsRequest(data);
-                    logger.info(`Emit approve-request data ${JSON.stringify(remappedData)} to ${entityId} and the following groups: ${groups.join(', ')}.`);
-                    notificationsManager.getInstance().to(entityId).emit('approve-request', remappedData);
-                    groups.forEach((groupName) => {
-                        notificationsManager.getInstance().to(groupName).emit('approve-request', remappedData);
+            if (req.app.locals.features['control-groups'] && type === REQUEST_TYPES.CONTROL_GROUP) {
+                responseData = await _authorizeControlGroupRequest(req, entityId, path);
+            } else {
+                responseData = await _authorizeRequest(req, entityId, path);
+            }
+            _getUserByEntityId(req, entityId).then((user) => {
+                if (user.metadata && user.metadata.email) {
+                    sendMailFromTemplate(req, 'approve-request', {
+                        to: user.metadata.email,
+                        secretsPath: path.replace('/data/', '/')
                     });
                 }
-            } else if (type === STANDARD_REQUEST || type === DYNAMIC_REQUEST) {
-                if (type === DYNAMIC_REQUEST) {
-                    const {body} = await createCredential(req);
-                    if (body.lease_id) {
-                        resolveDynamicSecret = true;
-                        const leaseWrapToken = body.data && await wrapData(body.data);
-                        const leaseId = body.lease_id.split('/');
-                        dynamicSecretRefId = leaseWrapToken && leaseId[leaseId.length - 1] && `${leaseWrapToken}/${leaseId[leaseId.length - 1]}`;
-                    }
-                }
-                //TODO - Make separate method for dynamic requests? or just rename method
-                const data = await updateStandardRequestByApprover(req, entityId, path, REQUEST_STATUS.APPROVED, dynamicSecretRefId) || {};
-                const {dataValues = {}} = data;
-                path = dataValues.requestData;
-                entityId = dataValues.requesterEntityId;
-                const remappedData = _remapSecretsRequest(data);
-                logger.info(`Emit approve-request data ${JSON.stringify(remappedData)} to ${entityId} and pam-approvers.`);
-                notificationsManager.getInstance().to(entityId).emit('approve-request', remappedData);
-                notificationsManager.getInstance().to('pam-approver').emit('approve-request', remappedData);
-            } else {
-                sendError(req, res, 'Invalid request');
-                return;
-            }
-            if (entityId && path && resolveDynamicSecret) {
-                _getUserByEntityId(req, entityId).then((user) => {
-                    if (user.metadata && user.metadata.email) {
-                        sendMailFromTemplate(req, 'approve-request', {
-                            to: user.metadata.email,
-                            secretsPath: path.replace('/data/', '/')
-                        });
-                    }
-                });
-            }
+            });
         } catch (err) {
             sendError(req, res, err.message, null, err.statusCode);
             return;
         }
-        sendJsonResponse(req, res, {
-            status: 'ok'
-        });
+        sendJsonResponse(req, res, responseData);
     })
     /**
      * @swagger
@@ -585,14 +819,16 @@ const router = require('express').Router()
         const path = req.params[0];
         const apiUrl = `${getDomain()}/v1/${path}`;
         // Request for approved requests and secrets data can be fetched in parallel.
-        Promise.all([getApprovedRequests(entityId),
-            asyncRequest(initApiRequest(token, apiUrl, entityId, true))
-        ])
+        Promise.all([getRequests({
+            entityId
+        }, {
+            type: REQUEST_STATUS.APPROVED
+        }), asyncRequest(initApiRequest(token, apiUrl, entityId, true))])
             .then((results) => {
                 const approvedRequests = results[0];
                 const secrets = (results[1] || {}).body;
                 if (Array.isArray(approvedRequests) && secrets) {
-                    const isApproved = approvedRequests.some((approvedRequest) => approvedRequest.dataValues.requestData === path);
+                    const isApproved = approvedRequests.some((approvedRequest) => approvedRequest.dataValues.path === path);
                     if (isApproved) {
                         sendJsonResponse(req, res, secrets);
                     } else {
@@ -634,14 +870,37 @@ const router = require('express').Router()
      */
     .post('/unwrap', async (req, res) => {
         logger.audit(req, res);
-        let result;
         try {
-            result = await require('vault-pam-premium').unwrapRequest(req);
-            (result.groups || []).forEach((groupName) => {
-                logger.info(`Emit read-approved-request accessor ${result.accessor} to ${groupName}.`);
-                notificationsManager.getInstance().to(groupName).emit('read-approved-request', result.accessor);
-            });
-            sendJsonResponse(req, res, result.body, result.statusCode);
+            const {entityId, token} = req.session.user;
+            const {path} = req.body;
+            const {referenceData, type} = (await _getRequest(entityId, path)).dataValues || {};
+            const {token: unwrapToken} = referenceData || {};
+            if (path && unwrapToken) {
+                const response = await asyncRequest({
+                    ...initApiRequest(token, `${getDomain()}/v1/sys/wrapping/unwrap`, entityId, true),
+                    method: 'POST',
+                    json: {
+                        token: unwrapToken
+                    }
+                });
+                if (response.body) {
+                    if (req.app.locals.features['control-groups'] && type === REQUEST_TYPES.CONTROL_GROUP) {
+                        const groups = await require('vault-pam-premium').getApproverGroupsByPath(path);
+                        (groups || []).forEach((groupName) => {
+                            logger.info(`Emit read-approved-request path ${path} to ${groupName}.`);
+                            notificationsManager.getInstance().to(groupName).emit('read-approved-request', path);
+                        });
+                    } else {
+                        //DYNAMIC SECRET, UPDATE STATUS TO OPENED
+                        await openRequest({path, entityId});
+                    }
+                    sendJsonResponse(req, res, response.body, response.statusCode);
+                } else {
+                    sendError(req, res, 'Invalid request');
+                }
+            } else {
+                sendError(req, res, 'Invalid request');
+            }
         } catch (err) {
             sendError(req, res, err.message, null, err.statusCode);
         }

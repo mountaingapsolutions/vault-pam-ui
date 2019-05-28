@@ -16,7 +16,6 @@ import secretAction from 'app/core/actions/secretAction';
  */
 export default (previousState = {
     leaseList: {},
-    requestListFromDatabase: [],
     secrets: {},
     secretsMounts: {},
     secretsPaths: {},
@@ -47,7 +46,7 @@ export default (previousState = {
             };
         case secretAction.ACTION_TYPES.REMOVE_REQUEST_DATA:
             // Remove from secretsRequests.
-            const secretsRequests = clone(previousState.secretsRequests).filter(request => request.requestPath !== action.data);
+            const secretsRequests = clone(previousState.secretsRequests).filter(request => request.path !== action.data);
             return {
                 ...previousState,
                 secretsRequests
@@ -55,12 +54,12 @@ export default (previousState = {
         case secretAction.ACTION_TYPES.APPROVE_REQUEST_DATA:
             return {
                 ...previousState,
-                secretsRequests: updateIn(previousState.secretsRequests, action.data, 'requestPath')
+                secretsRequests: updateIn(previousState.secretsRequests, action.data, 'path')
             };
         case secretAction.ACTION_TYPES.CREATE_REQUEST_DATA:
             return {
                 ...previousState,
-                secretsRequests: updateOrAppend(previousState.secretsRequests, action.data, 'requestPath')
+                secretsRequests: updateOrAppend(previousState.secretsRequests, action.data, 'path')
             };
         case secretAction.ACTION_TYPES.LIST_SECRETS_AND_CAPABILITIES:
             return {

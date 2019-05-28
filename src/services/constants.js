@@ -6,6 +6,7 @@ const REQUEST_STATUS = {
     OPENED: 'OPENED',
     PENDING: 'PENDING',
     REJECTED: 'REJECTED',
+    REQUESTED: 'REQUESTED',
     REVOKED: 'REVOKED'
 };
 
@@ -15,7 +16,8 @@ const REQUEST_TYPES = {
     STANDARD_REQUEST: 'standard-request'
 };
 const DYNAMIC_ENGINES = [
-    'aws'
+    'aws',
+    'azure'
 ];
 
 // Logger levels

@@ -31,7 +31,8 @@ class Constants {
             STANDARD_REQUEST: 'standard-request'
         };
         this.DYNAMIC_ENGINES = [
-            'aws'
+            'aws',
+            'azure'
         ];
     }
 }
