@@ -61,6 +61,26 @@ class NotificationsModal extends Component {
     }
 
     /**
+     * Returns the corresponding label of the request data.
+     *
+     * @private
+     * @param {Object} requestData The request data object.
+     * @returns {string}
+     */
+    _getRequestTypeLabel(requestData) {
+        const {isWrapped, type} = requestData;
+        let label;
+        if (isWrapped) {
+            label = 'Control Groups';
+        } else if (type === Constants.REQUEST_TYPES.STANDARD_REQUEST) {
+            label = 'Standard Request';
+        } else if (type === Constants.REQUEST_TYPES.DYNAMIC_REQUEST) {
+            label = 'Dynamic Request';
+        }
+        return label;
+    }
+
+    /**
      * Selects a request
      *
      * @private
@@ -133,8 +153,7 @@ class NotificationsModal extends Component {
      * @returns {React.ReactElement}
      */
     _renderRejectButton(buttonData = {}) {
-        const {CONTROL_GROUP: controlGroup} = Constants.REQUEST_TYPES;
-        const {alreadyApprovedBySelf, approved, isOwnRequest, path, id, isWrapped, type} = buttonData;
+        const {alreadyApprovedBySelf, approved, isOwnRequest, path, id, type} = buttonData;
         const {deleteRequest} = this.props;
         const deleteText = isOwnRequest ? 'Cancel' : 'Reject';
 
@@ -143,7 +162,7 @@ class NotificationsModal extends Component {
                 onClick={() => {
                     /* eslint-disable no-alert */
                     if (window.confirm(`Are you sure you want to ${isOwnRequest ? 'cancel your' : `reject ${name}'s`} request to ${path}?`)) {
-                        deleteRequest(path, id, isWrapped ? controlGroup : type);
+                        deleteRequest(path, id, type);
                     }
                     /* eslint-enable no-alert */
                 }}>
@@ -354,13 +373,11 @@ class NotificationsModal extends Component {
                                             return true;
                                     }
                                 }).map((requestData, i) => {
-                                    const {CONTROL_GROUP: controlGroup, STANDARD_REQUEST: standardRequest} = Constants.REQUEST_TYPES;
-                                    const {approved, authorizations, creationTime, isWrapped, path, requestEntity = {}, type, referenceData = {}} = requestData;
+                                    const {approved, authorizations, creationTime, path, requestEntity = {}, type} = requestData;
                                     const {id, name} = requestEntity;
-                                    const requestType = isWrapped ? 'Control Groups' : type === standardRequest ? 'Standard Request' : 'Dynamic Request';
                                     const isOwnRequest = id === entityIdSelf;
                                     const alreadyApprovedBySelf = authorizations && authorizations.some((authorization) => authorization.entityId === entityIdSelf);
-                                    const buttonData = {alreadyApprovedBySelf, approved, id, isOwnRequest, isWrapped, name, path};
+                                    const buttonData = {alreadyApprovedBySelf, approved, id, isOwnRequest, name, path};
                                     return <React.Fragment key={`${path}-${i}`}>
                                         <ListItem alignItems='flex-start'>
                                             <ListItemAvatar>
@@ -382,7 +399,7 @@ class NotificationsModal extends Component {
                                                             className={classes.block}
                                                             color='textSecondary'
                                                             component='span'>
-                                                            {`Requested at ${new Date(creationTime).toLocaleString()} via ${requestType}`}
+                                                            {`Requested at ${new Date(creationTime).toLocaleString()} via ${this._getRequestTypeLabel(requestData)}`}
                                                         </Typography>
                                                         {authorizations && authorizations.length > 0 && this._renderAuthorizations(authorizations)}
                                                     </React.Fragment>
@@ -412,7 +429,7 @@ class NotificationsModal extends Component {
                                                             <Tooltip aria-label='Approve' title='Approve'>
                                                                 <IconButton
                                                                     color='primary'
-                                                                    onClick={() => authorizeRequest(path, id, isWrapped ? controlGroup : type, referenceData.engineType)}>
+                                                                    onClick={() => authorizeRequest(path, id, type)}>
                                                                     <CheckIcon/>
                                                                 </IconButton>
                                                             </Tooltip>}
@@ -497,7 +514,7 @@ const _mapStateToProps = (state) => {
  */
 const _mapDispatchToProps = (dispatch) => {
     return {
-        authorizeRequest: (path, entityId, requestType, engineType) => dispatch(secretAction.authorizeRequest(path, entityId, requestType, engineType)),
+        authorizeRequest: (path, entityId, requestType) => dispatch(secretAction.authorizeRequest(path, entityId, requestType)),
         deleteRequest: (path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => dispatch(secretAction.deleteRequest(path, entityId, type))
     };
 };

@@ -37,22 +37,14 @@ class SecretAction extends _Actions {
      *
      * @param {string} path Specifies the path of the request to authorize.
      * @param {string} entityId The user entity id.
-     * @param {string} [type] The request type.
-     * @param {string} engineType The secret engine type.
+     * @param {string} type The request type.
      * @returns {function} Redux dispatch function.
      */
-    authorizeRequest(path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST, engineType) {
-        let reqMethod = 'POST';
-        //TODO IMPROVE CHECKING METHOD
-        if (engineType === 'azure') {
-            reqMethod = 'GET';
-        }
+    authorizeRequest(path, entityId, type) {
         return this._dispatchPost(this.ACTION_TYPES.AUTHORIZE_REQUEST, '/rest/secret/request/authorize', {
             path,
             entityId,
-            type,
-            reqMethod,
-            engineType
+            type
         });
     }
 

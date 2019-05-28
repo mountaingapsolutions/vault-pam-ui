@@ -108,7 +108,7 @@ class SecretsList extends Component {
      */
     _onClickSecret(secret, event) {
         event.preventDefault();
-        const {canOpen, canUpdate, engineType, isApproved, isPending, isWrapped, name, requiresRequest, secretsData, secretsPath, url} = secret;
+        const {canOpen, canUpdate, isApproved, isPending, isWrapped, name, requiresRequest, secretsData, secretsPath, url} = secret;
         const {getSecrets, history, listSecretsAndCapabilities, match, openApprovedSecret, setSecretsData} = this.props;
         const {params} = match;
         const {mount} = params;
@@ -135,7 +135,7 @@ class SecretsList extends Component {
                 if (isPending) {
                     this._openRequestCancellationModal(mount, name, requestType);
                 } else {
-                    this._openRequestModal(mount, name, requestType, engineType);
+                    this._openRequestModal(mount, name, requestType);
                 }
             }
         }
@@ -229,10 +229,9 @@ class SecretsList extends Component {
      * @param {string} mount The mount point.
      * @param {string} name The name of the secret to request.
      * @param {string} requestType The type of secret being requested.
-     * @param {string} engineType The engine type.
      * @private
      */
-    _openRequestModal(mount, name, requestType, engineType) {
+    _openRequestModal(mount, name, requestType) {
         const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
         let typeLabel = '';
         switch (requestType) {
@@ -254,7 +253,7 @@ class SecretsList extends Component {
                 onClose: (confirm) => {
                     if (confirm) {
                         const {requestSecret} = this.props;
-                        requestSecret(name, this._getVersionFromMount(mount), requestType, engineType);
+                        requestSecret(name, this._getVersionFromMount(mount), requestType);
                     }
                     this.setState({
                         showConfirmationModal: false
@@ -428,7 +427,7 @@ class SecretsList extends Component {
         const {match, openApprovedSecret, setSecretsData} = this.props;
         const {params} = match;
         const {mount} = params;
-        const {isApproved, isPending, canOpen, canDelete, engineType, name, isWrapped, requiresRequest, secretsData, secretsPath} = secret;
+        const {isApproved, isPending, canOpen, canDelete, name, isWrapped, requiresRequest, secretsData, secretsPath} = secret;
         const isFolderPath = name.endsWith('/');
         const {CONTROL_GROUP, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
         if (isFolderPath) {
@@ -466,7 +465,7 @@ class SecretsList extends Component {
             return <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
                 <IconButton
                     aria-label={requestAccessLabel}
-                    onClick={() => isPending ? this._openRequestCancellationModal(mount, name, requestType) : this._openRequestModal(mount, name, requestType, engineType)}>
+                    onClick={() => isPending ? this._openRequestCancellationModal(mount, name, requestType) : this._openRequestModal(mount, name, requestType)}>
                     <LockIcon/>
                 </IconButton>
             </Tooltip>;
@@ -550,9 +549,10 @@ class SecretsList extends Component {
             }</List>;
         } else if (dynamicSecretRole.length > 0 ) {
             //DYNAMIC SECRET
+            // 👆 TODO - Refer to the other TODO as well. This massive disparate block of logic really needs to be cleaned up. -JH
             return <List>
                 {dynamicSecretRole.map((role, i) => {
-                    const {engineType, isApproved, isPending, requiresRequest, role: engineRole, secondaryText} = role;
+                    const {isApproved, isPending, requiresRequest, role: engineRole, secondaryText} = role;
                     return <ListItem button key={i} onClick={() => {
                         if (requiresRequest) {
                             if (isPending) {
@@ -560,7 +560,7 @@ class SecretsList extends Component {
                             } else if (isApproved) {
                                 this._openApprovedRequestModal(mount, engineRole, engineRole);
                             } else {
-                                this._openRequestModal(mount, engineRole, DYNAMIC_REQUEST, engineType);
+                                this._openRequestModal(mount, engineRole, DYNAMIC_REQUEST);
                             }
                         } else {
                             getLeaseList(mount, engineRole);
@@ -686,12 +686,12 @@ const _mapStateToProps = (state, ownProps) => {
     let dynamicSecretRole = [];
     let secretsList = [];
     let requestId = null;
-    //TODO CONSOLIDATE DYNAMIC AND STANDARD REQUEST CODE?
+    // TODO CONSOLIDATE DYNAMIC AND STANDARD REQUEST CODE?
+    // ☝️ 100%. Yes. This hurts my eyes. -JH
     if (isDynamicSecret) {
-        //DYNAMIC SECRET
-        dynamicSecretRole = (secretsPaths.dynamicSecretRoles || []).map(role => {
-            const engineNameRole = mountData && `${mountData.name.slice(0, -1)}/${role}`;
-            const {capabilities} = secretsPaths;
+        dynamicSecretRole = (secretsPaths.secrets || []).map(role => {
+            const {capabilities, name} = role;
+            const engineNameRole = mountData && `${mountData.name.slice(0, -1)}/${name}`;
             let isApproved = false;
             let isOpened = false;
             const requiresRequest = !capabilities.includes('read');
@@ -711,9 +711,8 @@ const _mapStateToProps = (state, ownProps) => {
                 }
             }
             return {
-                role,
+                role: name,
                 engineNameRole,
-                engineType: type,
                 isApproved,
                 requiresRequest,
                 name,
@@ -756,7 +755,6 @@ const _mapStateToProps = (state, ownProps) => {
                 canDelete: capabilities.includes('delete'),
                 canOpen: capabilities.includes('read') && !name.endsWith('/') && !isWrapped,
                 canUpdate: capabilities.some(capability => capability === 'update' || capability === 'root'),
-                engineType: type,
                 isApproved,
                 isPending: !!activeRequest && !isApproved,
                 isWrapped,
@@ -868,14 +866,13 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
             return dispatch(secretAction.openApprovedSecret(fullPath));
         },
-        requestSecret: (name, version, type = Constants.REQUEST_TYPES.STANDARD_REQUEST, engineType) => {
+        requestSecret: (name, version, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
             const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
             return new Promise((resolve, reject) => {
                 let requestData = {
-                    engineType,
                     path: fullPath,
                     type
                 };

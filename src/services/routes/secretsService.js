@@ -2,7 +2,6 @@ const chalk = require('chalk');
 const request = require('request');
 const {initApiRequest, getDomain, sendError, sendJsonResponse} = require('services/utils');
 const logger = require('services/logger');
-const {getDynamicEngineRoles} = require('services/routes/dynamicSecretRequestService');
 const {DYNAMIC_ENGINES} = require('services/constants');
 const addRequestId = require('express-request-id')();
 
@@ -104,22 +103,18 @@ const router = require('express').Router()
         const {params = {}, query} = req;
         const urlParts = (params['0'] || '').split('/').filter(path => !!path);
         const listUrlParts = [...urlParts];
+
+        const isDynamicEngine = DYNAMIC_ENGINES.some(engine => engine === query.type);
         const isV2 = String(query.version) === '2';
-        if (isV2) {
+
+        if (isDynamicEngine) {
+            listUrlParts.splice(1, 0, 'roles');
+        } else if (isV2) {
             listUrlParts.splice(1, 0, 'metadata');
         }
         const domain = getDomain();
         const {entityId: requesterEntityId, token} = req.session.user;
         const apiUrl = `${domain}/v1/${listUrlParts.join('/')}?list=true`;
-
-        //DYNAMIC SECRET
-        const isDynamicEngine = DYNAMIC_ENGINES.some(engine => engine === query.type);
-        let dynamicSecretRoles = [];
-        if (isDynamicEngine) {
-            //GET ROLES HERE
-            const response = await getDynamicEngineRoles(listUrlParts);
-            dynamicSecretRoles = ((response.body || {}).data || {}).keys && [...response.body.data.keys];
-        }
 
         // Maintain the list of paths as a key/value map as well for easier access later.
         const pathsMap = {};
@@ -134,7 +129,7 @@ const router = require('express').Router()
         });
 
         // Make sure to include listing path.
-        const listingPath = isDynamicEngine ? `${listUrlParts}/data` : listUrlParts.join('/');
+        const listingPath = listUrlParts.join('/');
         paths.push(listingPath);
         pathsMap[listingPath] = listingPath;
         const capabilities = await _getCapabilities(token, requesterEntityId, paths);
@@ -149,7 +144,7 @@ const router = require('express').Router()
                     capabilities: capabilities[key] || []
                 };
                 const canRead = (capabilities[key] || []).includes('read');
-                if (canRead && !key.endsWith('/')) {
+                if (canRead && !key.endsWith('/') && !isDynamicEngine) {
                     promises.push(new Promise((secretResolve) => {
                         const getSecretApiUrl = `${domain}/v1/${key}`;
                         request(initApiRequest(token, getSecretApiUrl, requesterEntityId), (error, response, body) => {
@@ -181,8 +176,7 @@ const router = require('express').Router()
             sendJsonResponse(req, res, {
                 data: {
                     capabilities: capabilities[listingPath] || [], // Add the capabilities of the listing path to the top level of the response data.
-                    secrets,
-                    dynamicSecretRoles
+                    secrets
                 }
             });
         });
