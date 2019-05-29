@@ -28,7 +28,6 @@ const SESSION_USER_DATA_MAP = {
     FIRST_NAME: 'firstName',
     GROUPS: 'groups',
     LAST_NAME: 'lastName',
-    STANDARD_REQUEST_SUPPORTED: 'standardRequestSupported',
     TOKEN: 'token',
     USERNAME: 'username'
 };
@@ -73,29 +72,6 @@ const checkPremiumFeatures = (app) => {
         logger.log(chalk.bold.red('Premium features unavailable.'));
         app.locals.features = features;
     }
-};
-
-/**
- * Check if standard requests are supported
- *
- * @param {Object} req The HTTP request object.
- * @returns {Promise}
- */
-const checkStandardRequestSupport = async (req) => {
-    const {entityId, token} = req.session.user;
-    return await new Promise((resolve, reject) => {
-        request({
-            ...initApiRequest(token, `${getDomain()}/v1/identity/group/name/pam-approver`, entityId, true),
-            method: 'GET',
-        }, (error, response, body) => {
-            if (error) {
-                reject(error);
-            } else {
-                const {data} = body;
-                resolve(!!data);
-            }
-        });
-    });
 };
 
 /**
@@ -213,7 +189,6 @@ const validateDomain = async (domain) => {
 module.exports = {
     asyncRequest,
     checkPremiumFeatures,
-    checkStandardRequestSupport,
     initApiRequest,
     getDomain,
     getSessionMiddleware,

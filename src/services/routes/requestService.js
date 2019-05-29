@@ -3,7 +3,7 @@ const logger = require('services/logger');
 const notificationsManager = require('services/notificationsManager');
 const {approveRequest, cancelRequest, deleteRequest, getRequest, getRequests, initiateRequest, openRequest, rejectRequest} = require('services/db/controllers/requestsController');
 const {sendMailFromTemplate} = require('services/mail/smtpClient');
-const {asyncRequest, checkStandardRequestSupport, getDomain, initApiRequest, sendError, sendJsonResponse, setSessionData} = require('services/utils');
+const {asyncRequest, getDomain, initApiRequest, sendError, sendJsonResponse} = require('services/utils');
 const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
 const addRequestId = require('express-request-id')();
 
@@ -555,22 +555,6 @@ const _wrapData = async (req, data) => {
 const router = require('express').Router()
 /* eslint-enable new-cap */
     .use(addRequestId)
-    .use(async (req, res, next) => {
-        const {standardRequestSupported} = req.session.user;
-        if (standardRequestSupported === undefined) {
-            try {
-                let standardRequestSupport = await checkStandardRequestSupport(req);
-                setSessionData(req, {
-                    standardRequestSupported: standardRequestSupport
-                });
-                logger.log('Setting Standard Request support in session user data: ', standardRequestSupport);
-            } catch (err) {
-                sendError(req, res, err);
-                return;
-            }
-        }
-        next();
-    })
     /**
      * @swagger
      * /rest/secret/requests:
