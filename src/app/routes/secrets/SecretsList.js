@@ -660,7 +660,7 @@ const _mapStateToProps = (state, ownProps) => {
         const isWrapped = !!wrapInfo;
         let isApproved = false;
         let isOpened = false;
-        let isDSCanOpen = false;
+        let isDynamicAndCanOpen = false;
         const requiresRequest = !capabilities.includes('read') && !name.endsWith('/') || isWrapped;
         let activeRequest;
         let secondaryText;
@@ -673,13 +673,13 @@ const _mapStateToProps = (state, ownProps) => {
             if (activeRequest) {
                 const {approved, authorizations, creationTime, opened} = activeRequest;
                 isOpened = opened;
-                isDSCanOpen = isDynamicSecret ? !isOpened : true;
-                isApproved = approved && isDSCanOpen;
+                isDynamicAndCanOpen = isDynamicSecret ? !isOpened : true;
+                isApproved = approved && isDynamicAndCanOpen;
                 if (isApproved) {
                     const namesList = authorizations.map((authorization) => authorization.name);
                     authorizationsText = `Approved by ${namesList.join(', ')}.`;
                 }
-                if (creationTime && isDSCanOpen) {
+                if (creationTime && isDynamicAndCanOpen) {
                     secondaryText += ` (Requested at ${new Date(creationTime).toLocaleString()})`;
                 }
             }
@@ -691,7 +691,7 @@ const _mapStateToProps = (state, ownProps) => {
             canUpdate: capabilities.some(capability => capability === 'update' || capability === 'root'),
             isApproved,
             isDynamicSecret,
-            isPending: !!activeRequest && !isApproved && isDSCanOpen,
+            isPending: !!activeRequest && !isApproved && isDynamicAndCanOpen,
             isWrapped,
             name,
             requiresRequest,
