@@ -527,7 +527,6 @@ const _remapSecretsRequest = (secretsRequest) => {
     };
 };
 
-
 /**
  * Helper method for wrapping data.
  *
