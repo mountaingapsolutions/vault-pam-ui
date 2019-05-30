@@ -112,7 +112,6 @@ class SecretsList extends Component {
         const {getSecrets, history, getLeaseList, listSecretsAndCapabilities, match, openApprovedSecret, setSecretsData} = this.props;
         const {params} = match;
         const {mount} = params;
-        const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
         if (name.includes('/')) {
             history.push(url);
             listSecretsAndCapabilities(secretsPath, this._getVersionFromMount(mount));
@@ -136,7 +135,7 @@ class SecretsList extends Component {
                     openApprovedSecret(name, this._getVersionFromMount(mount));
                 }
             } else if (requiresRequest) {
-                const requestType = isDynamicSecret ? DYNAMIC_REQUEST : isWrapped ? CONTROL_GROUP : STANDARD_REQUEST;
+                const requestType = this._getRequestType({isDynamicSecret, isWrapped});
                 if (isPending) {
                     this._openRequestCancellationModal(mount, name, requestType);
                 } else {
@@ -359,6 +358,48 @@ class SecretsList extends Component {
     }
 
     /**
+     * Returns the corresponding type of the request data.
+     *
+     * @private
+     * @param {Object} requestData The request data object.
+     * @returns {string}
+     */
+    _getRequestType(requestData) {
+        const {isDynamicSecret, isWrapped} = requestData;
+        const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
+        let type;
+        if (isDynamicSecret) {
+            type = DYNAMIC_REQUEST;
+        } else if (isWrapped) {
+            type = CONTROL_GROUP;
+        } else {
+            type = STANDARD_REQUEST;
+        }
+        return type;
+    }
+
+    /**
+     * Returns the proper icon from the provided request data object.
+     *
+     * @private
+     * @param {Object} requestData The request data object.
+     * @returns {React.ReactElement}
+     */
+    _getSecretsIcon(requestData) {
+        const {isDynamicSecret, name} = requestData;
+        const isNotEndOfPath = name.endsWith('/');
+        let icon;
+        if (isDynamicSecret) {
+            icon = <Cloud/>;
+        } else if (isNotEndOfPath) {
+            icon = <FolderIcon/>;
+        } else {
+            icon = <FileCopyIcon/>;
+        }
+        return icon;
+    }
+
+    /**
      * Renders the header containing breadcrumbs.
      *
      * @private
@@ -434,7 +475,6 @@ class SecretsList extends Component {
         const {mount} = params;
         const {isApproved, isDynamicSecret, isPending, canOpen, canDelete, name, isWrapped, requiresRequest, secretsData, secretsPath} = secret;
         const isFolderPath = name.endsWith('/');
-        const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
         if (isFolderPath) {
             return <IconButton>
                 <KeyboardArrowRightIcon/>
@@ -466,7 +506,7 @@ class SecretsList extends Component {
             </Tooltip>;
         } else if (requiresRequest) {
             const requestAccessLabel = isPending ? 'Cancel Request' : 'Request Access';
-            const requestType = isDynamicSecret ? DYNAMIC_REQUEST : isWrapped ? CONTROL_GROUP : STANDARD_REQUEST;
+            const requestType = this._getRequestType({isDynamicSecret, isWrapped});
             return <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
                 <IconButton
                     aria-label={requestAccessLabel}
@@ -531,7 +571,7 @@ class SecretsList extends Component {
                     return <ListItem button component={this._renderLink} key={`key-${i}`} {...{onClick: this._onClickSecret.bind(this, secret), to: url}}>
                         <ListItemAvatar>
                             <Avatar>{
-                                isDynamicSecret ? <Cloud/> : name.endsWith('/') ? <FolderIcon/> : <FileCopyIcon/>
+                                this._getSecretsIcon({isDynamicSecret, name})
                             }</Avatar>
                         </ListItemAvatar>
                         <ListItemText primary={name} secondary={
