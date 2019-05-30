@@ -83,5 +83,6 @@ path "secrets/*"
 ```
 
 ## FAQ
-
+- Q: How do I find the complete set of REST endpoints that Vault PAM UI invokes?
+    - A: You can access the custom REST APIs through [Swagger](http://localhost:3000/rest/api).
 
