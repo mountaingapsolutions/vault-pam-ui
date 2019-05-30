@@ -135,7 +135,7 @@ class SecretsList extends Component {
                     openApprovedSecret(name, this._getVersionFromMount(mount));
                 }
             } else if (requiresRequest) {
-                const requestType = this._getRequestType({isDynamicSecret, isWrapped});
+                const requestType = this._getRequestType(secret);
                 if (isPending) {
                     this._openRequestCancellationModal(mount, name, requestType);
                 } else {
@@ -473,7 +473,7 @@ class SecretsList extends Component {
         const {match, openApprovedSecret, setSecretsData} = this.props;
         const {params} = match;
         const {mount} = params;
-        const {isApproved, isDynamicSecret, isPending, canOpen, canDelete, name, isWrapped, requiresRequest, secretsData, secretsPath} = secret;
+        const {isApproved, isPending, canOpen, canDelete, name, isWrapped, requiresRequest, secretsData, secretsPath} = secret;
         const isFolderPath = name.endsWith('/');
         if (isFolderPath) {
             return <IconButton>
@@ -506,7 +506,7 @@ class SecretsList extends Component {
             </Tooltip>;
         } else if (requiresRequest) {
             const requestAccessLabel = isPending ? 'Cancel Request' : 'Request Access';
-            const requestType = this._getRequestType({isDynamicSecret, isWrapped});
+            const requestType = this._getRequestType(secret);
             return <Tooltip aria-label={requestAccessLabel} title={requestAccessLabel}>
                 <IconButton
                     aria-label={requestAccessLabel}
