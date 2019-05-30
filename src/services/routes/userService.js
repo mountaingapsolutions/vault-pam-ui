@@ -2,7 +2,6 @@ const request = require('request');
 const logger = require('services/logger');
 const {initApiRequest, getDomain, sendJsonResponse} = require('services/utils');
 const {sendError} = require('services/error/errorHandler');
-const addRequestId = require('express-request-id')();
 
 /**
  * @swagger
@@ -320,7 +319,6 @@ const deleteUser = (req, id) => {
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
-    .use(addRequestId)
     .use((req, res, next) => {
         next();
     })

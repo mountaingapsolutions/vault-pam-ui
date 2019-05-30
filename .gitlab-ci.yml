@@ -1,6 +1,6 @@
 .common_template: &branch_definition
   only:
-    - master
+    - develop
 
 .node_template: &node_definition
   image: node:10.15.3

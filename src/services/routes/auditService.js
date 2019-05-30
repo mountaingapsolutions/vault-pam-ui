@@ -2,7 +2,6 @@ const logger = require('services/logger');
 const request = require('request');
 const {getDomain, initApiRequest, sendJsonResponse} = require('services/utils');
 const {sendError} = require('services/error/errorHandler');
-const addRequestId = require('express-request-id')();
 const cryptoJs = require('crypto-js');
 
 /**
@@ -33,7 +32,6 @@ const _getAuditDevicesPermission = (token, entityId) => {
 
 // eslint-disable-next-line new-cap
 const router = require('express').Router()
-    .use(addRequestId)
     /**
      * @swagger
      * /rest/audit/hash:

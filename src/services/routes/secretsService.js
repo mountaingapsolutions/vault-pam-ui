@@ -4,7 +4,6 @@ const {initApiRequest, getDomain, sendJsonResponse} = require('services/utils');
 const {sendError} = require('services/error/errorHandler');
 const logger = require('services/logger');
 const {DYNAMIC_ENGINES} = require('services/constants');
-const addRequestId = require('express-request-id')();
 
 /**
  * Helper method to retrieve secrets by the provided URL path.
@@ -68,7 +67,6 @@ const _getCapabilities = (token, entityId, paths) => {
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
-    .use(addRequestId)
 /**
  * @swagger
  * /rest/secrets/list/{path}:
