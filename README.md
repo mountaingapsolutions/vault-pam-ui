@@ -40,6 +40,14 @@ $ USE_HSTS=false PORT=8080 npm run startprod
 - [webpack](https://webpack.github.io/) - Module bundler. In short, when running a build of the client application, webpack is used to bundle and package all the individual JavaScript modules into one or more compiled files to lessen the overhead of making multiple network requests.
 - For the exhaustive list of application development dependencies, refer to the list of `devDependencies` in the [package.json](../package.json) manifest file.
 
+## Code organization
+### /src/app
+- Any and all frontend code.
+- React + Redux
+### src/services
+- Any and all server code.
+- Express + Node.js
+
 ## General coding style
 - Use an indent of 4 spaces, with no tabs. And absolutely under no circumstances shall there be a mixture of both spaces and tabs. Lastly, please refrain including trailing spaces within the codebase. Anywhere.
 - When comparing equality, use the triple-equals operator (`===`) to enforce type safety.
