@@ -1,4 +1,5 @@
 const chalk = require('chalk');
+const addRequestId = require('express-request-id')();
 const request = require('request');
 const swaggerUi = require('swagger-ui-express');
 const {options, swaggerDoc} = require('services/Swagger');
@@ -122,6 +123,7 @@ const logout = (req, res) => {
 /* eslint-disable new-cap */
 const authenticatedRoutes = require('express').Router()
 /* eslint-enable new-cap */
+    .use(addRequestId)
     .use('/api', swaggerUi.serve)
     .get('/api', swaggerUi.setup(swaggerDoc, options))
     .use((req, res, next) => {

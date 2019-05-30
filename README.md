@@ -1,5 +1,5 @@
 # vault-pam-ui
-A web client to connect to an existing Vault server.
+Vault PAM UI - a web client to connect to an existing Vault server.
 
 ## Quick start guide
 1. Install [Node.js](https://nodejs.org).
@@ -51,7 +51,7 @@ $ USE_HSTS=false PORT=8080 npm run startprod
     3. protected methods
     4. public methods
 - Use single quotes for strings.
-- The code is full ES6. As such, avoid using `var` to declare variables. Instead, use `let` or `const` where appropriate. Additionally, when declaring functions, the arrow syntax is preferred (e.g. `(myArg) => {...}` vs. `function(myArg) {...}`).
+- The codebase is full ES6. As such, avoid using `var` to declare variables. Instead, use `let` or `const` where appropriate. Additionally, when declaring functions, the arrow syntax is preferred (e.g. `(myArg) => {...}` vs. `function(myArg) {...}`).
 
 ## Naming conventions
 - All variables names should be camel-cased.
@@ -63,16 +63,25 @@ $ USE_HSTS=false PORT=8080 npm run startprod
     - `npm run lint`
     - `npm test`
 
-## Docker Images
-- To pull the latest docker image:
-```docker pull mountaingapsolutions/vault-pam-ui:latest```
-
-## Installation
-The script will first look for the .env and validate the environment variables. There is an option not to use this file and fill up the custom values instead.
-### Pull the latest image from dockerhub. This is the very basic install option.
+## Installation through Docker
+- Pull the latest Docker image: `docker pull mountaingapsolutions/vault-pam-ui:latest`
 - `./install.sh`
+    - The script will first look for the .env and validate the environment variables. There is an option not to use this file and fill up the custom values instead.
+
 ### Build from base images
 - `./install.sh --build`
 
+## Vault data setup
+For Vault PAM UI to function properly, the following **must** be present:
+- A `pam-approver` internal group exists. Members within this group act as request approvers. For additional information regarding groups, refer to the official [Vault documentation](https://learn.hashicorp.com/vault/identity-access-management/iam-identity#step-3-create-an-internal-group).
+- Standard users must be granted `list` access to the paths that they are supposed to see. Example:
+```
+path "secrets/*"
+{
+    capabilities = ["list"]
+}
+```
+
+## FAQ
 
 

@@ -1,11 +1,10 @@
-const {safeWrap, unwrap} = require('@mountaingapsolutions/objectutil');
+const {safeWrap, toObject, unwrap} = require('@mountaingapsolutions/objectutil');
 const logger = require('services/logger');
 const notificationsManager = require('services/notificationsManager');
 const {approveRequest, cancelRequest, deleteRequest, getRequest, getRequests, initiateRequest, openRequest, rejectRequest} = require('services/db/controllers/requestsController');
 const {sendMailFromTemplate} = require('services/mail/smtpClient');
 const {asyncRequest, getDomain, initApiRequest, sendError, sendJsonResponse} = require('services/utils');
 const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
-const addRequestId = require('express-request-id')();
 
 /**
  * Authorizes a secrets requested via Control Groups.
@@ -492,7 +491,7 @@ const _rejectRequest = (req) => {
  * @returns {Object}
  */
 const _remapSecretsRequest = (secretsRequest) => {
-    const {createdAt: creationTime, entityId: id, name, path, referenceData = {}, responses = [], type} = secretsRequest.dataValues;
+    const {createdAt: creationTime, entityId, id, name, path, referenceData = {}, responses = [], type} = secretsRequest.dataValues;
     let approved, authorizations, opened;
     if (secretsRequest.requestInfoData) {
         const {data} = secretsRequest.requestInfoData;
@@ -514,18 +513,18 @@ const _remapSecretsRequest = (secretsRequest) => {
         creationTime,
         authorizations,
         isWrapped: type === REQUEST_TYPES.CONTROL_GROUP,
+        id,
         opened,
         path,
         referenceData,
         requestEntity: {
-            id,
+            id: entityId,
             name
         },
         responses,
         type
     };
 };
-
 
 /**
  * Helper method for wrapping data.
@@ -554,7 +553,6 @@ const _wrapData = async (req, data) => {
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
-    .use(addRequestId)
     /**
      * @swagger
      * /rest/secret/requests:
@@ -753,6 +751,68 @@ const router = require('express').Router()
         sendJsonResponse(req, res, {
             status: 'ok'
         });
+    })
+    /**
+     * @swagger
+     * /rest/secret/request/{id}/approvers:
+     *   get:
+     *     tags:
+     *       - Requests
+     *     summary: Retrieves the approvers associated to the request.
+     *     parameters:
+     *       - name: id
+     *         in: path
+     *         description: The request id.
+     *         schema:
+     *           type: integer
+     *         required: true
+     *     responses:
+     *       200:
+     *         description: Success.
+     *       403:
+     *         description: Unauthorized.
+     *       404:
+     *         description: Not found.
+     */
+    .get('/request/:id/approvers', async (req, res) => {
+        const {id} = req.params;
+        const request = await getRequest({
+            id
+        });
+        if (request) {
+            const {entityId: sessionEntityId} = req.session.user;
+            const {entityId, path, type} = request.dataValues;
+            let users;
+            if (type === REQUEST_TYPES.CONTROL_GROUP) {
+                let usersMap = {};
+                const groups = await require('vault-pam-premium').getApproverGroupsByPath(path);
+                (await Promise.all(groups.map((groupName) => {
+                    return _getUsersByGroupName(req, groupName);
+                }))).forEach((response) => {
+                    if (response && response.users) {
+                        // De-dup any overlapping users across multiple groups.
+                        usersMap = toObject(response.users, 'id');
+                    }
+                });
+                users = Object.keys(usersMap).map((key) => usersMap[key]);
+            } else {
+                users = (await _getUsersByGroupName(req, 'pam-approver') || {}).users || [];
+            }
+            // Also check if the user is the requester or if the user is one of the approvers. If not, 403 response is returned.
+            if (entityId === sessionEntityId || users.some((user) => user.id === sessionEntityId)) {
+                sendJsonResponse(req, res, users.map((user) => {
+                    const {name, metadata} = user;
+                    return {
+                        name,
+                        metadata
+                    };
+                }));
+            } else {
+                sendError(req, res, 'Unauthorized.', req.originalUrl, 403);
+            }
+        } else {
+            sendError(req, res, 'Request not found', req.originalUrl, 404);
+        }
     })
     /**
      * @swagger

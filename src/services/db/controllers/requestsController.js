@@ -159,7 +159,7 @@ const getRequest = async (requestParams, responseParams) => {
         },
         include: [includeQuery]
     });
-    return _getPlainResult(result);
+    return result ? _getPlainResult(result) : null;
 };
 
 /**
