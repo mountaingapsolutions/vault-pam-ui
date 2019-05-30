@@ -19,8 +19,8 @@ const logger = require('services/logger');
  * @param {Object} res The HTTP response object.
  */
 const api = (req, res) => {
-    logger.audit(req, res);
     _disableCache(res);
+    logger.audit(req, res);
     const {'x-vault-token': token} = req.headers;
     const {entityId} = req.session.user || {};
     const apiUrl = `${getDomain()}${req.url}`;
@@ -130,6 +130,7 @@ const authenticatedRoutes = require('express').Router()
     .get('/api', swaggerUi.setup(swaggerDoc, options))
     .use((req, res, next) => {
         _disableCache(res);
+        logger.audit(req, res);
         const {'x-vault-token': token} = req.headers;
         // Check if the token has been provided.
         if (!token) {
@@ -141,7 +142,7 @@ const authenticatedRoutes = require('express').Router()
             if (token !== sessionToken) {
                 const domain = getDomain();
                 logger.log(`Token mismatch for the API call ${_yellowBold(req.originalUrl)} between header and stored session. Re-verifying through Vault.`);
-                const apiUrl = `${domain}/v1/auth/token/lookup-self/sdf`;
+                const apiUrl = `${domain}/v1/auth/token/lookup-self`;
                 request(initApiRequest(token, apiUrl), (error, response, body) => {
                     if (error) {
                         sendError(req, res, error);

@@ -98,7 +98,6 @@ const router = require('express').Router()
  *         description: Not found.
  */
     .get('/list/*', async (req, res) => {
-        logger.audit(req, res);
         const {params = {}, query} = req;
         const urlParts = (params['0'] || '').split('/').filter(path => !!path);
         const listUrlParts = [...urlParts];
@@ -202,7 +201,6 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .get('/get/*', async (req, res) => {
-        logger.audit(req, res);
         const {entityId, token} = req.session.user;
         const apiUrl = `${getDomain()}/v1/${req.params[0]}`;
         request(initApiRequest(token, apiUrl, entityId), (error, response, body) => {

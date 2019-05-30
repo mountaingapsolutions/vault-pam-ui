@@ -3,7 +3,6 @@ const {initApiRequest, getDomain} = require('services/utils');
 const {sendError} = require('services/error/errorHandler');
 const {REQUEST_TYPES} = require('services/constants');
 const {getRequests, revokeRequest} = require('services/db/controllers/requestsController');
-const logger = require('services/logger');
 
 /**
  * Get active lease of certain role.
@@ -109,7 +108,6 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .get('/lease', async (req, res) => {
-        logger.audit(req, res);
         const {mount, role} = req.query;
         const enginePath = `${mount}/${role}`;
         try {
@@ -167,7 +165,6 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .put('/revoke', async (req, res) => {
-        logger.audit(req, res);
         const {leaseId, requestId, entityId, path, approverId} = req.body;
         try {
             const response = await _revokeLease(leaseId);

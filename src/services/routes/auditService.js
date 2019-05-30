@@ -1,4 +1,3 @@
-const logger = require('services/logger');
 const request = require('request');
 const {getDomain, initApiRequest, sendJsonResponse} = require('services/utils');
 const {sendError} = require('services/error/errorHandler');
@@ -57,7 +56,6 @@ const router = require('express').Router()
      *         description: Unauthorized.
      */
     .post('/hash', async (req, res) => {
-        logger.audit(req, res);
         try {
             const {entityId, token} = req.session.user;
 

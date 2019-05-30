@@ -563,7 +563,6 @@ const router = require('express').Router()
      *         description: Unauthorized.
      */
     .get('/requests', async (req, res) => {
-        logger.audit(req, res);
         const requests = [];
         const promises = [];
         // Retrieve requests.
@@ -635,7 +634,6 @@ const router = require('express').Router()
      *         description: Request not found.
      */
     .delete('/request', async (req, res) => {
-        logger.audit(req, res);
         const {entityId, path, type} = req.query;
         const {entityId: entityIdSelf} = req.session.user;
         if (!path || !type) {
@@ -687,7 +685,6 @@ const router = require('express').Router()
      *         description: No approval group has been configured.
      */
     .post('/request', async (req, res) => {
-        logger.audit(req, res);
         const {path, type} = req.body;
         if (!path || !type) {
             sendError(req, res, 'Invalid request. Params path and type must be provided.', 400);
@@ -839,7 +836,6 @@ const router = require('express').Router()
      *         description: No approval group has been configured.
      */
     .post('/request/authorize', async (req, res) => {
-        logger.audit(req, res);
         let {entityId, path, type} = req.body;
 
         if (!entityId || !path) {
@@ -891,7 +887,6 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .get('/open/*', async (req, res) => {
-        logger.audit(req, res);
         const {entityId, token} = req.session.user;
         const path = req.params[0];
         const apiUrl = `${getDomain()}/v1/${path}`;
@@ -946,7 +941,6 @@ const router = require('express').Router()
      *         description: Unauthorized.
      */
     .post('/unwrap', async (req, res) => {
-        logger.audit(req, res);
         try {
             const {entityId, token} = req.session.user;
             const {path} = req.body;
