@@ -512,8 +512,8 @@ const _remapSecretsRequest = (secretsRequest) => {
         approved,
         creationTime,
         authorizations,
+        isWrapped: type === REQUEST_TYPES.CONTROL_GROUP,
         id,
-        isWrapped: type === 'control-group',
         opened,
         path,
         referenceData,
@@ -574,7 +574,7 @@ const router = require('express').Router()
         (await _getRequests(req)).forEach((requestRecord) => {
             const {referenceData, type} = requestRecord.dataValues;
             const {accessor} = referenceData || {};
-            if (accessor && type === 'control-group') {
+            if (accessor && type === REQUEST_TYPES.CONTROL_GROUP) {
                 // For Control Group requests, also validate the accessor.
                 const accessorValidationPromise = require('vault-pam-premium').validateAccessor(accessor);
                 accessorValidationPromise.then((response) => {
