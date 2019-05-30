@@ -317,8 +317,8 @@ class NotificationsModal extends Component {
                         <ListSubheader>
                             Pending requests
                             {secretsRequests.length > 0 &&
-                            <Grid container justify='flex-end'>
-                                <Grid item>
+                            <Grid container justify='flex-start'>
+                                <Grid item xs={12}>
                                     <List component='nav'>
                                         <ListItem
                                             button
@@ -332,7 +332,7 @@ class NotificationsModal extends Component {
                                                 primary={<Typography variant='overline'>Filter By</Typography>}
                                                 secondary={<Typography
                                                     variant='caption'>{filterOptions[selectedFilterIndex]}</Typography>}
-                                                style={{textAlign: 'right'}}
+                                                style={{textAlign: 'left'}}
                                             />
                                         </ListItem>
                                     </List>
