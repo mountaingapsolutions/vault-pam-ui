@@ -1,6 +1,7 @@
 const chalk = require('chalk');
 const request = require('request');
-const {initApiRequest, getDomain, sendError, sendJsonResponse} = require('services/utils');
+const {initApiRequest, getDomain, sendJsonResponse} = require('services/utils');
+const {sendError} = require('services/error/errorHandler');
 const logger = require('services/logger');
 const {DYNAMIC_ENGINES} = require('services/constants');
 const addRequestId = require('express-request-id')();

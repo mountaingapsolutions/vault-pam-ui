@@ -1,6 +1,7 @@
 const logger = require('services/logger');
 const request = require('request');
-const {getDomain, initApiRequest, sendError, sendJsonResponse} = require('services/utils');
+const {getDomain, initApiRequest, sendJsonResponse} = require('services/utils');
+const {sendError} = require('services/error/errorHandler');
 const addRequestId = require('express-request-id')();
 const cryptoJs = require('crypto-js');
 

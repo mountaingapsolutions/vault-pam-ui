@@ -1,4 +1,4 @@
-import localStorageUtil from 'app/util/localStorageUtil';
+import localStorageUtil from 'app/util/LocalStorageUtil';
 
 /**
  * Logger utility class.

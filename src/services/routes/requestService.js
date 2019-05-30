@@ -3,9 +3,11 @@ const logger = require('services/logger');
 const notificationsManager = require('services/notificationsManager');
 const {approveRequest, cancelRequest, deleteRequest, getRequest, getRequests, initiateRequest, openRequest, rejectRequest} = require('services/db/controllers/requestsController');
 const {sendMailFromTemplate} = require('services/mail/smtpClient');
-const {asyncRequest, getDomain, initApiRequest, sendError, sendJsonResponse} = require('services/utils');
+const {asyncRequest, getDomain, initApiRequest, sendJsonResponse} = require('services/utils');
+const {sendError} = require('services/error/errorHandler');
 const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
 const addRequestId = require('express-request-id')();
+const ServiceResponseError = require('services/error/ServiceResponseError');
 
 /**
  * Authorizes a secrets requested via Control Groups.
@@ -33,7 +35,7 @@ const _authorizeControlGroupRequest = async (req, entityId, path) => {
             notificationsManager.getInstance().to(groupName).emit('approve-request', remappedData);
         });
     } else {
-        throw new Error('Request not found');
+        throw new ServiceResponseError('Request not found');
     }
     return remappedData;
 };
@@ -53,7 +55,7 @@ const _authorizeRequest = async (req, entityId, path) => {
     if (isApprover) {
         const {type} = (await _getRequest(entityId, path)).dataValues || {};
         if (!type) {
-            throw new Error('Request not found');
+            throw new ServiceResponseError('Request not found');
         }
         let referenceData = null;
         if (type === REQUEST_TYPES.DYNAMIC_REQUEST) {
@@ -62,9 +64,7 @@ const _authorizeRequest = async (req, entityId, path) => {
                 const token = data && await _wrapData(req, data);
                 referenceData = {token, leaseId};
             } else {
-                const error = new Error('Invalid request');
-                error.statusCode = 400;
-                throw error;
+                throw new ServiceResponseError('Invalid request', 400);
             }
         }
         const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path, referenceData));
@@ -73,9 +73,7 @@ const _authorizeRequest = async (req, entityId, path) => {
         notificationsManager.getInstance().to(entityId).emit('approve-request', remappedData);
         notificationsManager.getInstance().to('pam-approver').emit('approve-request', remappedData);
     } else {
-        const unauthorizedError = new Error('Unauthorized');
-        unauthorizedError.statusCode = 403;
-        throw unauthorizedError;
+        throw new ServiceResponseError('Unauthorized', 403);
     }
     return remappedData;
 };
@@ -175,9 +173,7 @@ const _getEngineType = async (req, path) => {
     const mountFromPath = `${path.split('/')[0]}/`;
     const mount = mounts[mountFromPath];
     if (!mount) {
-        const error = new Error(`Invalid mount: ${mountFromPath}`);
-        error.statusCode = 400;
-        throw error;
+        throw new ServiceResponseError(`Invalid mount: ${mountFromPath}`, 400);
     }
 
     return mount.type;
@@ -548,7 +544,7 @@ const _wrapData = async (req, data) => {
     if (response.body) {
         return response.body.wrap_info.token;
     }
-    throw new Error('Invalid request');
+    throw new ServiceResponseError('Invalid request', 403);
 };
 
 /* eslint-disable new-cap */

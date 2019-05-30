@@ -1,4 +1,4 @@
-import localStorageUtil from 'app/util/localStorageUtil';
+import localStorageUtil from 'app/util/LocalStorageUtil';
 
 /**
  * Base action creator class that all concrete action creator classes should extend from.

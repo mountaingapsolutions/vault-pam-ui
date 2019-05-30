@@ -1,5 +1,6 @@
 const request = require('request');
-const {initApiRequest, getDomain, sendError} = require('services/utils');
+const {initApiRequest, getDomain} = require('services/utils');
+const {sendError} = require('services/error/errorHandler');
 const {REQUEST_TYPES} = require('services/constants');
 const {getRequests, revokeRequest} = require('services/db/controllers/requestsController');
 const logger = require('services/logger');

@@ -7,7 +7,8 @@ const {router: secretsServiceRouter} = require('services/routes/secretsService')
 const {router: userServiceRouter} = require('services/routes/userService');
 const {router: requestServiceRouter} = require('services/routes/requestService');
 const {router: dynamicSecretServicRoute} = require('services/routes/dynamicSecretRequestService');
-const {initApiRequest, getDomain, sendError, sendJsonResponse, setSessionData} = require('services/utils');
+const {initApiRequest, getDomain, sendJsonResponse, setSessionData} = require('services/utils');
+const {sendError} = require('services/error/errorHandler');
 const logger = require('services/logger');
 
 /**
@@ -82,6 +83,7 @@ const login = (req, res) => {
             }
             try {
                 if (response.statusCode !== 200) {
+                    sendError(req, res, error, apiUrl);
                     sendJsonResponse(req, res, body, response.statusCode);
                     return;
                 }
@@ -137,7 +139,7 @@ const authenticatedRoutes = require('express').Router()
             if (token !== sessionToken) {
                 const domain = getDomain();
                 logger.log(`Token mismatch for the API call ${_yellowBold(req.originalUrl)} between header and stored session. Re-verifying through Vault.`);
-                const apiUrl = `${domain}/v1/auth/token/lookup-self`;
+                const apiUrl = `${domain}/v1/auth/token/lookup-self/sdf`;
                 request(initApiRequest(token, apiUrl), (error, response, body) => {
                     if (error) {
                         sendError(req, res, error);

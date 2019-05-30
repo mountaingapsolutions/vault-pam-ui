@@ -7,7 +7,7 @@ import React, {Component} from 'react';
 import {connect} from 'react-redux';
 
 import sessionAction from 'app/core/actions/sessionAction';
-import localStorageUtil from 'app/util/localStorageUtil';
+import localStorageUtil from 'app/util/LocalStorageUtil';
 
 import Button from 'app/core/components/Button';
 import Footer from 'app/core/components/Footer';
