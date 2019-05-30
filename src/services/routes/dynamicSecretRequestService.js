@@ -3,7 +3,6 @@ const {initApiRequest, getDomain, sendError} = require('services/utils');
 const {REQUEST_TYPES} = require('services/constants');
 const {getRequests, revokeRequest} = require('services/db/controllers/requestsController');
 const logger = require('services/logger');
-const addRequestId = require('express-request-id')();
 
 /**
  * Get active lease of certain role.
@@ -81,7 +80,6 @@ const _getEntityIdInfo = () => {
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
-    .use(addRequestId)
     /**
      * @swagger
      * /rest/dynamic/lease:
