@@ -5,7 +5,6 @@ const {approveRequest, cancelRequest, deleteRequest, getRequest, getRequests, in
 const {sendMailFromTemplate} = require('services/mail/smtpClient');
 const {asyncRequest, getDomain, initApiRequest, sendError, sendJsonResponse} = require('services/utils');
 const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
-const addRequestId = require('express-request-id')();
 
 /**
  * Authorizes a secrets requested via Control Groups.
@@ -554,7 +553,6 @@ const _wrapData = async (req, data) => {
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
-    .use(addRequestId)
     /**
      * @swagger
      * /rest/secret/requests:
