@@ -86,16 +86,6 @@ class SecretAction extends _Actions {
     }
 
     /**
-     * Returns approvers for a given requestId
-     *
-     * @param {number} requestId The request id in database.
-     * @returns {function} Redux dispatch function.
-     */
-    getRequestApprovers(requestId) {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_APPROVERS, `/rest/secret/request/${requestId}/approvers`);
-    }
-
-    /**
      * Sets secrets data within the client data model.
      *
      * @param {Object} data The secrets data to set.
@@ -141,6 +131,16 @@ class SecretAction extends _Actions {
             mount,
             role
         });
+    }
+
+    /**
+     * Returns approvers for a given requestId
+     *
+     * @param {number} requestId The request id in database.
+     * @returns {function} Redux dispatch function.
+     */
+    getRequestApprovers(requestId) {
+        return this._dispatchGet(this.ACTION_TYPES.LIST_APPROVERS, `/rest/secret/request/${requestId}/approvers`);
     }
 
     /**
