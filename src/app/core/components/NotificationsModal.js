@@ -183,13 +183,18 @@ class NotificationsModal extends Component {
      */
     _renderRequestDetails(selectedRequest) {
         const {classes, approvers} = this.props;
-        const {approved, creationTime, path, requestEntity, referenceData} = selectedRequest;
-        const {accessor} = referenceData || {};
-        const {id, name} = requestEntity || {};
+        const {approved, creationTime, path, requestEntity} = selectedRequest;
+        const {name} = requestEntity || {};
+        const namesList = approvers.map(approver => {
+            if (approver.metadata) {
+                return `${approver.metadata.firstName} ${approver.metadata.lastName}`;
+            }
+            return approver.name;
+        });
         return <GridList cellHeight={'auto'} className={classes.listContainer} cols={2}>
             <ListItem alignItems='flex-start'>
                 <ListItemText
-                    primary={'Requester Name:'}
+                    primary={'Name:'}
                     secondary={
                         <React.Fragment>
                             <Typography
@@ -197,45 +202,6 @@ class NotificationsModal extends Component {
                                 color='textSecondary'
                                 component='span'>
                                 {name}
-                            </Typography>
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-            <ListItem alignItems='flex-start'>
-                <ListItemText
-                    primary={'Requester ID:'}
-                    secondary={
-                        <React.Fragment>
-                            <Typography
-                                className={classes.block}
-                                color='textSecondary'
-                                component='span'>
-                                {id}
-                            </Typography>
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-            <ListItem alignItems='flex-start'>
-                <ListItemText
-                    primary={'Approval Status:'}
-                    secondary={
-                        <React.Fragment>
-                            <Typography className={classes.block} color='textSecondary' component='span'>
-                                {typeof approved === 'string' ? approved : approved.toString()}
-                            </Typography>
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-            <ListItem alignItems='flex-start'>
-                <ListItemText
-                    primary={'Request Creation Time:'}
-                    secondary={
-                        <React.Fragment>
-                            <Typography className={classes.block} color='textSecondary' component='span'>
-                                {new Date(creationTime).toLocaleString()}
                             </Typography>
                         </React.Fragment>
                     }
@@ -255,11 +221,35 @@ class NotificationsModal extends Component {
             </ListItem>
             <ListItem alignItems='flex-start'>
                 <ListItemText
-                    primary={'Accessor:'}
+                    primary={'Approval Status:'}
                     secondary={
                         <React.Fragment>
                             <Typography className={classes.block} color='textSecondary' component='span'>
-                                {accessor}
+                                {approved === true || approved === 'true' ? 'Approved' : 'Pending'}
+                            </Typography>
+                        </React.Fragment>
+                    }
+                />
+            </ListItem>
+            <ListItem alignItems='flex-start'>
+                <ListItemText
+                    primary={'Request Creation Time:'}
+                    secondary={
+                        <React.Fragment>
+                            <Typography className={classes.block} color='textSecondary' component='span'>
+                                {new Date(creationTime).toLocaleString()}
+                            </Typography>
+                        </React.Fragment>
+                    }
+                />
+            </ListItem>
+            <ListItem alignItems='flex-start'>
+                <ListItemText
+                    primary={'Approvers:'}
+                    secondary={
+                        <React.Fragment>
+                            <Typography className={classes.block} color='textSecondary' component='span'>
+                                {namesList.join(', ')}
                             </Typography>
                         </React.Fragment>
                     }
