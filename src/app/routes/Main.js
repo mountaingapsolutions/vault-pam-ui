@@ -46,7 +46,7 @@ import Footer from 'app/core/components/Footer';
 import NotificationsModal from 'app/core/components/NotificationsModal';
 import SecretsList from 'app/routes/secrets/SecretsList';
 import Constants from 'app/util/Constants';
-import localStorageUtil from 'app/util/LocalStorageUtil';
+import localStorageUtil from 'app/util/localStorageUtil';
 
 /**
  * The main container.
