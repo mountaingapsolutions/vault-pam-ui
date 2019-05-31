@@ -186,7 +186,6 @@ class NotificationsModal extends Component {
         const {approved, creationTime, path, requestEntity, referenceData} = selectedRequest;
         const {accessor} = referenceData || {};
         const {id, name} = requestEntity || {};
-        console.log(approvers);
         return <GridList cellHeight={'auto'} className={classes.listContainer} cols={2}>
             <ListItem alignItems='flex-start'>
                 <ListItemText

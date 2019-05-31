@@ -73,8 +73,6 @@ export default (previousState = {
                 leaseList: (action.data || {}).data || {}
             };
         case secretAction.ACTION_TYPES.LIST_APPROVERS:
-            console.log('got here');
-            console.log(action);
             return {
                 ...previousState,
                 approvers: action.data || []
