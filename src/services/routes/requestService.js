@@ -3,9 +3,10 @@ const logger = require('services/logger');
 const notificationsManager = require('services/notificationsManager');
 const {approveRequest, cancelRequest, deleteRequest, getRequest, getRequests, initiateRequest, openRequest, rejectRequest} = require('services/db/controllers/requestsController');
 const {sendMailFromTemplate} = require('services/mail/smtpClient');
-const {asyncRequest, getDomain, initApiRequest, sendError, sendJsonResponse} = require('services/utils');
+const {asyncRequest, getDomain, initApiRequest, sendJsonResponse} = require('services/utils');
+const {sendError} = require('services/error/errorHandler');
 const {REQUEST_STATUS, REQUEST_TYPES} = require('services/constants');
-const addRequestId = require('express-request-id')();
+const ServiceResponseError = require('services/error/ServiceResponseError');
 
 /**
  * Authorizes a secrets requested via Control Groups.
@@ -33,7 +34,7 @@ const _authorizeControlGroupRequest = async (req, entityId, path) => {
             notificationsManager.getInstance().to(groupName).emit('approve-request', remappedData);
         });
     } else {
-        throw new Error('Request not found');
+        throw new ServiceResponseError('Request not found');
     }
     return remappedData;
 };
@@ -53,7 +54,7 @@ const _authorizeRequest = async (req, entityId, path) => {
     if (isApprover) {
         const {type} = (await _getRequest(entityId, path)).dataValues || {};
         if (!type) {
-            throw new Error('Request not found');
+            throw new ServiceResponseError('Request not found');
         }
         let referenceData = null;
         if (type === REQUEST_TYPES.DYNAMIC_REQUEST) {
@@ -62,9 +63,7 @@ const _authorizeRequest = async (req, entityId, path) => {
                 const token = data && await _wrapData(req, data);
                 referenceData = {token, leaseId};
             } else {
-                const error = new Error('Invalid request');
-                error.statusCode = 400;
-                throw error;
+                throw new ServiceResponseError('Invalid request', 400);
             }
         }
         const data = await _injectEntityNameIntoRequestResponse(req, entityId, approveRequest(req, entityId, path, referenceData));
@@ -73,9 +72,7 @@ const _authorizeRequest = async (req, entityId, path) => {
         notificationsManager.getInstance().to(entityId).emit('approve-request', remappedData);
         notificationsManager.getInstance().to('pam-approver').emit('approve-request', remappedData);
     } else {
-        const unauthorizedError = new Error('Unauthorized');
-        unauthorizedError.statusCode = 403;
-        throw unauthorizedError;
+        throw new ServiceResponseError('Unauthorized', 403);
     }
     return remappedData;
 };
@@ -175,9 +172,7 @@ const _getEngineType = async (req, path) => {
     const mountFromPath = `${path.split('/')[0]}/`;
     const mount = mounts[mountFromPath];
     if (!mount) {
-        const error = new Error(`Invalid mount: ${mountFromPath}`);
-        error.statusCode = 400;
-        throw error;
+        throw new ServiceResponseError(`Invalid mount: ${mountFromPath}`, 400);
     }
 
     return mount.type;
@@ -513,8 +508,8 @@ const _remapSecretsRequest = (secretsRequest) => {
         approved,
         creationTime,
         authorizations,
+        isWrapped: type === REQUEST_TYPES.CONTROL_GROUP,
         id,
-        isWrapped: type === 'control-group',
         opened,
         path,
         referenceData,
@@ -548,13 +543,12 @@ const _wrapData = async (req, data) => {
     if (response.body) {
         return response.body.wrap_info.token;
     }
-    throw new Error('Invalid request');
+    throw new ServiceResponseError('Invalid request', 403);
 };
 
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
-    .use(addRequestId)
     /**
      * @swagger
      * /rest/secret/requests:
@@ -569,14 +563,13 @@ const router = require('express').Router()
      *         description: Unauthorized.
      */
     .get('/requests', async (req, res) => {
-        logger.audit(req, res);
         const requests = [];
         const promises = [];
         // Retrieve requests.
         (await _getRequests(req)).forEach((requestRecord) => {
             const {referenceData, type} = requestRecord.dataValues;
             const {accessor} = referenceData || {};
-            if (accessor && type === 'control-group') {
+            if (accessor && type === REQUEST_TYPES.CONTROL_GROUP) {
                 // For Control Group requests, also validate the accessor.
                 const accessorValidationPromise = require('vault-pam-premium').validateAccessor(accessor);
                 accessorValidationPromise.then((response) => {
@@ -641,7 +634,6 @@ const router = require('express').Router()
      *         description: Request not found.
      */
     .delete('/request', async (req, res) => {
-        logger.audit(req, res);
         const {entityId, path, type} = req.query;
         const {entityId: entityIdSelf} = req.session.user;
         if (!path || !type) {
@@ -693,7 +685,6 @@ const router = require('express').Router()
      *         description: No approval group has been configured.
      */
     .post('/request', async (req, res) => {
-        logger.audit(req, res);
         const {path, type} = req.body;
         if (!path || !type) {
             sendError(req, res, 'Invalid request. Params path and type must be provided.', 400);
@@ -845,7 +836,6 @@ const router = require('express').Router()
      *         description: No approval group has been configured.
      */
     .post('/request/authorize', async (req, res) => {
-        logger.audit(req, res);
         let {entityId, path, type} = req.body;
 
         if (!entityId || !path) {
@@ -897,7 +887,6 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .get('/open/*', async (req, res) => {
-        logger.audit(req, res);
         const {entityId, token} = req.session.user;
         const path = req.params[0];
         const apiUrl = `${getDomain()}/v1/${path}`;
@@ -952,7 +941,6 @@ const router = require('express').Router()
      *         description: Unauthorized.
      */
     .post('/unwrap', async (req, res) => {
-        logger.audit(req, res);
         try {
             const {entityId, token} = req.session.user;
             const {path} = req.body;

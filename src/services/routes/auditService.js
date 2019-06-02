@@ -1,7 +1,6 @@
-const logger = require('services/logger');
 const request = require('request');
-const {getDomain, initApiRequest, sendError, sendJsonResponse} = require('services/utils');
-const addRequestId = require('express-request-id')();
+const {getDomain, initApiRequest, sendJsonResponse} = require('services/utils');
+const {sendError} = require('services/error/errorHandler');
 const cryptoJs = require('crypto-js');
 
 /**
@@ -32,7 +31,6 @@ const _getAuditDevicesPermission = (token, entityId) => {
 
 // eslint-disable-next-line new-cap
 const router = require('express').Router()
-    .use(addRequestId)
     /**
      * @swagger
      * /rest/audit/hash:
@@ -58,7 +56,6 @@ const router = require('express').Router()
      *         description: Unauthorized.
      */
     .post('/hash', async (req, res) => {
-        logger.audit(req, res);
         try {
             const {entityId, token} = req.session.user;
 

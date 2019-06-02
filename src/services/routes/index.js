@@ -1,4 +1,5 @@
 const chalk = require('chalk');
+const addRequestId = require('express-request-id')();
 const request = require('request');
 const swaggerUi = require('swagger-ui-express');
 const {options, swaggerDoc} = require('services/Swagger');
@@ -7,7 +8,8 @@ const {router: secretsServiceRouter} = require('services/routes/secretsService')
 const {router: userServiceRouter} = require('services/routes/userService');
 const {router: requestServiceRouter} = require('services/routes/requestService');
 const {router: dynamicSecretServicRoute} = require('services/routes/dynamicSecretRequestService');
-const {initApiRequest, getDomain, sendError, sendJsonResponse, setSessionData} = require('services/utils');
+const {initApiRequest, getDomain, sendJsonResponse, setSessionData} = require('services/utils');
+const {sendError} = require('services/error/errorHandler');
 const logger = require('services/logger');
 
 /**
@@ -17,8 +19,8 @@ const logger = require('services/logger');
  * @param {Object} res The HTTP response object.
  */
 const api = (req, res) => {
-    logger.audit(req, res);
     _disableCache(res);
+    logger.audit(req, res);
     const {'x-vault-token': token} = req.headers;
     const {entityId} = req.session.user || {};
     const apiUrl = `${getDomain()}${req.url}`;
@@ -82,6 +84,7 @@ const login = (req, res) => {
             }
             try {
                 if (response.statusCode !== 200) {
+                    sendError(req, res, error, apiUrl);
                     sendJsonResponse(req, res, body, response.statusCode);
                     return;
                 }
@@ -122,10 +125,12 @@ const logout = (req, res) => {
 /* eslint-disable new-cap */
 const authenticatedRoutes = require('express').Router()
 /* eslint-enable new-cap */
+    .use(addRequestId)
     .use('/api', swaggerUi.serve)
     .get('/api', swaggerUi.setup(swaggerDoc, options))
     .use((req, res, next) => {
         _disableCache(res);
+        logger.audit(req, res);
         const {'x-vault-token': token} = req.headers;
         // Check if the token has been provided.
         if (!token) {
