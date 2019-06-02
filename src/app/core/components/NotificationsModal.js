@@ -86,8 +86,11 @@ class NotificationsModal extends Component {
      * @private
      * @param {SyntheticMouseEvent} event The event.
      * @param {string} secretsPath The request secrets path.
+     * @param {number} requestId The request id.
      */
-    _onRequestDetails(event, secretsPath) {
+    _onRequestDetails(event, secretsPath, requestId) {
+        const {getRequestApprovers} = this.props;
+        getRequestApprovers(requestId);
         event.preventDefault();
         this.setState({
             selectedRequestPath: secretsPath
@@ -179,14 +182,19 @@ class NotificationsModal extends Component {
      * @returns {React.ReactElement}
      */
     _renderRequestDetails(selectedRequest) {
-        const {classes} = this.props;
-        const {approved, creationTime, path, requestEntity, referenceData} = selectedRequest;
-        const {accessor} = referenceData || {};
-        const {id, name} = requestEntity || {};
+        const {classes, approvers} = this.props;
+        const {approved, creationTime, path, requestEntity} = selectedRequest;
+        const {name} = requestEntity || {};
+        const namesList = approvers.map(approver => {
+            if (approver.metadata) {
+                return `${approver.metadata.firstName} ${approver.metadata.lastName}`;
+            }
+            return approver.name;
+        });
         return <GridList cellHeight={'auto'} className={classes.listContainer} cols={2}>
             <ListItem alignItems='flex-start'>
                 <ListItemText
-                    primary={'Requester Name:'}
+                    primary={'Name:'}
                     secondary={
                         <React.Fragment>
                             <Typography
@@ -194,45 +202,6 @@ class NotificationsModal extends Component {
                                 color='textSecondary'
                                 component='span'>
                                 {name}
-                            </Typography>
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-            <ListItem alignItems='flex-start'>
-                <ListItemText
-                    primary={'Requester ID:'}
-                    secondary={
-                        <React.Fragment>
-                            <Typography
-                                className={classes.block}
-                                color='textSecondary'
-                                component='span'>
-                                {id}
-                            </Typography>
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-            <ListItem alignItems='flex-start'>
-                <ListItemText
-                    primary={'Approval Status:'}
-                    secondary={
-                        <React.Fragment>
-                            <Typography className={classes.block} color='textSecondary' component='span'>
-                                {typeof approved === 'string' ? approved : approved.toString()}
-                            </Typography>
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-            <ListItem alignItems='flex-start'>
-                <ListItemText
-                    primary={'Request Creation Time:'}
-                    secondary={
-                        <React.Fragment>
-                            <Typography className={classes.block} color='textSecondary' component='span'>
-                                {new Date(creationTime).toLocaleString()}
                             </Typography>
                         </React.Fragment>
                     }
@@ -252,11 +221,35 @@ class NotificationsModal extends Component {
             </ListItem>
             <ListItem alignItems='flex-start'>
                 <ListItemText
-                    primary={'Accessor:'}
+                    primary={'Approval Status:'}
                     secondary={
                         <React.Fragment>
                             <Typography className={classes.block} color='textSecondary' component='span'>
-                                {accessor}
+                                {approved === true || approved === 'true' ? 'Approved' : 'Pending'}
+                            </Typography>
+                        </React.Fragment>
+                    }
+                />
+            </ListItem>
+            <ListItem alignItems='flex-start'>
+                <ListItemText
+                    primary={'Request Creation Time:'}
+                    secondary={
+                        <React.Fragment>
+                            <Typography className={classes.block} color='textSecondary' component='span'>
+                                {new Date(creationTime).toLocaleString()}
+                            </Typography>
+                        </React.Fragment>
+                    }
+                />
+            </ListItem>
+            <ListItem alignItems='flex-start'>
+                <ListItemText
+                    primary={'Approvers:'}
+                    secondary={
+                        <React.Fragment>
+                            <Typography className={classes.block} color='textSecondary' component='span'>
+                                {namesList.join(', ')}
                             </Typography>
                         </React.Fragment>
                     }
@@ -369,7 +362,7 @@ class NotificationsModal extends Component {
                                             return true;
                                     }
                                 }).map((requestData, i) => {
-                                    const {approved, authorizations, creationTime, path, requestEntity = {}, type} = requestData;
+                                    const {approved, authorizations, creationTime, path, requestEntity = {}, type, id: requestId} = requestData;
                                     const {id, name} = requestEntity;
                                     const isOwnRequest = id === entityIdSelf;
                                     const alreadyApprovedBySelf = authorizations && authorizations.some((authorization) => authorization.entityId === entityIdSelf);
@@ -416,7 +409,7 @@ class NotificationsModal extends Component {
                                                         <Grid item xs={6}>
                                                             <ListItemSecondaryAction>
                                                                 <Button variant='text' onClick={(e) => {
-                                                                    this._onRequestDetails(e, path);
+                                                                    this._onRequestDetails(e, path, requestId);
                                                                 }}>
                                                                     Details
                                                                 </Button>
@@ -430,7 +423,7 @@ class NotificationsModal extends Component {
                                                         <Grid item xs={6}>
                                                             <ListItemSecondaryAction>
                                                                 <Button variant='text' onClick={(e) => {
-                                                                    this._onRequestDetails(e, path);
+                                                                    this._onRequestDetails(e, path, requestId);
                                                                 }}>
                                                                     Details
                                                                 </Button>
@@ -485,10 +478,12 @@ NotificationsModal.defaultProps = {
 };
 
 NotificationsModal.propTypes = {
+    approvers: PropTypes.array,
     authorizeRequest: PropTypes.func.isRequired,
     classes: PropTypes.object.isRequired,
     deleteRequest: PropTypes.func.isRequired,
     errors: PropTypes.string,
+    getRequestApprovers: PropTypes.func.isRequired,
     inProgress: PropTypes.bool,
     onClose: PropTypes.func.isRequired,
     open: PropTypes.bool,
@@ -506,7 +501,8 @@ NotificationsModal.propTypes = {
 const _mapStateToProps = (state) => {
     const actionsUsed = [
         secretAction.ACTION_TYPES.DELETE_REQUEST,
-        secretAction.ACTION_TYPES.LIST_REQUESTS
+        secretAction.ACTION_TYPES.LIST_REQUESTS,
+        secretAction.ACTION_TYPES.LIST_APPROVERS
     ];
     return {
         errors: createErrorsSelector(actionsUsed)(state.actionStatusReducer),
@@ -526,7 +522,8 @@ const _mapStateToProps = (state) => {
 const _mapDispatchToProps = (dispatch) => {
     return {
         authorizeRequest: (path, entityId, requestType) => dispatch(secretAction.authorizeRequest(path, entityId, requestType)),
-        deleteRequest: (path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => dispatch(secretAction.deleteRequest(path, entityId, type))
+        deleteRequest: (path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => dispatch(secretAction.deleteRequest(path, entityId, type)),
+        getRequestApprovers: requestId => dispatch(secretAction.getRequestApprovers(requestId))
     };
 };
 

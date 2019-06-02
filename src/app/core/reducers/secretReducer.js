@@ -19,7 +19,8 @@ export default (previousState = {
     secrets: {},
     secretsMounts: {},
     secretsPaths: {},
-    secretsRequests: []
+    secretsRequests: [],
+    approvers: []
 }, action) => {
     switch (action.type) {
         case secretAction.ACTION_TYPES.GET_SECRETS:
@@ -70,6 +71,11 @@ export default (previousState = {
             return {
                 ...previousState,
                 leaseList: (action.data || {}).data || {}
+            };
+        case secretAction.ACTION_TYPES.LIST_APPROVERS:
+            return {
+                ...previousState,
+                approvers: action.data || []
             };
         default:
             return {...previousState};
