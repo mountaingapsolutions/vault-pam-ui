@@ -81,11 +81,8 @@ const login = (req, res) => {
             json: bodyParam
         }, (error, response, body) => {
             if (error) {
-                if (error.errors) {
-                    sendError(req, res, error, apiUrl);
-                } else {
-                    sendError(req, res, {errors: ['Invalid credentials']}, apiUrl);
-                }
+                const errorObj = error.errors ? error : {errors: ['Invalid credentials']};
+                sendError(req, res, errorObj, apiUrl);
                 return;
             }
             try {
