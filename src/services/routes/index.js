@@ -11,6 +11,7 @@ const {router: dynamicSecretServicRoute} = require('services/routes/dynamicSecre
 const {initApiRequest, getDomain, sendJsonResponse, setSessionData} = require('services/utils');
 const {sendError} = require('services/error/errorHandler');
 const logger = require('services/logger');
+const {AUTH_METHODS, AUTH_TYPES} = require('services/constants');
 
 /**
  * Pass-through to the designated Vault server API endpoint.
@@ -63,29 +64,33 @@ const config = (req, res) => {
  */
 const login = (req, res) => {
     _disableCache(res);
-    const {authType = 'userpass', token, username, password} = req.body;
+    const {authMethod = 'userpass', token, username, password} = req.body;
+    const authType = AUTH_METHODS[authMethod].type;
+    const isAuthToken = AUTH_METHODS[authMethod].type === AUTH_TYPES.AUTH_TOKEN;
     // Method 1: authentication through token.
-    if (token) {
+    if (token && AUTH_METHODS[authMethod].type === AUTH_TYPES.TOKEN) {
         _sendTokenValidationResponse(token, req, res);
     }
     // Method 2: authentication through username and password. Upon success, it will still validate the token from method 1.
-    else if (username && password) {
-        const apiUrl = `${getDomain()}/v1/auth/${authType}/login/${username}`;
+    else if (authType === AUTH_TYPES.USER_PASSWORD || isAuthToken) {
+        const apiUrl = `${getDomain()}/v1/auth/${authMethod}/login${!isAuthToken ? `/${username}` : ''}`;
+        const bodyParam = isAuthToken ? {token} : {password};
         request({
             uri: apiUrl,
             method: 'POST',
-            json: {
-                password
-            }
+            json: bodyParam
         }, (error, response, body) => {
             if (error) {
-                sendError(req, res, error, apiUrl);
+                if (error.errors) {
+                    sendError(req, res, error, apiUrl);
+                } else {
+                    sendError(req, res, {errors: ['Invalid credentials']}, apiUrl);
+                }
                 return;
             }
             try {
                 if (response.statusCode !== 200) {
-                    sendError(req, res, error, apiUrl);
-                    sendJsonResponse(req, res, body, response.statusCode);
+                    sendError(req, res, body, apiUrl);
                     return;
                 }
 

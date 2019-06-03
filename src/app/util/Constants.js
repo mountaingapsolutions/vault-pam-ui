@@ -34,6 +34,13 @@ class Constants {
             'aws',
             'azure'
         ];
+        this.AUTH_METHODS = [
+            'token',
+            'userpass',
+            'ldap',
+            'github',
+            'okta'
+        ];
     }
 }
 

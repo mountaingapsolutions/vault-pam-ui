@@ -8,6 +8,7 @@ import {connect} from 'react-redux';
 
 import sessionAction from 'app/core/actions/sessionAction';
 import localStorageUtil from 'app/util/localStorageUtil';
+import Constants from 'app/util/Constants';
 
 import Button from 'app/core/components/Button';
 import Footer from 'app/core/components/Footer';
@@ -89,19 +90,23 @@ class Login extends Component {
         const errors = {};
         let fieldsToValidate;
         let authenticationMap;
+        const authMethod = Constants.AUTH_METHODS[tabValue] || 'token';
         // Collect the errors and field values.
         switch (tabValue) {
             case 0:
+            case 3:
                 fieldsToValidate = ['token'];
                 authenticationMap = {
+                    authMethod,
                     token
                 };
                 break;
             case 1:
             case 2:
+            case 4:
                 fieldsToValidate = ['username', 'password'];
                 authenticationMap = {
-                    authType: tabValue === 1 ? 'userpass' : 'ldap',
+                    authMethod,
                     username,
                     password
                 };
@@ -148,9 +153,11 @@ class Login extends Component {
     _renderTabContent(tab) {
         switch (tab) {
             case 0:
+            case 3:
                 return this._renderTokenEntry();
             case 1:
             case 2:
+            case 4:
                 return this._renderUsernamePasswordEntry();
             default:
                 return <Typography gutterBottom color='textPrimary' variant='h6'>
@@ -240,6 +247,8 @@ class Login extends Component {
                             <Tab label='Token'/>
                             <Tab label='Userpass'/>
                             <Tab label='LDAP'/>
+                            <Tab label='GitHub'/>
+                            <Tab label='Okta'/>
                         </Tabs>
                     </AppBar>
                     <FormControl className={classes.formContainer} component='fieldset' error={!!formError}>
