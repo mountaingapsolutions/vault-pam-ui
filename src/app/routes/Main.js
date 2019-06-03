@@ -444,7 +444,7 @@ const _styles = (theme) => ({
         flexGrow: 1,
     },
     marginRight: {
-        marginRight: theme.spacing.unit
+        marginRight: theme.spacing(1)
     },
     sealStatusDivider: {
         borderRight: '0.1em solid white',
@@ -457,7 +457,7 @@ const _styles = (theme) => ({
         borderRight: '0.1em solid white',
         height: '1.5em',
         padding: '0.5em',
-        marginRight: theme.spacing.unit * 2
+        marginRight: theme.spacing(1) * 2
     },
     warningMessageContentWidth: {
         width: 'calc(100% - 70px)'

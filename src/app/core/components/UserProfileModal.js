@@ -524,7 +524,7 @@ const _styles = (theme) => ({
         margin: 50
     },
     paddingRight: {
-        paddingRight: theme.spacing.unit
+        paddingRight: theme.spacing(1)
     },
     paperChangePassword: {
         marginTop: 10,
@@ -534,10 +534,10 @@ const _styles = (theme) => ({
         verticalAlign: 'center'
     },
     passwordIcon: {
-        paddingTop: theme.spacing.unit
+        paddingTop: theme.spacing(1)
     },
     passwordPadding: {
-        padding: theme.spacing.unit
+        padding: theme.spacing(1)
     }
 });
 
