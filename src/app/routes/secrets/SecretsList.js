@@ -1,5 +1,6 @@
 import {
     Avatar,
+    Breadcrumbs,
     Card,
     CardContent,
     CircularProgress,
@@ -26,7 +27,6 @@ import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
 import ListIcon from '@material-ui/icons/List';
 import LockIcon from '@material-ui/icons/Lock';
 import LockOpenIcon from '@material-ui/icons/LockOpen';
-import {Breadcrumbs} from '@material-ui/lab';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
