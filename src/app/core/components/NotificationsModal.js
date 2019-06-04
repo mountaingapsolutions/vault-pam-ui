@@ -33,7 +33,7 @@ import secretAction from 'app/core/actions/secretAction';
 import Button from 'app/core/components/Button';
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 import {connect} from 'react-redux';
-import Constants from 'app/util/Constants';
+import constants from 'app/util/constants';
 
 /**
  * Notifications modal.
@@ -69,12 +69,13 @@ class NotificationsModal extends Component {
      */
     _getRequestTypeLabel(requestData) {
         const {isWrapped, type} = requestData;
+        const {DYNAMIC_REQUEST, STANDARD_REQUEST} = constants.REQUEST_TYPES;
         let label;
         if (isWrapped) {
             label = 'Control Groups';
-        } else if (type === Constants.REQUEST_TYPES.STANDARD_REQUEST) {
+        } else if (type === STANDARD_REQUEST) {
             label = 'Standard Request';
-        } else if (type === Constants.REQUEST_TYPES.DYNAMIC_REQUEST) {
+        } else if (type === DYNAMIC_REQUEST) {
             label = 'Dynamic Request';
         }
         return label;
@@ -184,7 +185,7 @@ class NotificationsModal extends Component {
      * @returns {React.ReactElement}
      */
     _renderRequestDetails(selectedRequest) {
-        const {classes, approvers} = this.props;
+        const {approvers, classes, inProgress} = this.props;
         const {approved, creationTime, path, requestEntity} = selectedRequest;
         const {name} = requestEntity || {};
         const namesList = approvers.map(approver => {
@@ -193,71 +194,78 @@ class NotificationsModal extends Component {
             }
             return approver.name;
         });
-        return <GridList cellHeight={'auto'} className={classes.listContainer} cols={2}>
-            <ListItem alignItems='flex-start'>
-                <ListItemText
-                    primary={'Name:'}
-                    secondary={
-                        <React.Fragment>
-                            <Typography
-                                className={classes.block}
-                                color='textSecondary'
-                                component='span'>
-                                {name}
-                            </Typography>
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-            <ListItem alignItems='flex-start'>
-                <ListItemText
-                    primary={'Requested Path:'}
-                    secondary={
-                        <React.Fragment>
-                            <Typography className={classes.block} color='textSecondary' component='span'>
-                                {path}
-                            </Typography>
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-            <ListItem alignItems='flex-start'>
-                <ListItemText
-                    primary={'Approval Status:'}
-                    secondary={
-                        <React.Fragment>
-                            <Typography className={classes.block} color='textSecondary' component='span'>
-                                {approved === true || approved === 'true' ? 'Approved' : 'Pending'}
-                            </Typography>
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-            <ListItem alignItems='flex-start'>
-                <ListItemText
-                    primary={'Request Creation Time:'}
-                    secondary={
-                        <React.Fragment>
-                            <Typography className={classes.block} color='textSecondary' component='span'>
-                                {new Date(creationTime).toLocaleString()}
-                            </Typography>
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-            <ListItem alignItems='flex-start'>
-                <ListItemText
-                    primary={'Approvers:'}
-                    secondary={
-                        <React.Fragment>
-                            <Typography className={classes.block} color='textSecondary' component='span'>
-                                {namesList.join(', ')}
-                            </Typography>
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-        </GridList>;
+        return inProgress ?
+            <Grid container justify='center'>
+                <Grid item>
+                    <CircularProgress className={classes.loader}/>
+                </Grid>
+            </Grid>
+            :
+            <GridList cellHeight={'auto'} className={classes.listContainer} cols={2}>
+                <ListItem alignItems='flex-start'>
+                    <ListItemText
+                        primary={'Name:'}
+                        secondary={
+                            <React.Fragment>
+                                <Typography
+                                    className={classes.block}
+                                    color='textSecondary'
+                                    component='span'>
+                                    {name}
+                                </Typography>
+                            </React.Fragment>
+                        }
+                    />
+                </ListItem>
+                <ListItem alignItems='flex-start'>
+                    <ListItemText
+                        primary={'Requested Path:'}
+                        secondary={
+                            <React.Fragment>
+                                <Typography className={classes.block} color='textSecondary' component='span'>
+                                    {path}
+                                </Typography>
+                            </React.Fragment>
+                        }
+                    />
+                </ListItem>
+                <ListItem alignItems='flex-start'>
+                    <ListItemText
+                        primary={'Approval Status:'}
+                        secondary={
+                            <React.Fragment>
+                                <Typography className={classes.block} color='textSecondary' component='span'>
+                                    {approved === true || approved === 'true' ? 'Approved' : 'Pending'}
+                                </Typography>
+                            </React.Fragment>
+                        }
+                    />
+                </ListItem>
+                <ListItem alignItems='flex-start'>
+                    <ListItemText
+                        primary={'Request Creation Time:'}
+                        secondary={
+                            <React.Fragment>
+                                <Typography className={classes.block} color='textSecondary' component='span'>
+                                    {new Date(creationTime).toLocaleString()}
+                                </Typography>
+                            </React.Fragment>
+                        }
+                    />
+                </ListItem>
+                <ListItem alignItems='flex-start'>
+                    <ListItemText
+                        primary={'Approvers:'}
+                        secondary={
+                            <React.Fragment>
+                                <Typography className={classes.block} color='textSecondary' component='span'>
+                                    {namesList.join(', ')}
+                                </Typography>
+                            </React.Fragment>
+                        }
+                    />
+                </ListItem>
+            </GridList>;
     }
 
     /**
@@ -303,14 +311,14 @@ class NotificationsModal extends Component {
                 :
                 'Notifications'}</DialogTitle>
             {selectedRequest ?
-                <DialogContent>
+                <DialogContent className={classes.dialogContent}>
                     {this._renderRequestDetails(selectedRequest)}
                 </DialogContent>
                 :
-                <DialogContent>
+                <DialogContent className={classes.dialogContent}>
                     <List className={classes.listContainer}>
                         <ListSubheader>
-                            <Grid container justify='flex-start'>
+                            <Grid container>
                                 <Grid item sm={6} xs={12}>
                                     Pending requests
                                 </Grid>
@@ -385,7 +393,7 @@ class NotificationsModal extends Component {
                                                 </Avatar>
                                             </ListItemAvatar>
                                             <Grid container>
-                                                <Grid item xs={6}>
+                                                <Grid item sm={8} xs={12}>
                                                     <ListItemText
                                                         primary={name}
                                                         secondary={
@@ -409,7 +417,7 @@ class NotificationsModal extends Component {
                                                 </Grid>
                                                 {
                                                     alreadyApprovedBySelf ?
-                                                        <Grid item xs={6}>
+                                                        <Grid item align='right' sm={4} xs={12}>
                                                             <ListItemSecondaryAction>
                                                                 <Button variant='text' onClick={(e) => {
                                                                     this._onRequestDetails(e, path, requestId);
@@ -423,23 +431,21 @@ class NotificationsModal extends Component {
                                                             </ListItemSecondaryAction>
                                                         </Grid>
                                                         :
-                                                        <Grid item xs={6}>
-                                                            <ListItemSecondaryAction>
-                                                                <Button variant='text' onClick={(e) => {
-                                                                    this._onRequestDetails(e, path, requestId);
-                                                                }}>
-                                                                    Details
-                                                                </Button>
-                                                                {!isOwnRequest &&
-                                                                <Tooltip aria-label='Approve' title='Approve'>
-                                                                    <IconButton
-                                                                        color='primary'
-                                                                        onClick={() => authorizeRequest(path, id, type)}>
-                                                                        <CheckIcon/>
-                                                                    </IconButton>
-                                                                </Tooltip>}
-                                                                {this._renderRejectButton(buttonData)}
-                                                            </ListItemSecondaryAction>
+                                                        <Grid item align='right' sm={4} xs={12}>
+                                                            <Button variant='text' onClick={(e) => {
+                                                                this._onRequestDetails(e, path, requestId);
+                                                            }}>
+                                                                Details
+                                                            </Button>
+                                                            {!isOwnRequest &&
+                                                            <Tooltip aria-label='Approve' title='Approve'>
+                                                                <IconButton
+                                                                    color='primary'
+                                                                    onClick={() => authorizeRequest(path, id, type)}>
+                                                                    <CheckIcon/>
+                                                                </IconButton>
+                                                            </Tooltip>}
+                                                            {this._renderRejectButton(buttonData)}
                                                         </Grid>
                                                 }
                                             </Grid>
@@ -468,6 +474,14 @@ class NotificationsModal extends Component {
                 </DialogContent>
             }
             <DialogActions>
+                {selectedRequest &&
+                <Button variant='text' onClick={() => {
+                    this.setState({
+                        selectedRequestPath: undefined
+                    });
+                }}>
+                    Back
+                </Button>}
                 <Button autoFocus onClick={() => onClose()}>
                     Close
                 </Button>
@@ -525,7 +539,7 @@ const _mapStateToProps = (state) => {
 const _mapDispatchToProps = (dispatch) => {
     return {
         authorizeRequest: (path, entityId, requestType) => dispatch(secretAction.authorizeRequest(path, entityId, requestType)),
-        deleteRequest: (path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => dispatch(secretAction.deleteRequest(path, entityId, type)),
+        deleteRequest: (path, entityId, type = constants.REQUEST_TYPES.STANDARD_REQUEST) => dispatch(secretAction.deleteRequest(path, entityId, type)),
         getRequestApprovers: requestId => dispatch(secretAction.getRequestApprovers(requestId))
     };
 };
@@ -540,6 +554,9 @@ const _mapDispatchToProps = (dispatch) => {
 const _styles = (theme) => ({
     block: {
         display: 'block',
+    },
+    dialogContent: {
+        paddingTop: 0
     },
     filter: {
         paddingTop: 0,

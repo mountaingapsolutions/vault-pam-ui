@@ -1,5 +1,5 @@
 import _Actions from 'app/core/actions/_Actions';
-import Constants from 'app/util/Constants';
+import constants from 'app/util/constants';
 
 /**
  * Actions class responsible for kv secrets engine related actions.
@@ -57,7 +57,7 @@ class SecretAction extends _Actions {
      * @param {string} [type] The request type.
      * @returns {function} Redux dispatch function.
      */
-    deleteRequest(path, entityId = '', type = Constants.REQUEST_TYPES.STANDARD_REQUEST) {
+    deleteRequest(path, entityId = '', type = constants.REQUEST_TYPES.STANDARD_REQUEST) {
         return this._dispatchDelete(this.ACTION_TYPES.DELETE_REQUEST, '/rest/secret/request', {
             path,
             entityId,
