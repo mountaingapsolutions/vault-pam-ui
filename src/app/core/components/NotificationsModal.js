@@ -33,7 +33,7 @@ import secretAction from 'app/core/actions/secretAction';
 import Button from 'app/core/components/Button';
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 import {connect} from 'react-redux';
-import Constants from 'app/util/Constants';
+import constants from 'app/util/constants';
 
 /**
  * Notifications modal.
@@ -69,12 +69,13 @@ class NotificationsModal extends Component {
      */
     _getRequestTypeLabel(requestData) {
         const {isWrapped, type} = requestData;
+        const {DYNAMIC_REQUEST, STANDARD_REQUEST} = constants.REQUEST_TYPES;
         let label;
         if (isWrapped) {
             label = 'Control Groups';
-        } else if (type === Constants.REQUEST_TYPES.STANDARD_REQUEST) {
+        } else if (type === STANDARD_REQUEST) {
             label = 'Standard Request';
-        } else if (type === Constants.REQUEST_TYPES.DYNAMIC_REQUEST) {
+        } else if (type === DYNAMIC_REQUEST) {
             label = 'Dynamic Request';
         }
         return label;
@@ -538,7 +539,7 @@ const _mapStateToProps = (state) => {
 const _mapDispatchToProps = (dispatch) => {
     return {
         authorizeRequest: (path, entityId, requestType) => dispatch(secretAction.authorizeRequest(path, entityId, requestType)),
-        deleteRequest: (path, entityId, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => dispatch(secretAction.deleteRequest(path, entityId, type)),
+        deleteRequest: (path, entityId, type = constants.REQUEST_TYPES.STANDARD_REQUEST) => dispatch(secretAction.deleteRequest(path, entityId, type)),
         getRequestApprovers: requestId => dispatch(secretAction.getRequestApprovers(requestId))
     };
 };
