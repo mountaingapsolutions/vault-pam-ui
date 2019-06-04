@@ -45,13 +45,13 @@ exports[`renders correctly 1`] = `
         />
       </a>
       <div
-        className="Main-grow-280"
+        className="Main-grow-2"
       />
       <span
         className="MuiTypography-root MuiTypography-overline MuiTypography-colorInherit"
       />
       <div
-        className="Main-userNameDivider-284"
+        className="Main-userNameDivider-6"
       />
       <p
         className="MuiTypography-root MuiTypography-body1 MuiTypography-colorInherit"
@@ -59,7 +59,7 @@ exports[`renders correctly 1`] = `
         Status:
       </p>
       <div
-        className="Main-sealStatusDivider-282"
+        className="Main-sealStatusDivider-4"
       >
         <svg
           aria-hidden="true"
@@ -78,7 +78,7 @@ exports[`renders correctly 1`] = `
         </svg>
       </div>
       <div
-        className="Main-sectionDesktop-283"
+        className="Main-sectionDesktop-5"
       >
         <button
           className="MuiButtonBase-root MuiIconButton-root MuiIconButton-colorInherit"
@@ -164,7 +164,7 @@ exports[`renders correctly 1`] = `
     className="MuiGrid-root mt-1 MuiGrid-container MuiGrid-justify-xs-center"
   >
     <div
-      className="MuiPaper-root MuiPaper-elevation1 MuiPaper-rounded MuiCard-root Main-card-279"
+      className="MuiPaper-root MuiPaper-elevation1 MuiPaper-rounded MuiCard-root Main-card-1"
     >
       <div
         className="MuiCardContent-root"
@@ -181,38 +181,38 @@ exports[`renders correctly 1`] = `
     </div>
   </div>
   <div
-    className="Footer-footerRootContainer-542"
+    className="Footer-footerRootContainer-265"
   >
     <header
-      className="MuiPaper-root MuiPaper-elevation4 MuiAppBar-root MuiAppBar-positionFixed MuiAppBar-colorPrimary mui-fixed Footer-footer-541"
+      className="MuiPaper-root MuiPaper-elevation4 MuiAppBar-root MuiAppBar-positionFixed MuiAppBar-colorPrimary mui-fixed Footer-footer-264"
     >
       <div
-        className="Footer-footerTextContainer-543"
+        className="Footer-footerTextContainer-266"
       >
         <a
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-546"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-269"
           href="/rest/api"
           title="API"
         >
           API
         </a>
         <span
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-545"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-268"
         >
           |
         </span>
         <span
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textActiveDomain-544"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textActiveDomain-267"
         >
           
         </span>
         <span
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-545"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-268"
         >
           |
         </span>
         <span
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-546"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-269"
         >
           Vault 
         </span>
