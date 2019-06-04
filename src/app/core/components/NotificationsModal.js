@@ -303,11 +303,11 @@ class NotificationsModal extends Component {
                 :
                 'Notifications'}</DialogTitle>
             {selectedRequest ?
-                <DialogContent>
+                <DialogContent className={classes.dialogContent}>
                     {this._renderRequestDetails(selectedRequest)}
                 </DialogContent>
                 :
-                <DialogContent>
+                <DialogContent className={classes.dialogContent}>
                     <List className={classes.listContainer}>
                         <ListSubheader>
                             <Grid container>
@@ -538,6 +538,9 @@ const _mapDispatchToProps = (dispatch) => {
 const _styles = (theme) => ({
     block: {
         display: 'block',
+    },
+    dialogContent: {
+        paddingTop: 0
     },
     filter: {
         paddingTop: 0,
