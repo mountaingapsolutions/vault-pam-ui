@@ -184,7 +184,7 @@ class NotificationsModal extends Component {
      * @returns {React.ReactElement}
      */
     _renderRequestDetails(selectedRequest) {
-        const {classes, approvers} = this.props;
+        const {approvers, classes, inProgress} = this.props;
         const {approved, creationTime, path, requestEntity} = selectedRequest;
         const {name} = requestEntity || {};
         const namesList = approvers.map(approver => {
@@ -193,71 +193,78 @@ class NotificationsModal extends Component {
             }
             return approver.name;
         });
-        return <GridList cellHeight={'auto'} className={classes.listContainer} cols={2}>
-            <ListItem alignItems='flex-start'>
-                <ListItemText
-                    primary={'Name:'}
-                    secondary={
-                        <React.Fragment>
-                            <Typography
-                                className={classes.block}
-                                color='textSecondary'
-                                component='span'>
-                                {name}
-                            </Typography>
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-            <ListItem alignItems='flex-start'>
-                <ListItemText
-                    primary={'Requested Path:'}
-                    secondary={
-                        <React.Fragment>
-                            <Typography className={classes.block} color='textSecondary' component='span'>
-                                {path}
-                            </Typography>
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-            <ListItem alignItems='flex-start'>
-                <ListItemText
-                    primary={'Approval Status:'}
-                    secondary={
-                        <React.Fragment>
-                            <Typography className={classes.block} color='textSecondary' component='span'>
-                                {approved === true || approved === 'true' ? 'Approved' : 'Pending'}
-                            </Typography>
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-            <ListItem alignItems='flex-start'>
-                <ListItemText
-                    primary={'Request Creation Time:'}
-                    secondary={
-                        <React.Fragment>
-                            <Typography className={classes.block} color='textSecondary' component='span'>
-                                {new Date(creationTime).toLocaleString()}
-                            </Typography>
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-            <ListItem alignItems='flex-start'>
-                <ListItemText
-                    primary={'Approvers:'}
-                    secondary={
-                        <React.Fragment>
-                            <Typography className={classes.block} color='textSecondary' component='span'>
-                                {namesList.join(', ')}
-                            </Typography>
-                        </React.Fragment>
-                    }
-                />
-            </ListItem>
-        </GridList>;
+        return inProgress ?
+            <Grid container justify='center'>
+                <Grid item>
+                    <CircularProgress className={classes.loader}/>
+                </Grid>
+            </Grid>
+            :
+            <GridList cellHeight={'auto'} className={classes.listContainer} cols={2}>
+                <ListItem alignItems='flex-start'>
+                    <ListItemText
+                        primary={'Name:'}
+                        secondary={
+                            <React.Fragment>
+                                <Typography
+                                    className={classes.block}
+                                    color='textSecondary'
+                                    component='span'>
+                                    {name}
+                                </Typography>
+                            </React.Fragment>
+                        }
+                    />
+                </ListItem>
+                <ListItem alignItems='flex-start'>
+                    <ListItemText
+                        primary={'Requested Path:'}
+                        secondary={
+                            <React.Fragment>
+                                <Typography className={classes.block} color='textSecondary' component='span'>
+                                    {path}
+                                </Typography>
+                            </React.Fragment>
+                        }
+                    />
+                </ListItem>
+                <ListItem alignItems='flex-start'>
+                    <ListItemText
+                        primary={'Approval Status:'}
+                        secondary={
+                            <React.Fragment>
+                                <Typography className={classes.block} color='textSecondary' component='span'>
+                                    {approved === true || approved === 'true' ? 'Approved' : 'Pending'}
+                                </Typography>
+                            </React.Fragment>
+                        }
+                    />
+                </ListItem>
+                <ListItem alignItems='flex-start'>
+                    <ListItemText
+                        primary={'Request Creation Time:'}
+                        secondary={
+                            <React.Fragment>
+                                <Typography className={classes.block} color='textSecondary' component='span'>
+                                    {new Date(creationTime).toLocaleString()}
+                                </Typography>
+                            </React.Fragment>
+                        }
+                    />
+                </ListItem>
+                <ListItem alignItems='flex-start'>
+                    <ListItemText
+                        primary={'Approvers:'}
+                        secondary={
+                            <React.Fragment>
+                                <Typography className={classes.block} color='textSecondary' component='span'>
+                                    {namesList.join(', ')}
+                                </Typography>
+                            </React.Fragment>
+                        }
+                    />
+                </ListItem>
+            </GridList>;
     }
 
     /**
@@ -466,6 +473,14 @@ class NotificationsModal extends Component {
                 </DialogContent>
             }
             <DialogActions>
+                {selectedRequest &&
+                <Button variant='text' onClick={() => {
+                    this.setState({
+                        selectedRequestPath: undefined
+                    });
+                }}>
+                    Back
+                </Button>}
                 <Button autoFocus onClick={() => onClose()}>
                     Close
                 </Button>
