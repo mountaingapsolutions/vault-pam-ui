@@ -20,6 +20,20 @@ const DYNAMIC_ENGINES = [
     'azure'
 ];
 
+const AUTH_TYPES = {
+    AUTH_TOKEN: 'auth-token',
+    TOKEN: 'token',
+    USER_PASSWORD: 'user-password'
+};
+
+const AUTH_METHODS = {
+    github: AUTH_TYPES.AUTH_TOKEN,
+    ldap: AUTH_TYPES.USER_PASSWORD,
+    okta: AUTH_TYPES.USER_PASSWORD,
+    token: AUTH_TYPES.TOKEN,
+    userpass: AUTH_TYPES.USER_PASSWORD
+};
+
 // Logger levels
 const LOG_LEVELS = {
     'error': 0,
@@ -33,6 +47,8 @@ const LOG_LEVELS = {
 };
 
 module.exports = {
+    AUTH_METHODS,
+    AUTH_TYPES,
     DYNAMIC_ENGINES,
     LOG_LEVELS,
     REQUEST_STATUS,
