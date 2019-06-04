@@ -6,7 +6,7 @@ import {connect} from 'react-redux';
 import {Redirect, Route, Switch, withRouter} from 'react-router-dom';
 
 import Login from 'app/routes/auth/Login';
-import Constants from 'app/util/Constants';
+import constants from 'app/util/constants';
 
 /**
  * The authentication container.
@@ -27,7 +27,7 @@ class Auth extends Component {
                 <Toolbar>
                     <img alt='logo' className='mr-1' src='/assets/vault-dark.svg'/>
                     <Typography noWrap color='inherit' variant='h6'>
-                        {Constants.APP_TITLE}
+                        {constants.APP_TITLE}
                     </Typography>
                 </Toolbar>
             </AppBar>

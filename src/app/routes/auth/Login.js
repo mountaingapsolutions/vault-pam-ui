@@ -8,7 +8,7 @@ import {connect} from 'react-redux';
 
 import sessionAction from 'app/core/actions/sessionAction';
 import localStorageUtil from 'app/util/localStorageUtil';
-import Constants from 'app/util/Constants';
+import constants from 'app/util/constants';
 
 import Button from 'app/core/components/Button';
 import Footer from 'app/core/components/Footer';
@@ -91,7 +91,7 @@ class Login extends Component {
         const errors = {};
         let fieldsToValidate;
         let authenticationMap;
-        const authMethod = Constants.AUTH_METHODS[tabValue].type || 'token';
+        const authMethod = constants.AUTH_METHODS[tabValue].type || 'token';
         // Collect the errors and field values.
         switch (authMethod) {
             case 'token':
@@ -152,7 +152,7 @@ class Login extends Component {
      * @returns {React.ReactElement}
      */
     _renderTabContent(tab) {
-        switch (Constants.AUTH_METHODS[tab].type) {
+        switch (constants.AUTH_METHODS[tab].type) {
             case 'token':
             case 'github':
                 return this._renderTokenEntry();
@@ -252,7 +252,7 @@ class Login extends Component {
                 <Paper>
                     <AppBar color='default' position='static'>
                         <Tabs value={tabValue} onChange={this._onTabChange}>
-                            {Constants.AUTH_METHODS.map((method, index) => {
+                            {constants.AUTH_METHODS.map((method, index) => {
                                 return <Tab key={`${index}-${method}`} label={method.label}/>;
                             })}
                         </Tabs>

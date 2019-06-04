@@ -45,7 +45,7 @@ import UserProfileModal from 'app/core/components/UserProfileModal';
 import Footer from 'app/core/components/Footer';
 import NotificationsModal from 'app/core/components/NotificationsModal';
 import SecretsList from 'app/routes/secrets/SecretsList';
-import Constants from 'app/util/Constants';
+import constants from 'app/util/constants';
 import localStorageUtil from 'app/util/localStorageUtil';
 
 /**
@@ -245,7 +245,7 @@ class Main extends Component {
                     <Button color='inherit' component={this._renderLink} variant='text' {...{to: '/'}}>
                         <img alt='logo' className='mr-1' src='/assets/vault-dark.svg'/>
                         <Typography noWrap className={classes.title} color='inherit' variant='h6'>{
-                            Constants.APP_TITLE
+                            constants.APP_TITLE
                         }</Typography>
                     </Button>
                     <div className={classes.grow}/>

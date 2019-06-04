@@ -38,7 +38,7 @@ import CreateUpdateSecretModal from 'app/core/components/CreateUpdateSecretModal
 import ConfirmationModal from 'app/core/components/ConfirmationModal';
 import ListModal from 'app/core/components/ListModal';
 import SnackbarContent from 'app/core/components/SnackbarContent';
-import Constants from 'app/util/Constants';
+import constants from 'app/util/constants';
 
 import {createErrorsSelector, createInProgressSelector} from 'app/util/actionStatusSelector';
 
@@ -236,7 +236,7 @@ class SecretsList extends Component {
      * @private
      */
     _openRequestModal(mount, name, requestType) {
-        const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
+        const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = constants.REQUEST_TYPES;
         let typeLabel = '';
         switch (requestType) {
             case CONTROL_GROUP:
@@ -366,7 +366,7 @@ class SecretsList extends Component {
      */
     _getRequestType(requestData) {
         const {isDynamicSecret, isWrapped} = requestData;
-        const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = Constants.REQUEST_TYPES;
+        const {CONTROL_GROUP, DYNAMIC_REQUEST, STANDARD_REQUEST} = constants.REQUEST_TYPES;
         let type;
         if (isDynamicSecret) {
             type = DYNAMIC_REQUEST;
@@ -691,7 +691,7 @@ const _mapStateToProps = (state, ownProps) => {
         isV2 = mountData.options && mountData.options.version === '2';
     }
     const type = ((location || {}).state || {}).type || null;
-    const isDynamicSecret = Constants.DYNAMIC_ENGINES.some(engine => engine === type);
+    const isDynamicSecret = constants.DYNAMIC_ENGINES.some(engine => engine === type);
     const secretsList = (secretsPaths.secrets || []).map((secret) => {
         const {capabilities, data = {}, name} = secret;
         const {wrap_info: wrapInfo} = data;
@@ -778,7 +778,7 @@ const _mapStateToProps = (state, ownProps) => {
  */
 const _mapDispatchToProps = (dispatch, ownProps) => {
     return {
-        deleteRequest: (name, version, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => {
+        deleteRequest: (name, version, type = constants.REQUEST_TYPES.STANDARD_REQUEST) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
@@ -839,7 +839,7 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
             return dispatch(secretAction.openApprovedSecret(fullPath));
         },
-        requestSecret: (name, version, type = Constants.REQUEST_TYPES.STANDARD_REQUEST) => {
+        requestSecret: (name, version, type = constants.REQUEST_TYPES.STANDARD_REQUEST) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;

@@ -151,6 +151,7 @@ const _styles = () => ({
         fontSize: 10
     },
     textSeparator: {
+        color: COLORS.DARK_GREY,
         paddingRight: 20,
         paddingLeft: 20
     },
