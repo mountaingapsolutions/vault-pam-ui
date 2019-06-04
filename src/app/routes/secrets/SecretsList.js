@@ -69,7 +69,24 @@ class SecretsList extends Component {
         };
 
         this._onBack = this._onBack.bind(this);
+        this._onNavigate = this._onNavigate.bind(this);
         this._onCreateUpdateSecretModalClose = this._onCreateUpdateSecretModalClose.bind(this);
+    }
+
+    /**
+     * Returns the mount engine type.
+     *
+     * @private
+     * @param {string} mountName The mount name.
+     * @returns {number}
+     */
+    _getEngineTypeFromMount(mountName) {
+        const {secretsMounts = {}} = this.props;
+        const mount = (secretsMounts.data || []).find(m => mountName === m.name.slice(0, -1));
+        if (mount) {
+            return mount.type;
+        }
+        return undefined;
     }
 
     /**
@@ -103,7 +120,7 @@ class SecretsList extends Component {
      * Handle for when a secret item is pressed.
      *
      * @private
-     * @param {SyntheticMouseEvent} secret The secret object.
+     * @param {Object} secret The secret object.
      * @param {SyntheticMouseEvent} event The event.
      */
     _onClickSecret(secret, event) {
@@ -142,6 +159,21 @@ class SecretsList extends Component {
                     this._openRequestModal(mount, name, requestType);
                 }
             }
+        }
+    }
+
+    /**
+     * Navigation handle for an anchor element.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _onNavigate(event) {
+        event.preventDefault();
+        if (event.target) {
+            const {history} = this.props;
+            // Using element.getAttribute('href') because element.href will return the absolute URL.
+            history.push(event.currentTarget.getAttribute('href'));
         }
     }
 
@@ -268,18 +300,6 @@ class SecretsList extends Component {
     }
 
     /**
-     * Returns a static Link component
-     *
-     * @private
-     * @param {string|Object} to path to link to.
-     * @returns {React.ReactElement}
-     */
-    // eslint-disable-next-line react/display-name
-    _renderLink = React.forwardRef((itemProps, ref) =>
-        <Link {...itemProps} ref={ref}/>
-    );
-
-    /**
      * Toggles the create/update secret modal.
      *
      * @private
@@ -303,12 +323,11 @@ class SecretsList extends Component {
     _onCreateUpdateSecretModalClose() {
         const {refreshSecretsListOnClose} = this.state;
         if (refreshSecretsListOnClose) {
-            const {listRequests, location, listSecretsAndCapabilities, match} = this.props;
-            const type = ((location || {}).state || {}).type || null;
+            const {listRequests, listSecretsAndCapabilities, match} = this.props;
             const {params} = match;
             const {mount, path} = params;
             listRequests();
-            listSecretsAndCapabilities(path, this._getVersionFromMount(mount), type);
+            listSecretsAndCapabilities(path, this._getVersionFromMount(mount), this._getEngineTypeFromMount(mount));
         }
         this.setState({
             secretModalInitialPath: '',
@@ -324,10 +343,10 @@ class SecretsList extends Component {
      * @override
      */
     componentDidMount() {
-        const {dismissError, history, listMounts, listSecretsAndCapabilities, location: locProp, match, secretsMounts} = this.props;
+        const {dismissError, history, listMounts, listSecretsAndCapabilities, match, secretsMounts} = this.props;
         const {params} = match;
         const {mount, path} = params;
-        const type = ((locProp || {}).state || {}).type || null;
+        const type = this._getEngineTypeFromMount(mount);
         if ((secretsMounts.data || []).length === 0) {
             listMounts().then(() => {
                 listSecretsAndCapabilities(path, this._getVersionFromMount(mount), type);
@@ -410,14 +429,11 @@ class SecretsList extends Component {
         const {params} = match;
         const {mount, path} = params;
         const paths = path ? [mount].concat(path.split('/')) : [mount];
+        const buttonClassName = `${classes.disableMinWidth} ${classes.disablePadding}`;
         return <CardContent>{
             mount && <List disablePadding>
                 <ListItem disableGutters className={classes.disablePadding}>
-                    <Button
-                        className={`${classes.disableMinWidth} ${classes.disablePadding}`}
-                        color='inherit'
-                        component={this._renderLink} variant='text'
-                        {...{to: '/'}}>
+                    <Button className={buttonClassName} color='inherit' component='a' href='/' variant='text' onClick={this._onNavigate}>
                         <ListItemIcon>
                             <ListIcon/>
                         </ListItemIcon>
@@ -473,10 +489,10 @@ class SecretsList extends Component {
         const {match, openApprovedSecret, setSecretsData} = this.props;
         const {params} = match;
         const {mount} = params;
-        const {isApproved, isPending, canOpen, canDelete, name, isWrapped, requiresRequest, secretsData, secretsPath, url} = secret;
+        const {isApproved, isPending, canOpen, canDelete, name, isWrapped, requiresRequest, secretsData, secretsPath} = secret;
         const isFolderPath = name.endsWith('/');
         if (isFolderPath) {
-            return <IconButton {...{onClick: this._onClickSecret.bind(this, secret), to: url}}>
+            return <IconButton onClick={this._onClickSecret.bind(this, secret)}>
                 <KeyboardArrowRightIcon/>
             </IconButton>;
         } else if (canDelete) {
@@ -559,16 +575,15 @@ class SecretsList extends Component {
             </Grid>;
         } else if (pageError) {
             return <Paper className={classes.paper} elevation={2}>
-                <Typography
-                    className={classes.paperMessage}
-                    color='textPrimary'>{pageError}
+                <Typography className={classes.paperMessage} color='textPrimary'>
+                    {pageError}
                 </Typography>
             </Paper>;
         } else if (secretsList.length > 0) {
             return <List>{
                 secretsList.map((secret, i) => {
                     const {authorizationsText, isDynamicSecret, name, secondaryText, url} = secret;
-                    return <ListItem button component={this._renderLink} key={`key-${i}`} {...{onClick: this._onClickSecret.bind(this, secret), to: url}}>
+                    return <ListItem button component='a' href={url} key={`key-${i}`} onClick={this._onClickSecret.bind(this, secret)}>
                         <ListItemAvatar>
                             <Avatar>{
                                 this._getSecretsIcon({isDynamicSecret, name})
@@ -681,16 +696,17 @@ SecretsList.propTypes = {
  * @returns {Object}
  */
 const _mapStateToProps = (state, ownProps) => {
-    const {location, match} = ownProps;
+    const {match} = ownProps;
     const {params} = match;
     const {mount, path = ''} = params;
     const {secretsMounts, secretsPaths, secretsRequests} = state.secretReducer;
     let isV2 = false;
+    let type;
     const mountData = (secretsMounts.data || []).find(m => mount === m.name.slice(0, -1));
     if (mountData) {
         isV2 = mountData.options && mountData.options.version === '2';
+        type = mountData.type;
     }
-    const type = ((location || {}).state || {}).type || null;
     const isDynamicSecret = Constants.DYNAMIC_ENGINES.some(engine => engine === type);
     const secretsList = (secretsPaths.secrets || []).map((secret) => {
         const {capabilities, data = {}, name} = secret;
