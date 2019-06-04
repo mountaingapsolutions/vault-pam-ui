@@ -310,7 +310,7 @@ class NotificationsModal extends Component {
                 <DialogContent>
                     <List className={classes.listContainer}>
                         <ListSubheader>
-                            <Grid container justify='flex-start'>
+                            <Grid container>
                                 <Grid item sm={6} xs={12}>
                                     Pending requests
                                 </Grid>
@@ -385,7 +385,7 @@ class NotificationsModal extends Component {
                                                 </Avatar>
                                             </ListItemAvatar>
                                             <Grid container>
-                                                <Grid item xs={6}>
+                                                <Grid item sm={6} xs={12}>
                                                     <ListItemText
                                                         primary={name}
                                                         secondary={
@@ -409,7 +409,7 @@ class NotificationsModal extends Component {
                                                 </Grid>
                                                 {
                                                     alreadyApprovedBySelf ?
-                                                        <Grid item xs={6}>
+                                                        <Grid item align='right' sm={6} xs={12}>
                                                             <ListItemSecondaryAction>
                                                                 <Button variant='text' onClick={(e) => {
                                                                     this._onRequestDetails(e, path, requestId);
@@ -423,23 +423,21 @@ class NotificationsModal extends Component {
                                                             </ListItemSecondaryAction>
                                                         </Grid>
                                                         :
-                                                        <Grid item xs={6}>
-                                                            <ListItemSecondaryAction>
-                                                                <Button variant='text' onClick={(e) => {
-                                                                    this._onRequestDetails(e, path, requestId);
-                                                                }}>
-                                                                    Details
-                                                                </Button>
-                                                                {!isOwnRequest &&
-                                                                <Tooltip aria-label='Approve' title='Approve'>
-                                                                    <IconButton
-                                                                        color='primary'
-                                                                        onClick={() => authorizeRequest(path, id, type)}>
-                                                                        <CheckIcon/>
-                                                                    </IconButton>
-                                                                </Tooltip>}
-                                                                {this._renderRejectButton(buttonData)}
-                                                            </ListItemSecondaryAction>
+                                                        <Grid item align='right' sm={6} xs={12}>
+                                                            <Button variant='text' onClick={(e) => {
+                                                                this._onRequestDetails(e, path, requestId);
+                                                            }}>
+                                                                Details
+                                                            </Button>
+                                                            {!isOwnRequest &&
+                                                            <Tooltip aria-label='Approve' title='Approve'>
+                                                                <IconButton
+                                                                    color='primary'
+                                                                    onClick={() => authorizeRequest(path, id, type)}>
+                                                                    <CheckIcon/>
+                                                                </IconButton>
+                                                            </Tooltip>}
+                                                            {this._renderRejectButton(buttonData)}
                                                         </Grid>
                                                 }
                                             </Grid>
