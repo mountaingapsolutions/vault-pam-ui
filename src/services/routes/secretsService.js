@@ -1,6 +1,7 @@
 const chalk = require('chalk');
 const request = require('request');
 const {initApiRequest, getDomain, sendJsonResponse} = require('services/utils');
+const {deleteRequest} = require('services/db/controllers/requestsController');
 const {sendError} = require('services/error/errorHandler');
 const logger = require('services/logger');
 const {DYNAMIC_ENGINES} = require('services/constants');
@@ -209,6 +210,50 @@ const router = require('express').Router()
                 return;
             }
             sendJsonResponse(req, res, {...body});
+        });
+    })
+    /**
+     * @swagger
+     * /rest/secrets/delete/{path}:
+     *   delete:
+     *     tags:
+     *       - Secrets
+     *     name: Delete secret values.
+     *     summary: Delete the secret value by path.
+     *     parameters:
+     *       - name: path
+     *         in: path
+     *         description: The Vault secrets path.
+     *         schema:
+     *           type: string
+     *         required: true
+     *     responses:
+     *       200:
+     *         description: Success.
+     *       404:
+     *         description: Not found.
+     */
+    .delete('/delete/*', async (req, res) => {
+        const {entityId, token} = req.session.user;
+        const path = req.params[0];
+        const apiUrl = `${getDomain()}/v1/${path}`;
+        request({
+            ...initApiRequest(token, apiUrl, entityId),
+            method: 'DELETE'
+        }, (error, response) => {
+            if (error) {
+                sendError(req, res, error, apiUrl);
+                return;
+            }
+            else if (response.statusCode === 200 || response.statusCode === 204) { //204 Status Code indicates success with no response
+                deleteRequest({
+                    path
+                });
+                sendJsonResponse(req, res, {status: 'ok'});
+            }
+            else {
+                sendError(req, res, 'Could not find secret or did not have permissions to delete secret.', 400);
+            }
         });
     });
 
