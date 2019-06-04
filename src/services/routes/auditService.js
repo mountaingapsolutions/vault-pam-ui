@@ -37,7 +37,7 @@ const router = require('express').Router()
      *   post:
      *     tags:
      *       - Audit
-     *     summary: Generate hash for a given input string
+     *     summary: Generate hash for a given input string to determine if the input string appears in the audit log
      *     requestBody:
      *       required: true
      *       content:

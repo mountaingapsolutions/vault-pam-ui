@@ -912,7 +912,7 @@ const _styles = (theme) => ({
         whiteSpace: 'nowrap'
     },
     marginRight: {
-        marginRight: theme.spacing.unit
+        marginRight: theme.spacing(1)
     },
     paper: {
         margin: 50,

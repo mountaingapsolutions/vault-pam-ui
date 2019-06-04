@@ -461,7 +461,7 @@ class CreateUpdateSecretModal extends Component {
                     const valueKey = `value-${i}`;
                     const valueError = errors[valueKey];
                     return <ListItem className={classes.listItem} key={`secret-${i}`}>
-                        <Grid container spacing={16}>
+                        <Grid container spacing={2}>
                             <Grid item className={classes.marginRight} xs={4}>
                                 <TextField
                                     fullWidth
@@ -810,10 +810,10 @@ const _styles = (theme) => ({
         padding: '0 8px 8px 8px'
     },
     marginRight: {
-        marginRight: theme.spacing.unit
+        marginRight: theme.spacing(1)
     },
     marginBottom: {
-        marginBottom: theme.spacing.unit
+        marginBottom: theme.spacing(1)
     },
     confirmPathIconButton: {
         padding: 10
