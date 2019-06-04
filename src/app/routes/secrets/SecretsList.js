@@ -473,10 +473,10 @@ class SecretsList extends Component {
         const {match, openApprovedSecret, setSecretsData} = this.props;
         const {params} = match;
         const {mount} = params;
-        const {isApproved, isPending, canOpen, canDelete, name, isWrapped, requiresRequest, secretsData, secretsPath} = secret;
+        const {isApproved, isPending, canOpen, canDelete, name, isWrapped, requiresRequest, secretsData, secretsPath, url} = secret;
         const isFolderPath = name.endsWith('/');
         if (isFolderPath) {
-            return <IconButton>
+            return <IconButton {...{onClick: this._onClickSecret.bind(this, secret), to: url}}>
                 <KeyboardArrowRightIcon/>
             </IconButton>;
         } else if (canDelete) {

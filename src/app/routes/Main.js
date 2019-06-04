@@ -313,17 +313,18 @@ class Main extends Component {
                             <List>{
                                 (secretsMounts.data || []).map(mount => {
                                     const {description, name, type} = mount;
+                                    const pathName = `secrets/${name}`;
                                     return <ListItem
                                         button
                                         component={this._renderLink}
                                         key={name}
-                                        {...{to: {pathname: `secrets/${name}`, state: {type}}}}>
+                                        {...{to: {pathname: pathName, state: {type}}}}>
                                         <ListItemIcon>{
                                             this._renderIconFromType(type)
                                         }</ListItemIcon>
                                         <ListItemText primary={name} secondary={description}/>
                                         <ListItemSecondaryAction>
-                                            <IconButton>
+                                            <IconButton component={this._renderLink} {...{to: {pathname: pathName, state: {type}}}}>
                                                 <KeyboardArrowRightIcon/>
                                             </IconButton>
                                         </ListItemSecondaryAction>
