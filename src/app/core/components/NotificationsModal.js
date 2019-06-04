@@ -161,16 +161,18 @@ class NotificationsModal extends Component {
         const deleteText = isOwnRequest ? 'Cancel' : 'Reject';
 
         return <Tooltip aria-label={deleteText} title={deleteText}>
-            <IconButton disabled={alreadyApprovedBySelf ? !approved : approved}
-                onClick={() => {
-                    /* eslint-disable no-alert */
-                    if (window.confirm(`Are you sure you want to ${isOwnRequest ? 'cancel your' : `reject ${name}'s`} request to ${path}?`)) {
-                        deleteRequest(path, id, type);
-                    }
-                    /* eslint-enable no-alert */
-                }}>
-                <ClearIcon/>
-            </IconButton>
+            <span>
+                <IconButton disabled={alreadyApprovedBySelf ? !approved : approved}
+                    onClick={() => {
+                        /* eslint-disable no-alert */
+                        if (window.confirm(`Are you sure you want to ${isOwnRequest ? 'cancel your' : `reject ${name}'s`} request to ${path}?`)) {
+                            deleteRequest(path, id, type);
+                        }
+                        /* eslint-enable no-alert */
+                    }}>
+                    <ClearIcon/>
+                </IconButton>
+            </span>
         </Tooltip>;
     }
 
@@ -308,10 +310,12 @@ class NotificationsModal extends Component {
                 <DialogContent>
                     <List className={classes.listContainer}>
                         <ListSubheader>
-                            Pending requests
-                            {secretsRequests.length > 0 &&
                             <Grid container justify='flex-start'>
-                                <Grid item xs={12}>
+                                <Grid item sm={6} xs={12}>
+                                    Pending requests
+                                </Grid>
+                                {secretsRequests.length > 0 &&
+                                <Grid item align='right' sm={6} xs={12}>
                                     <List component='nav'>
                                         <ListItem
                                             button
@@ -322,10 +326,9 @@ class NotificationsModal extends Component {
                                             onClick={this._handleFilterClickListItem}
                                         >
                                             <ListItemText
-                                                primary={<Typography variant='overline'>Filter By</Typography>}
-                                                secondary={<Typography
-                                                    variant='caption'>{filterOptions[selectedFilterIndex]}</Typography>}
-                                                style={{textAlign: 'left'}}
+                                                primary={<Typography variant='overline'>Filter By </Typography>}
+                                                secondary={<Typography variant='caption'>{filterOptions[selectedFilterIndex]}</Typography>}
+                                                style={{textAlign: 'right'}}
                                             />
                                         </ListItem>
                                     </List>
@@ -347,8 +350,8 @@ class NotificationsModal extends Component {
                                         )}
                                     </Menu>
                                 </Grid>
+                                }
                             </Grid>
-                            }
                         </ListSubheader>
                         {
                             secretsRequests.length > 0 ?
@@ -541,8 +544,8 @@ const _styles = (theme) => ({
     filter: {
         paddingTop: 0,
         paddingBottom: 0,
-        width: 150,
-        textAlign: 'left'
+        width: 160,
+        textAlign: 'right'
     },
     loader: {
         margin: 50
