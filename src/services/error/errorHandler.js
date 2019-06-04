@@ -17,10 +17,6 @@ const sendError = (req, res, error, url, statusCode = 400) => {
         errors.push(error);
     } else if (Array.isArray(error)) {
         errors = errors.concat(error);
-    } else if (typeof error === 'object') {
-        if (error.errors && Array.isArray(error.errors)) {
-            errors = errors.concat(error.errors);
-        }
     } else {
         errors.push(error.toString());
     }

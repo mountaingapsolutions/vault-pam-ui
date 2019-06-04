@@ -27,11 +27,11 @@ const AUTH_TYPES = {
 };
 
 const AUTH_METHODS = {
-    github: {type: AUTH_TYPES.AUTH_TOKEN},
-    ldap: {type: AUTH_TYPES.USER_PASSWORD},
-    okta: {type: AUTH_TYPES.USER_PASSWORD},
-    token: {type: AUTH_TYPES.TOKEN},
-    userpass: {type: AUTH_TYPES.USER_PASSWORD}
+    github: AUTH_TYPES.AUTH_TOKEN,
+    ldap: AUTH_TYPES.USER_PASSWORD,
+    okta: AUTH_TYPES.USER_PASSWORD,
+    token: AUTH_TYPES.TOKEN,
+    userpass: AUTH_TYPES.USER_PASSWORD
 };
 
 // Logger levels

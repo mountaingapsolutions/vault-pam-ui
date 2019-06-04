@@ -35,11 +35,11 @@ class Constants {
             'azure'
         ];
         this.AUTH_METHODS = [
-            'token',
-            'userpass',
-            'ldap',
-            'github',
-            'okta'
+            {label: 'Token', type: 'token'},
+            {label: 'Userpass', type: 'userpass'},
+            {label: 'LDAP', type: 'ldap'},
+            {label: 'GitHub', type: 'github'},
+            {label: 'Okta', type: 'okta'}
         ];
     }
 }

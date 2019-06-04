@@ -65,10 +65,10 @@ const config = (req, res) => {
 const login = (req, res) => {
     _disableCache(res);
     const {authMethod = 'userpass', token, username, password} = req.body;
-    const authType = AUTH_METHODS[authMethod].type;
-    const isAuthToken = AUTH_METHODS[authMethod].type === AUTH_TYPES.AUTH_TOKEN;
+    const authType = AUTH_METHODS[authMethod];
+    const isAuthToken = authType === AUTH_TYPES.AUTH_TOKEN;
     // Method 1: authentication through token.
-    if (token && AUTH_METHODS[authMethod].type === AUTH_TYPES.TOKEN) {
+    if (token && authType === AUTH_TYPES.TOKEN) {
         _sendTokenValidationResponse(token, req, res);
     }
     // Method 2: authentication through username and password. Upon success, it will still validate the token from method 1.
@@ -81,13 +81,14 @@ const login = (req, res) => {
             json: bodyParam
         }, (error, response, body) => {
             if (error) {
-                const errorObj = error.errors ? error : {errors: ['Invalid credentials']};
-                sendError(req, res, errorObj, apiUrl);
+                const errorArray = error.errors ? error.errors : ['Invalid credentials'];
+                sendError(req, res, errorArray, apiUrl);
                 return;
             }
             try {
                 if (response.statusCode !== 200) {
-                    sendError(req, res, body, apiUrl);
+                    const errorArray = body.errors ? body.errors : ['Invalid credentials'];
+                    sendError(req, res, errorArray, apiUrl);
                     return;
                 }
 
