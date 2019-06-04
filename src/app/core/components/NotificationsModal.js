@@ -385,7 +385,7 @@ class NotificationsModal extends Component {
                                                 </Avatar>
                                             </ListItemAvatar>
                                             <Grid container>
-                                                <Grid item sm={6} xs={12}>
+                                                <Grid item sm={8} xs={12}>
                                                     <ListItemText
                                                         primary={name}
                                                         secondary={
@@ -409,7 +409,7 @@ class NotificationsModal extends Component {
                                                 </Grid>
                                                 {
                                                     alreadyApprovedBySelf ?
-                                                        <Grid item align='right' sm={6} xs={12}>
+                                                        <Grid item align='right' sm={4} xs={12}>
                                                             <ListItemSecondaryAction>
                                                                 <Button variant='text' onClick={(e) => {
                                                                     this._onRequestDetails(e, path, requestId);
@@ -423,7 +423,7 @@ class NotificationsModal extends Component {
                                                             </ListItemSecondaryAction>
                                                         </Grid>
                                                         :
-                                                        <Grid item align='right' sm={6} xs={12}>
+                                                        <Grid item align='right' sm={4} xs={12}>
                                                             <Button variant='text' onClick={(e) => {
                                                                 this._onRequestDetails(e, path, requestId);
                                                             }}>
