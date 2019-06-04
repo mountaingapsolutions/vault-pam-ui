@@ -115,7 +115,7 @@ const getDomain = () => {
  * @param {number} [statusCode] The HTTP status code.
  */
 const sendJsonResponse = (req, res, response, statusCode) => {
-    logger.audit(req, res, response);
+    logger.audit(res.getHeaders()['x-request-id'], req, response);
     statusCode ? res.status(statusCode).json(response) : res.json(response);
 };
 

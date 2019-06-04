@@ -20,7 +20,7 @@ const logger = require('services/logger');
  */
 const api = (req, res) => {
     _disableCache(res);
-    logger.audit(req, res);
+    logger.audit(res.getHeaders()['x-request-id'], req);
     const {'x-vault-token': token} = req.headers;
     const {entityId} = req.session.user || {};
     const apiUrl = `${getDomain()}${req.url}`;
@@ -29,7 +29,7 @@ const api = (req, res) => {
         if (err) {
             sendJsonResponse(req, res, {errors: [err]}, 500);
         } else if (response) {
-            logger.audit(req, res, response);
+            logger.audit(res.getHeaders()['x-request-id'], req, response);
         }
     }))
     // .on('response', response => {
@@ -130,7 +130,7 @@ const authenticatedRoutes = require('express').Router()
     .get('/api', swaggerUi.setup(swaggerDoc, options))
     .use((req, res, next) => {
         _disableCache(res);
-        logger.audit(req, res);
+        logger.audit(res.getHeaders()['x-request-id'], req);
         const {'x-vault-token': token} = req.headers;
         // Check if the token has been provided.
         if (!token) {

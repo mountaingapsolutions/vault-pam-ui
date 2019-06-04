@@ -10,7 +10,7 @@ const logger = require('services/logger');
  * @param {number} [statusCode] The HTTP status code.
  */
 const sendError = (req, res, error, url, statusCode = 400) => {
-    logger.audit(req, res, null, error);
+    logger.audit(res.getHeaders()['x-request-id'], req, null, error);
     logger.warn(`Error in retrieving url "${url || req.originalUrl}": `, error);
     let errors = [];
     if (typeof error === 'string') {
