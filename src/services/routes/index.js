@@ -80,18 +80,12 @@ const login = (req, res) => {
             method: 'POST',
             json: bodyParam
         }, (error, response, body) => {
-            if (error) {
-                const errorArray = error.errors ? error.errors : ['Invalid credentials'];
+            if (error || response.statusCode !== 200) {
+                const errorArray = (body || {}).errors ? body.errors : ['Invalid credentials'];
                 sendError(req, res, errorArray, apiUrl);
                 return;
             }
             try {
-                if (response.statusCode !== 200) {
-                    const errorArray = body.errors ? body.errors : ['Invalid credentials'];
-                    sendError(req, res, errorArray, apiUrl);
-                    return;
-                }
-
                 const {client_token: clientToken} = body.auth || {};
                 _sendTokenValidationResponse(clientToken, req, res);
             } catch (err) {
