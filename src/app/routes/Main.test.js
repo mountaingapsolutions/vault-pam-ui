@@ -1,7 +1,7 @@
-/* global it */
+/* global expect, it */
 import {createMemoryHistory} from 'history';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import renderer from 'react-test-renderer';
 import {applyMiddleware, combineReducers, createStore} from 'redux';
 import {Provider} from 'react-redux';
 import {Router} from 'react-router-dom';
@@ -32,12 +32,11 @@ const _configureStore = (initialState) => {
     );
 };
 
-it('renders without crashing', () => {
-    const div = document.createElement('div');
-    ReactDOM.render(<Provider store={_configureStore()}>
+it('renders correctly', () => {
+    const tree = renderer.create(<Provider store={_configureStore()}>
         <Router history={createMemoryHistory()}>
             <Main/>
         </Router>
-    </Provider>, div);
-    ReactDOM.unmountComponentAtNode(div);
+    </Provider>).toJSON();
+    expect(tree).toMatchSnapshot();
 });
