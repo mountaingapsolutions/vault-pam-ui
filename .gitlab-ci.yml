@@ -128,7 +128,7 @@ deploy_standard:
     - echo Done! Deployed!
 
 pages:
-  stage: deploy
+  stage: test
   dependencies:
     - test
   script:
