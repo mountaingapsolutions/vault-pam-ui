@@ -40,9 +40,6 @@ exports[`renders correctly 1`] = `
             Vault PAM UI
           </h6>
         </span>
-        <span
-          className="MuiTouchRipple-root"
-        />
       </a>
       <div
         className="Main-grow-2"
@@ -112,9 +109,6 @@ exports[`renders correctly 1`] = `
               />
             </svg>
           </span>
-          <span
-            className="MuiTouchRipple-root"
-          />
         </button>
         <button
           aria-haspopup="true"
@@ -153,9 +147,6 @@ exports[`renders correctly 1`] = `
               />
             </svg>
           </span>
-          <span
-            className="MuiTouchRipple-root"
-          />
         </button>
       </div>
     </div>
