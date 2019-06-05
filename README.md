@@ -1,9 +1,13 @@
 # vault-pam-ui
 Vault PAM UI - a web client to connect to an existing Vault server.
 
-## Pipeline status
+#### License
+[![MIT license](http://img.shields.io/badge/license-MIT-brightgreen.svg)](http://opensource.org/licenses/MIT)
+
+#### Pipeline status
 [![Pipeline status](https://gitlab.com/mountaingapsolutions/vault-pam-ui/badges/develop/pipeline.svg)](https://gitlab.com/mountaingapsolutions/vault-pam-ui/pipelines)
-## Test coverage
+
+#### Test coverage
 [![Coverage report](https://gitlab.com/mountaingapsolutions/vault-pam-ui/badges/develop/coverage.svg)](https://mountaingapsolutions.gitlab.io/vault-pam-ui)
 
 ## Quick start guide
