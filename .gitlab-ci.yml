@@ -132,6 +132,8 @@ pages:
   dependencies:
     - test
   script:
+    - ls -l
+    - ls coverage -l
     - rm -rf public
     - mv coverage/lcov-report/ public/
   artifacts:
