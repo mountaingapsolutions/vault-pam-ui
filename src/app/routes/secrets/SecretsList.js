@@ -222,7 +222,7 @@ class SecretsList extends Component {
                 onClose: (confirm) => {
                     if (confirm) {
                         const {deleteSecrets} = this.props;
-                        deleteSecrets(name, this._getVersionFromMount(mount));
+                        deleteSecrets(name, this._getVersionFromMount(mount), this._getEngineTypeFromMount(mount));
                     }
                     this.setState({
                         showConfirmationModal: false
@@ -833,15 +833,16 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const fullPath = `${mount}${version === 2 ? '/data' : ''}${path ? `/${path}` : ''}/${name}`;
             return dispatch(secretAction.getSecrets(fullPath));
         },
-        deleteSecrets: (name, version) => {
+        deleteSecrets: (name, version, type) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount, path} = params;
+            const isDynamicSecret = constants.DYNAMIC_ENGINES.some(engine => engine === type);
             return new Promise((resolve, reject) => {
-                const fullPath = `${mount}${version === 2 ? '/metadata' : ''}${path ? `/${path}` : ''}/${name}`;
+                const fullPath = `${mount}${version === 2 ? '/metadata' : ''}${path ? `/${path}` : ''}${isDynamicSecret ? '/roles' : ''}/${name}`;
                 dispatch(secretAction.deleteSecrets(fullPath))
                     .then(() => {
-                        dispatch(secretAction.listSecretsAndCapabilities(`${mount}${path ? `/${path}` : ''}`, version))
+                        dispatch(secretAction.listSecretsAndCapabilities(`${mount}${path ? `/${path}` : ''}`, version, type))
                             .then(resolve)
                             .catch(reject);
                     })
