@@ -590,7 +590,7 @@ class CreateUpdateSecretModal extends Component {
                     {
                         mode !== 'read' && <React.Fragment>
                             <Divider className={classes.pathDivider}/>
-                            <Tooltip aria-label='Delete' title='Delete'>
+                            <Tooltip aria-label='Add' title='Add'>
                                 {i === secrets.length - 1 ?
                                     <IconButton aria-label='Add' className={classes.iconButton} onClick={() => {
                                         const updatedSecrets = [...secrets];

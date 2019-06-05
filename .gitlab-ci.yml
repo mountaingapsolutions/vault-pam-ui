@@ -30,6 +30,9 @@ test:
     - npm install
     - npm run lint
     - npm test -- --coverage
+  artifacts:
+    paths:
+      - coverage/
 
 # Builds the application and zips it up.
 build:
@@ -126,3 +129,18 @@ deploy_standard:
     - echo Updating ElasticBeanstalk Application Version $EB_VERSION Environment $EB_APP_ENV
     - aws elasticbeanstalk update-environment --application-name $EB_APP_NAME --environment-name $EB_APP_ENV --version-label $EB_VERSION --option-settings Namespace=aws:elasticbeanstalk:application:environment,OptionName=EB_VERSION,Value=$EB_VERSION
     - echo Done! Deployed!
+
+pages:
+  stage: build
+  dependencies:
+    - test
+  script:
+    - ls coverage/lcov-report -l
+    - rm -rf public
+    - mv coverage/lcov-report/ public/
+    - ls public -l
+  artifacts:
+    paths:
+      - public
+    expire_in: 30 days
+  <<: *branch_definition
