@@ -1,0 +1,223 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`renders correctly 1`] = `
+<div>
+  <header
+    className="MuiPaper-root MuiPaper-elevation4 MuiAppBar-root MuiAppBar-positionStatic MuiAppBar-colorPrimary"
+  >
+    <div
+      className="MuiToolbar-root MuiToolbar-regular MuiToolbar-gutters"
+    >
+      <a
+        aria-disabled={false}
+        className="MuiButtonBase-root MuiButton-root MuiButton-text MuiButton-sizeSmall MuiButton-colorInherit"
+        href="/"
+        onBlur={[Function]}
+        onClickCapture={[Function]}
+        onFocus={[Function]}
+        onKeyDown={[Function]}
+        onKeyUp={[Function]}
+        onMouseDown={[Function]}
+        onMouseLeave={[Function]}
+        onMouseUp={[Function]}
+        onTouchEnd={[Function]}
+        onTouchMove={[Function]}
+        onTouchStart={[Function]}
+        role="button"
+        tabIndex={0}
+      >
+        <span
+          className="MuiButton-label"
+        >
+          <img
+            alt="logo"
+            className="mr-1"
+            src="/assets/vault-dark.svg"
+          />
+          <h6
+            className="MuiTypography-root MuiTypography-h6 MuiTypography-colorInherit MuiTypography-noWrap"
+          >
+            Vault PAM UI
+          </h6>
+        </span>
+        <span
+          className="MuiTouchRipple-root"
+        />
+      </a>
+      <div
+        className="Main-grow-2"
+      />
+      <span
+        className="MuiTypography-root MuiTypography-overline MuiTypography-colorInherit"
+      />
+      <div
+        className="Main-userNameDivider-6"
+      />
+      <p
+        className="MuiTypography-root MuiTypography-body1 MuiTypography-colorInherit"
+      >
+        Status:
+      </p>
+      <div
+        className="Main-sealStatusDivider-4"
+      >
+        <svg
+          aria-hidden="true"
+          className="MuiSvgIcon-root"
+          focusable="false"
+          role="presentation"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M0 0h24v24H0z"
+            fill="none"
+          />
+          <path
+            d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"
+          />
+        </svg>
+      </div>
+      <div
+        className="Main-sectionDesktop-5"
+      >
+        <button
+          className="MuiButtonBase-root MuiIconButton-root MuiIconButton-colorInherit"
+          disabled={false}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onKeyDown={[Function]}
+          onKeyUp={[Function]}
+          onMouseDown={[Function]}
+          onMouseLeave={[Function]}
+          onMouseUp={[Function]}
+          onTouchEnd={[Function]}
+          onTouchMove={[Function]}
+          onTouchStart={[Function]}
+          tabIndex={0}
+          type="button"
+        >
+          <span
+            className="MuiIconButton-label"
+          >
+            <svg
+              aria-hidden="true"
+              className="MuiSvgIcon-root"
+              focusable="false"
+              role="presentation"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"
+              />
+            </svg>
+          </span>
+          <span
+            className="MuiTouchRipple-root"
+          />
+        </button>
+        <button
+          aria-haspopup="true"
+          className="MuiButtonBase-root MuiIconButton-root MuiIconButton-colorInherit"
+          disabled={false}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onKeyDown={[Function]}
+          onKeyUp={[Function]}
+          onMouseDown={[Function]}
+          onMouseLeave={[Function]}
+          onMouseUp={[Function]}
+          onTouchEnd={[Function]}
+          onTouchMove={[Function]}
+          onTouchStart={[Function]}
+          tabIndex={0}
+          type="button"
+        >
+          <span
+            className="MuiIconButton-label"
+          >
+            <svg
+              aria-hidden="true"
+              className="MuiSvgIcon-root"
+              focusable="false"
+              role="presentation"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"
+              />
+              <path
+                d="M0 0h24v24H0z"
+                fill="none"
+              />
+            </svg>
+          </span>
+          <span
+            className="MuiTouchRipple-root"
+          />
+        </button>
+      </div>
+    </div>
+  </header>
+  <div
+    className="MuiGrid-root mt-1 MuiGrid-container MuiGrid-justify-xs-center"
+  >
+    <div
+      className="MuiPaper-root MuiPaper-elevation1 MuiPaper-rounded MuiCard-root Main-card-1"
+    >
+      <div
+        className="MuiCardContent-root"
+      >
+        <h6
+          className="MuiTypography-root MuiTypography-h6 MuiTypography-colorTextSecondary MuiTypography-gutterBottom"
+        >
+          Secrets Engines
+        </h6>
+      </div>
+      <ul
+        className="MuiList-root MuiList-padding"
+      />
+    </div>
+  </div>
+  <div
+    className="Footer-footerRootContainer-265"
+  >
+    <header
+      className="MuiPaper-root MuiPaper-elevation4 MuiAppBar-root MuiAppBar-positionFixed MuiAppBar-colorPrimary mui-fixed Footer-footer-264"
+    >
+      <div
+        className="Footer-footerTextContainer-266"
+      >
+        <a
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-269"
+          href="/rest/api"
+          title="API"
+        >
+          API
+        </a>
+        <span
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-268"
+        >
+          |
+        </span>
+        <span
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textActiveDomain-267"
+        >
+          
+        </span>
+        <span
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-268"
+        >
+          |
+        </span>
+        <span
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-269"
+        >
+          Vault 
+        </span>
+      </div>
+    </header>
+  </div>
+</div>
+`;
