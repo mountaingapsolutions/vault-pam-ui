@@ -346,9 +346,10 @@ class SecretsList extends Component {
         const {dismissError, history, listMounts, listSecretsAndCapabilities, match, secretsMounts} = this.props;
         const {params} = match;
         const {mount, path} = params;
-        const type = this._getEngineTypeFromMount(mount);
+        let type = this._getEngineTypeFromMount(mount);
         if ((secretsMounts.data || []).length === 0) {
             listMounts().then(() => {
+                type = !type && this._getEngineTypeFromMount(mount);
                 listSecretsAndCapabilities(path, this._getVersionFromMount(mount), type);
             });
         } else {
