@@ -30,6 +30,9 @@ test:
     - npm install
     - npm run lint
     - npm test -- --coverage
+  artifacts:
+    paths:
+      - coverage/
 
 # Builds the application and zips it up.
 build:
