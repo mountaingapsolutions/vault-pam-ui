@@ -72,7 +72,7 @@ class SecretAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     deleteSecrets(path) {
-        return this._dispatchDelete(this.ACTION_TYPES.DELETE_SECRETS, `/api/v1/${this._encodePath(path)}`);
+        return this._dispatchDelete(this.ACTION_TYPES.DELETE_SECRETS, `/rest/secrets/delete/${this._encodePath(path)}`);
     }
 
     /**

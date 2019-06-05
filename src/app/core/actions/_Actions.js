@@ -98,7 +98,6 @@ export default class _Actions {
         return dispatch => {
             // Kickoff the initial inProgress dispatch.
             dispatch(this._createResourceData(type, undefined, undefined, true));
-
             return new Promise((resolve, reject) => {
                 this._fetch(method, url, data, headers).then(res => {
                     const responseData = this._createResourceData(type, undefined, res, false);
