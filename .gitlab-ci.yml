@@ -126,3 +126,16 @@ deploy_standard:
     - echo Updating ElasticBeanstalk Application Version $EB_VERSION Environment $EB_APP_ENV
     - aws elasticbeanstalk update-environment --application-name $EB_APP_NAME --environment-name $EB_APP_ENV --version-label $EB_VERSION --option-settings Namespace=aws:elasticbeanstalk:application:environment,OptionName=EB_VERSION,Value=$EB_VERSION
     - echo Done! Deployed!
+
+pages:
+  stage: deploy
+  dependencies:
+    - test
+  script:
+    - rm -rf public
+    - mv coverage/lcov-report/ public/
+  artifacts:
+    paths:
+      - public
+    expire_in: 30 days
+  <<: *branch_definition
