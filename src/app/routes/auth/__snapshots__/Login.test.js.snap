@@ -180,7 +180,7 @@ exports[`renders correctly 1`] = `
                 </button>
               </div>
               <span
-                className="PrivateTabIndicator-root-95 PrivateTabIndicator-colorSecondary-97 MuiTabs-indicator"
+                className="PrivateTabIndicator-root-96 PrivateTabIndicator-colorSecondary-98 MuiTabs-indicator"
                 style={
                   Object {
                     "left": 0,
@@ -196,7 +196,7 @@ exports[`renders correctly 1`] = `
         className="MuiFormControl-root Login-formContainer-3"
       >
         <legend
-          className="MuiFormLabel-root Login-formLabel-4"
+          className="MuiFormLabel-root Login-formLabel-5"
         />
         <div
           className="Login-contentContainer-2"
@@ -222,7 +222,7 @@ exports[`renders correctly 1`] = `
             >
               <fieldset
                 aria-hidden={true}
-                className="PrivateNotchedOutline-root-151 MuiOutlinedInput-notchedOutline"
+                className="PrivateNotchedOutline-root-152 MuiOutlinedInput-notchedOutline"
                 style={
                   Object {
                     "paddingLeft": 8,
@@ -230,7 +230,7 @@ exports[`renders correctly 1`] = `
                 }
               >
                 <legend
-                  className="PrivateNotchedOutline-legend-152"
+                  className="PrivateNotchedOutline-legend-153"
                   style={
                     Object {
                       "width": 0.01,
@@ -321,38 +321,38 @@ exports[`renders correctly 1`] = `
     </button>
   </div>
   <div
-    className="Footer-footerRootContainer-173"
+    className="Footer-footerRootContainer-174"
   >
     <header
-      className="MuiPaper-root MuiPaper-elevation4 MuiAppBar-root MuiAppBar-positionFixed MuiAppBar-colorPrimary mui-fixed Footer-footer-172"
+      className="MuiPaper-root MuiPaper-elevation4 MuiAppBar-root MuiAppBar-positionFixed MuiAppBar-colorPrimary mui-fixed Footer-footer-173"
     >
       <div
-        className="Footer-footerTextContainer-174"
+        className="Footer-footerTextContainer-175"
       >
         <a
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-177"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-178"
           href="/rest/api"
           title="API"
         >
           API
         </a>
         <span
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-176"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-177"
         >
           |
         </span>
         <span
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textActiveDomain-175"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textActiveDomain-176"
         >
           
         </span>
         <span
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-176"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-177"
         >
           |
         </span>
         <span
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-177"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-178"
         >
           Vault 
         </span>

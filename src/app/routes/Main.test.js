@@ -29,14 +29,39 @@ jest.mock('app/core/actions/userAction');
  * @param {Object} [initialState] = The initial state.
  * @returns {Object}
  */
-const _configureStore = (initialState) => {
+const _configureStore = (initialState = {}) => {
+    const initialMockState = {
+        sessionReducer: {
+            vaultLookupSelf: {
+                data: {
+                    data: {
+                        policies: []
+                    }
+                }
+            }
+        },
+        userReducer: {
+            user: {
+                data: {
+                    metadata: {
+                        firstName: 'foo',
+                        lastName: 'bar',
+                        email: 'foo.bar@test.com'
+                    }
+                }
+            }
+        }
+    };
     return createStore(
         combineReducers({
             sessionReducer,
             systemReducer,
             userReducer
         }),
-        initialState,
+        {
+            ...initialMockState,
+            ...initialState
+        },
         applyMiddleware(reduxThunk)
     );
 };
@@ -45,10 +70,11 @@ const _configureStore = (initialState) => {
  * Renders an instance of Main for testing.
  *
  * @private
+ * @param {Object} [initialState] = The initial state.
  * @returns {ReactElement}
  */
-const _getInstance = () => {
-    return <Provider store={_configureStore()}>
+const _getInstance = (initialState) => {
+    return <Provider store={_configureStore(initialState)}>
         <Router history={createMemoryHistory()}>
             <Main/>
         </Router>
@@ -62,10 +88,13 @@ afterAll(() => {
 beforeEach(() => {
     jest.clearAllMocks();
 
+    sessionAction.validateToken.mockImplementation(() => () => new Promise((resolve) => resolve({})));
     sessionAction.setToken.mockImplementation(() => () => new Promise((resolve) => resolve({})));
+    secretAction.listMounts.mockImplementation(() => () => new Promise((resolve) => resolve({})));
     secretAction.listRequests.mockImplementation(() => () => new Promise((resolve) => resolve({})));
     systemAction.getSealStatus.mockImplementation(() => () => new Promise((resolve) => resolve({})));
     systemAction.getConfig.mockImplementation(() => () => new Promise((resolve) => resolve({})));
+    userAction.getUser.mockImplementation(() => () => new Promise((resolve) => resolve({})));
     userAction.logout.mockImplementation(() => () => new Promise((resolve) => resolve({})));
 });
 
@@ -79,13 +108,13 @@ it('checks session after mounting', () => {
 });
 
 it('sets the response token if session is valid', () => {
-    sessionAction.validateToken.mockImplementation(() => () => new Promise((resolve) => resolve({})));
     renderer.create(_getInstance());
-    // Returning a promise to ensure validateToken is executed first.
+    // Returning a promise with delay to ensure validateToken is executed first.
     return new Promise((resolve) => {
-        resolve();
-
-        expect(sessionAction.setToken).toHaveBeenCalledTimes(1);
+        setTimeout(() => {
+            expect(sessionAction.setToken).toHaveBeenCalledTimes(1);
+            resolve();
+        }, 0);
     });
 });
 
@@ -98,7 +127,6 @@ it('does not fetch user data if session is root', () => {
         }
     })));
     renderer.create(_getInstance());
-    // Returning a promise with delay to ensure validateToken is executed first.
     return new Promise((resolve) => {
         setTimeout(() => {
             expect(userAction.getUser).toHaveBeenCalledTimes(0);
@@ -108,16 +136,33 @@ it('does not fetch user data if session is root', () => {
 });
 
 it('fetches user data if session is valid and not root', () => {
-    sessionAction.validateToken.mockImplementation(() => () => new Promise((resolve) => resolve({})));
-    sessionAction.setToken.mockImplementation(() => () => new Promise((resolve) => resolve({})));
-    secretAction.listRequests.mockImplementation(() => () => new Promise((resolve) => resolve({})));
-    systemAction.getSealStatus.mockImplementation(() => () => new Promise((resolve) => resolve({})));
-    userAction.logout.mockImplementation(() => () => new Promise((resolve) => resolve({})));
     renderer.create(_getInstance());
-    // Returning a promise with delay to ensure validateToken is executed first.
     return new Promise((resolve) => {
         setTimeout(() => {
             expect(userAction.getUser).toHaveBeenCalledTimes(1);
+            resolve();
+        }, 0);
+    });
+});
+
+it('fetches mounts, requests, and seal status, after checking session', () => {
+    renderer.create(_getInstance());
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            expect(secretAction.listMounts).toHaveBeenCalledTimes(1);
+            expect(secretAction.listRequests).toHaveBeenCalledTimes(1);
+            expect(systemAction.getSealStatus).toHaveBeenCalledTimes(1);
+            resolve();
+        }, 0);
+    });
+});
+
+it('logs out if session is invalid', () => {
+    sessionAction.validateToken.mockImplementation(() => () => new Promise((resolve, reject) => reject()));
+    renderer.create(_getInstance());
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            expect(userAction.logout).toHaveBeenCalledTimes(1);
             resolve();
         }, 0);
     });
