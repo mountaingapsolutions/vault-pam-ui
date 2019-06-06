@@ -205,6 +205,7 @@ class Login extends Component {
                 className='m-1'
                 error={!!usernameError}
                 helperText={usernameError}
+                key='username'
                 label='Username'
                 margin='normal'
                 name='username'
@@ -355,6 +356,9 @@ const _styles = () => ({
     formContainer: {
         display: 'flex',
         margin: '24px'
+    },
+    fieldLabel: {
+        backgroundColor: 'white'
     },
     formLabel: {
         padding: '0 24px'
