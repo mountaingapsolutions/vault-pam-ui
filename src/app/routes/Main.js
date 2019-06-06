@@ -101,7 +101,7 @@ class Main extends Component {
      */
     _onNavigate(event) {
         event.preventDefault();
-        if (event.target) {
+        if (event.currentTarget) {
             const {history} = this.props;
             // Using element.getAttribute('href') because element.href will return the absolute URL.
             history.push(event.currentTarget.getAttribute('href'));

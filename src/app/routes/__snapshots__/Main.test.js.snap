@@ -163,38 +163,38 @@ exports[`renders correctly 1`] = `
     </div>
   </div>
   <div
-    className="Footer-footerRootContainer-265"
+    className="Footer-footerRootContainer-226"
   >
     <header
-      className="MuiPaper-root MuiPaper-elevation4 MuiAppBar-root MuiAppBar-positionFixed MuiAppBar-colorPrimary mui-fixed Footer-footer-264"
+      className="MuiPaper-root MuiPaper-elevation4 MuiAppBar-root MuiAppBar-positionFixed MuiAppBar-colorPrimary mui-fixed Footer-footer-225"
     >
       <div
-        className="Footer-footerTextContainer-266"
+        className="Footer-footerTextContainer-227"
       >
         <a
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-269"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-230"
           href="/rest/api"
           title="API"
         >
           API
         </a>
         <span
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-268"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-229"
         >
           |
         </span>
         <span
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textActiveDomain-267"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textActiveDomain-228"
         >
           
         </span>
         <span
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-268"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-229"
         >
           |
         </span>
         <span
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-269"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-230"
         >
           Vault 
         </span>
