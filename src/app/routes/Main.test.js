@@ -1,6 +1,6 @@
 /* global afterAll, beforeEach, expect, it, jest */
 import {AccountCircle, List, Lock, LockOpen} from '@material-ui/icons';
-import {IconButton, Menu, MenuItem, Snackbar} from '@material-ui/core';
+import {IconButton, Menu, Snackbar} from '@material-ui/core';
 import React from 'react';
 import renderer from 'react-test-renderer';
 import {applyMiddleware, combineReducers, createStore} from 'redux';
