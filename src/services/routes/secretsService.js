@@ -230,8 +230,8 @@ const router = require('express').Router()
      *     responses:
      *       200:
      *         description: Success.
-     *       404:
-     *         description: Not found.
+     *       400:
+     *         description: Invalid permissions or not found.
      */
     .delete('/delete/*', async (req, res) => {
         const {entityId, token} = req.session.user;
