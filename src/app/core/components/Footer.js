@@ -44,7 +44,7 @@ class Footer extends Component {
      */
     render() {
         const {classes, activeVaultDomain, buildInfo, vaultVersion} = this.props;
-        const {showBuildNumber, buildNumber} = buildInfo;
+        const {buildNumber} = buildInfo;
         return (
             <div className={classes.footerRootContainer}>
                 <AppBar className={classes.footer} position='fixed'>
@@ -64,7 +64,7 @@ class Footer extends Component {
                         <Typography className={classes.text} display='inline' variant='caption'>
                             {`Vault ${vaultVersion}`}
                         </Typography>
-                        { showBuildNumber === 'true' && buildNumber &&
+                        {buildNumber &&
                         <React.Fragment>
                             <Typography className={classes.textSeparator} display='inline' variant='caption'>
                                 |

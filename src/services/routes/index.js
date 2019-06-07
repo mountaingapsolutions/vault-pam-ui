@@ -48,9 +48,9 @@ const api = (req, res) => {
  */
 const config = (req, res) => {
     _disableCache(res);
-    const {SHOW_BUILD_NUMBER: showBuildNumber, EB_VERSION: buildNumber} = process.env;
+    const {EB_VERSION: buildNumber} = process.env;
     sendJsonResponse(req, res, {
-        build: {showBuildNumber, buildNumber},
+        build: {buildNumber},
         domain: process.env.VAULT_DOMAIN,
         features: req.app.locals.features || {},
     });
