@@ -825,7 +825,12 @@ const _mapDispatchToProps = (dispatch, ownProps) => {
             const {match} = ownProps;
             const {params} = match;
             const {mount} = params;
-            return dispatch(secretAction.listSecretsAndCapabilities(`${mount}/${path.endsWith('/') ? path.slice(0, -1) : path}`, version, type));
+            return new Promise((resolve, reject) => {
+                dispatch(secretAction.listSecretsAndCapabilities(
+                    `${mount}/${path.endsWith('/') ? path.slice(0, -1) : path}`,
+                    version,
+                    type)).then(resolve).catch(reject);
+            });
         },
         getSecrets: (name, version) => {
             const {match} = ownProps;
