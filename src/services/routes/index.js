@@ -1,4 +1,5 @@
 const chalk = require('chalk');
+const addRequestId = require('express-request-id')();
 const request = require('request');
 const swaggerUi = require('swagger-ui-express');
 const {options, swaggerDoc} = require('services/Swagger');
@@ -7,8 +8,10 @@ const {router: secretsServiceRouter} = require('services/routes/secretsService')
 const {router: userServiceRouter} = require('services/routes/userService');
 const {router: requestServiceRouter} = require('services/routes/requestService');
 const {router: dynamicSecretServicRoute} = require('services/routes/dynamicSecretRequestService');
-const {initApiRequest, getDomain, sendError, sendJsonResponse, setSessionData} = require('services/utils');
+const {initApiRequest, getDomain, sendJsonResponse, setSessionData} = require('services/utils');
+const {sendError} = require('services/error/errorHandler');
 const logger = require('services/logger');
+const {AUTH_METHODS, AUTH_TYPES} = require('services/constants');
 
 /**
  * Pass-through to the designated Vault server API endpoint.
@@ -17,8 +20,8 @@ const logger = require('services/logger');
  * @param {Object} res The HTTP response object.
  */
 const api = (req, res) => {
-    logger.audit(req, res);
     _disableCache(res);
+    logger.audit(res.getHeaders()['x-request-id'], req);
     const {'x-vault-token': token} = req.headers;
     const {entityId} = req.session.user || {};
     const apiUrl = `${getDomain()}${req.url}`;
@@ -27,7 +30,7 @@ const api = (req, res) => {
         if (err) {
             sendJsonResponse(req, res, {errors: [err]}, 500);
         } else if (response) {
-            logger.audit(req, res, response);
+            logger.audit(res.getHeaders()['x-request-id'], req, response);
         }
     }))
     // .on('response', response => {
@@ -61,31 +64,28 @@ const config = (req, res) => {
  */
 const login = (req, res) => {
     _disableCache(res);
-    const {authType = 'userpass', token, username, password} = req.body;
+    const {authMethod = 'userpass', token, username, password} = req.body;
+    const authType = AUTH_METHODS[authMethod];
+    const isAuthToken = authType === AUTH_TYPES.AUTH_TOKEN;
     // Method 1: authentication through token.
-    if (token) {
+    if (token && authType === AUTH_TYPES.TOKEN) {
         _sendTokenValidationResponse(token, req, res);
     }
     // Method 2: authentication through username and password. Upon success, it will still validate the token from method 1.
-    else if (username && password) {
-        const apiUrl = `${getDomain()}/v1/auth/${authType}/login/${username}`;
+    else if (authType === AUTH_TYPES.USER_PASSWORD || isAuthToken) {
+        const apiUrl = `${getDomain()}/v1/auth/${authMethod}/login${!isAuthToken ? `/${username}` : ''}`;
+        const bodyParam = isAuthToken ? {token} : {password};
         request({
             uri: apiUrl,
             method: 'POST',
-            json: {
-                password
-            }
+            json: bodyParam
         }, (error, response, body) => {
-            if (error) {
-                sendError(req, res, error, apiUrl);
+            if (error || response.statusCode !== 200) {
+                const errorArray = (body || {}).errors ? body.errors : ['Invalid credentials'];
+                sendError(req, res, errorArray, apiUrl);
                 return;
             }
             try {
-                if (response.statusCode !== 200) {
-                    sendJsonResponse(req, res, body, response.statusCode);
-                    return;
-                }
-
                 const {client_token: clientToken} = body.auth || {};
                 _sendTokenValidationResponse(clientToken, req, res);
             } catch (err) {
@@ -122,10 +122,12 @@ const logout = (req, res) => {
 /* eslint-disable new-cap */
 const authenticatedRoutes = require('express').Router()
 /* eslint-enable new-cap */
+    .use(addRequestId)
     .use('/api', swaggerUi.serve)
     .get('/api', swaggerUi.setup(swaggerDoc, options))
     .use((req, res, next) => {
         _disableCache(res);
+        logger.audit(res.getHeaders()['x-request-id'], req);
         const {'x-vault-token': token} = req.headers;
         // Check if the token has been provided.
         if (!token) {

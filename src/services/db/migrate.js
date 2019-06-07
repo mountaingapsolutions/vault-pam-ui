@@ -4,6 +4,7 @@ const Promise = require('bluebird');
 const Umzug = require('umzug');
 const connection = require('./connection');
 const sequelize = connection.getSequelize();
+const ServiceResponseError = require('services/error/ServiceResponseError');
 
 const umzug = new Umzug({
     storage: 'sequelize',
@@ -17,7 +18,7 @@ const umzug = new Umzug({
             sequelize.getQueryInterface(), // queryInterface
             sequelize.constructor, // DataTypes
             () => {
-                throw new Error('Migration tried to use old style "done" callback. Please upgrade to "umzug" and return a promise instead.');
+                throw new ServiceResponseError('Migration tried to use old style "done" callback. Please upgrade to "umzug" and return a promise instead.');
             }
         ],
         path: `${path.resolve(__dirname)}/migrations`,

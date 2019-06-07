@@ -1,5 +1,5 @@
 import _Actions from 'app/core/actions/_Actions';
-import Constants from 'app/util/Constants';
+import constants from 'app/util/constants';
 
 /**
  * Actions class responsible for kv secrets engine related actions.
@@ -23,6 +23,7 @@ class SecretAction extends _Actions {
             LIST_MOUNTS: 'LIST_MOUNTS',
             LIST_SECRETS_AND_CAPABILITIES: 'LIST_SECRETS_AND_CAPABILITIES',
             LIST_REQUESTS: 'LIST_REQUESTS',
+            LIST_APPROVERS: 'LIST_APPROVERS',
             OPEN_APPROVED_SECRET: 'OPEN_APPROVED_SECRET',
             REMOVE_REQUEST_DATA: 'REMOVE_REQUEST_DATA',
             REQUEST_SECRET: 'REQUEST_SECRET',
@@ -56,7 +57,7 @@ class SecretAction extends _Actions {
      * @param {string} [type] The request type.
      * @returns {function} Redux dispatch function.
      */
-    deleteRequest(path, entityId = '', type = Constants.REQUEST_TYPES.STANDARD_REQUEST) {
+    deleteRequest(path, entityId = '', type = constants.REQUEST_TYPES.STANDARD_REQUEST) {
         return this._dispatchDelete(this.ACTION_TYPES.DELETE_REQUEST, '/rest/secret/request', {
             path,
             entityId,
@@ -71,7 +72,7 @@ class SecretAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     deleteSecrets(path) {
-        return this._dispatchDelete(this.ACTION_TYPES.DELETE_SECRETS, `/api/v1/${this._encodePath(path)}`);
+        return this._dispatchDelete(this.ACTION_TYPES.DELETE_SECRETS, `/rest/secrets/delete/${this._encodePath(path)}`);
     }
 
     /**
@@ -130,6 +131,16 @@ class SecretAction extends _Actions {
             mount,
             role
         });
+    }
+
+    /**
+     * Returns approvers for a given requestId
+     *
+     * @param {number} requestId The request id in database.
+     * @returns {function} Redux dispatch function.
+     */
+    getRequestApprovers(requestId) {
+        return this._dispatchGet(this.ACTION_TYPES.LIST_APPROVERS, `/rest/secret/request/${requestId}/approvers`);
     }
 
     /**

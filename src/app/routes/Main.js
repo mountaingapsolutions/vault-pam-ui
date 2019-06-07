@@ -34,7 +34,7 @@ import md5 from 'md5';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
-import {Link, Redirect, Route, Switch, withRouter} from 'react-router-dom';
+import {Redirect, Route, Switch, withRouter} from 'react-router-dom';
 
 import secretAction from 'app/core/actions/secretAction';
 import sessionAction from 'app/core/actions/sessionAction';
@@ -45,7 +45,7 @@ import UserProfileModal from 'app/core/components/UserProfileModal';
 import Footer from 'app/core/components/Footer';
 import NotificationsModal from 'app/core/components/NotificationsModal';
 import SecretsList from 'app/routes/secrets/SecretsList';
-import Constants from 'app/util/Constants';
+import constants from 'app/util/constants';
 import localStorageUtil from 'app/util/localStorageUtil';
 
 /**
@@ -73,21 +73,10 @@ class Main extends Component {
         };
         this._closeModal = this._closeModal.bind(this);
         this._onClose = this._onClose.bind(this);
+        this._onNavigate = this._onNavigate.bind(this);
         this._openModal = this._openModal.bind(this);
         this._toggleAccountMenu = this._toggleAccountMenu.bind(this);
     }
-
-    /**
-     * Returns a static Link component
-     *
-     * @private
-     * @param {string|Object} to path to link to.
-     * @returns {React.ReactElement}
-     */
-    // eslint-disable-next-line react/display-name
-    _renderLink = React.forwardRef((itemProps, ref) =>
-        <Link {...itemProps} ref={ref}/>
-    );
 
     /**
      * Handle for when a close event from the snackbar is triggered.
@@ -101,6 +90,21 @@ class Main extends Component {
             this.setState({
                 showRootWarning: false
             });
+        }
+    }
+
+    /**
+     * Navigation handle for an anchor element.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _onNavigate(event) {
+        event.preventDefault();
+        if (event.currentTarget) {
+            const {history} = this.props;
+            // Using element.getAttribute('href') because element.href will return the absolute URL.
+            history.push(event.currentTarget.getAttribute('href'));
         }
     }
 
@@ -242,10 +246,10 @@ class Main extends Component {
         return <div>
             <AppBar position='static'>
                 <Toolbar>
-                    <Button color='inherit' component={this._renderLink} variant='text' {...{to: '/'}}>
+                    <Button color='inherit' component='a' href='/' variant='text' onClickCapture={this._onNavigate}>
                         <img alt='logo' className='mr-1' src='/assets/vault-dark.svg'/>
                         <Typography noWrap className={classes.title} color='inherit' variant='h6'>{
-                            Constants.APP_TITLE
+                            constants.APP_TITLE
                         }</Typography>
                     </Button>
                     <div className={classes.grow}/>
@@ -313,17 +317,13 @@ class Main extends Component {
                             <List>{
                                 (secretsMounts.data || []).map(mount => {
                                     const {description, name, type} = mount;
-                                    return <ListItem
-                                        button
-                                        component={this._renderLink}
-                                        key={name}
-                                        {...{to: {pathname: `secrets/${name}`, state: {type}}}}>
+                                    return <ListItem button component='a' href={`secrets/${name}`} key={name} onClickCapture={this._onNavigate}>
                                         <ListItemIcon>{
                                             this._renderIconFromType(type)
                                         }</ListItemIcon>
                                         <ListItemText primary={name} secondary={description}/>
                                         <ListItemSecondaryAction>
-                                            <IconButton>
+                                            <IconButton component='a' href={`secrets/${name}`} onClickCapture={this._onNavigate}>
                                                 <KeyboardArrowRightIcon/>
                                             </IconButton>
                                         </ListItemSecondaryAction>
@@ -369,6 +369,7 @@ Main.propTypes = {
     classes: PropTypes.object.isRequired,
     getSealStatus: PropTypes.func.isRequired,
     group: PropTypes.object,
+    history: PropTypes.object.isRequired,
     isLoggedIn: PropTypes.bool,
     listMounts: PropTypes.func.isRequired,
     listRequests: PropTypes.func.isRequired,
@@ -444,7 +445,7 @@ const _styles = (theme) => ({
         flexGrow: 1,
     },
     marginRight: {
-        marginRight: theme.spacing.unit
+        marginRight: theme.spacing(1)
     },
     sealStatusDivider: {
         borderRight: '0.1em solid white',
@@ -457,7 +458,7 @@ const _styles = (theme) => ({
         borderRight: '0.1em solid white',
         height: '1.5em',
         padding: '0.5em',
-        marginRight: theme.spacing.unit * 2
+        marginRight: theme.spacing(1) * 2
     },
     warningMessageContentWidth: {
         width: 'calc(100% - 70px)'

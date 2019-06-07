@@ -1,9 +1,8 @@
 const request = require('request');
-const {initApiRequest, getDomain, sendError} = require('services/utils');
+const {initApiRequest, getDomain} = require('services/utils');
+const {sendError} = require('services/error/errorHandler');
 const {REQUEST_TYPES} = require('services/constants');
 const {getRequests, revokeRequest} = require('services/db/controllers/requestsController');
-const logger = require('services/logger');
-const addRequestId = require('express-request-id')();
 
 /**
  * Get active lease of certain role.
@@ -81,7 +80,6 @@ const _getEntityIdInfo = () => {
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
-    .use(addRequestId)
     /**
      * @swagger
      * /rest/dynamic/lease:
@@ -110,7 +108,6 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .get('/lease', async (req, res) => {
-        logger.audit(req, res);
         const {mount, role} = req.query;
         const enginePath = `${mount}/${role}`;
         try {
@@ -168,7 +165,6 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .put('/revoke', async (req, res) => {
-        logger.audit(req, res);
         const {leaseId, requestId, entityId, path, approverId} = req.body;
         try {
             const response = await _revokeLease(leaseId);

@@ -2,7 +2,11 @@
 
 const swaggerJSDoc = require('swagger-jsdoc');
 
-//swagger-ui-express custom options
+/**
+ * Returns configuration object to hide authorize button
+ *
+ * @returns {Object}
+ */
 const disableAuthorizePlugin = () => {
     return typeof localStorage !== undefined && localStorage.getItem('vault-token') !== null ? {
         wrapComponents: {
@@ -11,6 +15,11 @@ const disableAuthorizePlugin = () => {
     } : null;
 };
 
+/**
+ * Returns configuration object to hide operations until user is authorized
+ *
+ * @returns {Object}
+ */
 const hideOperationsUntilAuthorized = () => {
     return {
         wrapComponents: {

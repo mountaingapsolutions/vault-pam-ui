@@ -62,8 +62,8 @@ SnackbarContent.propTypes = {
 const _styles = (theme) => ({
     root: {
         maxWidth: 'inherit',
-        marginLeft: theme.spacing.unit,
-        marginRight: theme.spacing.unit
+        marginLeft: theme.spacing(1),
+        marginRight: theme.spacing(1)
     },
     success: {
         backgroundColor: green[600],
@@ -78,7 +78,7 @@ const _styles = (theme) => ({
         backgroundColor: amber[700],
     },
     icon: {
-        marginRight: theme.spacing.unit
+        marginRight: theme.spacing(1)
     },
     message: {
         display: 'flex',

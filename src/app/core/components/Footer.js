@@ -49,27 +49,27 @@ class Footer extends Component {
             <div className={classes.footerRootContainer}>
                 <AppBar className={classes.footer} position='fixed'>
                     <div className={classes.footerTextContainer}>
-                        <Typography inline className={classes.text} component={this._renderHyperLink} variant='caption' {...{href: '/rest/api', title: 'API'}}>
+                        <Typography className={classes.text} component={this._renderHyperLink} display='inline' variant='caption' {...{href: '/rest/api', title: 'API'}}>
                             API
                         </Typography>
-                        <Typography inline className={classes.textSeparator} variant='caption'>
+                        <Typography className={classes.textSeparator} display='inline' variant='caption'>
                             |
                         </Typography>
-                        <Typography inline className={classes.textActiveDomain} variant='caption'>
+                        <Typography className={classes.textActiveDomain} display='inline' variant='caption'>
                             {`${activeVaultDomain}`}
                         </Typography>
-                        <Typography inline className={classes.textSeparator} variant='caption'>
+                        <Typography className={classes.textSeparator} display='inline' variant='caption'>
                             |
                         </Typography>
-                        <Typography inline className={classes.text} variant='caption'>
+                        <Typography className={classes.text} display='inline' variant='caption'>
                             {`Vault ${vaultVersion}`}
                         </Typography>
                         { showBuildNumber === 'true' && buildNumber &&
                         <React.Fragment>
-                            <Typography inline className={classes.textSeparator} variant='caption'>
+                            <Typography className={classes.textSeparator} display='inline' variant='caption'>
                                 |
                             </Typography>
-                            <Typography inline className={classes.text} variant='caption'>
+                            <Typography className={classes.text} display='inline' variant='caption'>
                                 {`Build ${buildNumber}`}
                             </Typography>
                         </React.Fragment>
@@ -151,6 +151,7 @@ const _styles = () => ({
         fontSize: 10
     },
     textSeparator: {
+        color: COLORS.DARK_GREY,
         paddingRight: 20,
         paddingLeft: 20
     },

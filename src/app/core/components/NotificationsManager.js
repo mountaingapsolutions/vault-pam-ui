@@ -5,8 +5,8 @@ import {withRouter} from 'react-router-dom';
 import io from 'socket.io-client';
 
 import secretAction from 'app/core/actions/secretAction';
-import Constants from 'app/util/Constants';
-import Logger from 'app/util/Logger';
+import constants from 'app/util/constants';
+import logger from 'app/util/logger';
 
 /**
  * Notifications manager class. Note: this is a renderless component (https://kyleshevlin.com/renderless-components).
@@ -38,12 +38,13 @@ class NotificationsManager extends Component {
             path: '/notifications'
         });
         socket.on('connect', () => {
-            Logger.info('Connected ', socket);
-            socket.on(Constants.NOTIFICATION_EVENTS.REQUEST.APPROVE, (data) => approveRequestData(data));
-            socket.on(Constants.NOTIFICATION_EVENTS.REQUEST.CREATE, (data) => createRequestData(data));
-            socket.on(Constants.NOTIFICATION_EVENTS.REQUEST.REJECT, (data) => removeRequestData(data));
-            socket.on(Constants.NOTIFICATION_EVENTS.REQUEST.CANCEL, (data) => removeRequestData(data));
-            socket.on(Constants.NOTIFICATION_EVENTS.REQUEST.READ_APPROVED, (data) => removeRequestData(data));
+            logger.info('Connected ', socket);
+            const {APPROVE, CANCEL, CREATE, READ_APPROVED, REJECT} = constants.NOTIFICATION_EVENTS.REQUEST;
+            socket.on(APPROVE, (data) => approveRequestData(data));
+            socket.on(CREATE, (data) => createRequestData(data));
+            socket.on(REJECT, (data) => removeRequestData(data));
+            socket.on(CANCEL, (data) => removeRequestData(data));
+            socket.on(READ_APPROVED, (data) => removeRequestData(data));
         });
         return socket;
     }
@@ -57,10 +58,10 @@ class NotificationsManager extends Component {
     componentDidMount() {
         const socket = this._connect();
         socket.on('disconnect', () => {
-            Logger.info('Disconnected. Attempt to reconnect in 3 seconds...');
+            logger.info('Disconnected. Attempt to reconnect in 3 seconds...');
             socket.disconnect();
             setTimeout(() => {
-                Logger.info('Connecting again...');
+                logger.info('Connecting again...');
                 this._connect();
             }, 3000);
         });

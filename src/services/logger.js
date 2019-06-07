@@ -78,15 +78,16 @@ const _log = (level, data) => {
  * Audit logging method.
  *
  * @private
+ * @param {string} requestId - The request id
  * @param {Object} [req] - The Express req object.
- * @param {Object} [res] - The Express res object.
  * @param {Object} [response] the response object
  * @param {Object} [error] the error object
  * @returns {Object}
  */
-const _logAudit = (req, res, response, error) => {
+const _logAudit = (requestId, req, response, error) => {
     const logObject = {
-        message: response ? 'response' : error ? 'error' : 'request'
+        message: response ? 'response' : error ? 'error' : 'request',
+        requestId
     };
 
     if (req) {
@@ -105,19 +106,11 @@ const _logAudit = (req, res, response, error) => {
         }
     }
 
-    if (res) {
-        logObject.requestId = res.getHeaders()['x-request-id'];
-    }
-
     if (response) {
         const {data: responseData, body} = response;
-        if (responseData) {
-            logObject.response = _hashObject(responseData);
-        } else if (body) {
-            logObject.body = _hashObject(body);
-        } else {
-            logObject.response = response;
-        }
+        logObject.response = responseData ? _hashObject(responseData) :
+            body ? _hashObject(body) :
+                response;
     }
 
     if (error) {

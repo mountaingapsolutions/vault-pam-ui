@@ -1,16 +1,18 @@
 /* global window */
 
 import {withStyles} from '@material-ui/core/styles';
-import {AppBar, CardActions, CardContent, FormControl, FormLabel, Paper, Tab, Tabs, TextField, Typography} from '@material-ui/core';
+import {AppBar, CardActions, CardContent, CircularProgress, FormControl, FormLabel, Grid, Modal, Paper, Tab, Tabs, TextField, Typography} from '@material-ui/core';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
 
 import sessionAction from 'app/core/actions/sessionAction';
 import localStorageUtil from 'app/util/localStorageUtil';
+import constants from 'app/util/constants';
 
 import Button from 'app/core/components/Button';
 import Footer from 'app/core/components/Footer';
+import {createInProgressSelector} from 'app/util/actionStatusSelector';
 
 /**
  * The Vault token validation page.
@@ -89,19 +91,23 @@ class Login extends Component {
         const errors = {};
         let fieldsToValidate;
         let authenticationMap;
+        const authMethod = constants.AUTH_METHODS[tabValue].type || 'token';
         // Collect the errors and field values.
-        switch (tabValue) {
-            case 0:
+        switch (authMethod) {
+            case 'token':
+            case 'github':
                 fieldsToValidate = ['token'];
                 authenticationMap = {
+                    authMethod,
                     token
                 };
                 break;
-            case 1:
-            case 2:
+            case 'userpass':
+            case 'ldap':
+            case 'okta':
                 fieldsToValidate = ['username', 'password'];
                 authenticationMap = {
-                    authType: tabValue === 1 ? 'userpass' : 'ldap',
+                    authMethod,
                     username,
                     password
                 };
@@ -146,11 +152,13 @@ class Login extends Component {
      * @returns {React.ReactElement}
      */
     _renderTabContent(tab) {
-        switch (tab) {
-            case 0:
+        switch (constants.AUTH_METHODS[tab].type) {
+            case 'token':
+            case 'github':
                 return this._renderTokenEntry();
-            case 1:
-            case 2:
+            case 'userpass':
+            case 'ldap':
+            case 'okta':
                 return this._renderUsernamePasswordEntry();
             default:
                 return <Typography gutterBottom color='textPrimary' variant='h6'>
@@ -197,6 +205,7 @@ class Login extends Component {
                 className='m-1'
                 error={!!usernameError}
                 helperText={usernameError}
+                key='username'
                 label='Username'
                 margin='normal'
                 name='username'
@@ -226,10 +235,17 @@ class Login extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, history} = this.props;
+        const {classes, history, inProgress} = this.props;
         const {tabValue, errors} = this.state;
         const {form: formError} = errors;
         return <form onSubmit={this._onSubmit}>
+            <Modal open={inProgress}>
+                <Grid container justify='center'>
+                    <Grid item>
+                        <CircularProgress className={classes.loader}/>
+                    </Grid>
+                </Grid>
+            </Modal>
             <CardContent>
                 <Typography gutterBottom color='textSecondary' variant='h6'>
                     Sign in to Vault
@@ -237,9 +253,9 @@ class Login extends Component {
                 <Paper>
                     <AppBar color='default' position='static'>
                         <Tabs value={tabValue} onChange={this._onTabChange}>
-                            <Tab label='Token'/>
-                            <Tab label='Userpass'/>
-                            <Tab label='LDAP'/>
+                            {constants.AUTH_METHODS.map((method, index) => {
+                                return <Tab key={`${index}-${method}`} label={method.label}/>;
+                            })}
                         </Tabs>
                     </AppBar>
                     <FormControl className={classes.formContainer} component='fieldset' error={!!formError}>
@@ -269,6 +285,7 @@ Login.propTypes = {
     authenticate: PropTypes.func.isRequired,
     classes: PropTypes.object.isRequired,
     history: PropTypes.object.isRequired,
+    inProgress: PropTypes.bool,
     vaultLookupSelf: PropTypes.object.isRequired
 };
 
@@ -280,8 +297,12 @@ Login.propTypes = {
  * @returns {Object}
  */
 const _mapStateToProps = (state) => {
+    const actionsUsed = [
+        sessionAction.ACTION_TYPES.LOGIN
+    ];
     return {
-        ...state.sessionReducer
+        ...state.sessionReducer,
+        inProgress: createInProgressSelector(actionsUsed)(state.actionStatusReducer)
     };
 };
 
@@ -336,8 +357,16 @@ const _styles = () => ({
         display: 'flex',
         margin: '24px'
     },
+    fieldLabel: {
+        backgroundColor: 'white'
+    },
     formLabel: {
         padding: '0 24px'
+    },
+    loader: {
+        color: 'white',
+        position: 'absolute',
+        top: 200
     }
 });
 

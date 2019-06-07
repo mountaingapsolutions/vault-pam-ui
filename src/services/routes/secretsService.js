@@ -1,9 +1,10 @@
 const chalk = require('chalk');
 const request = require('request');
-const {initApiRequest, getDomain, sendError, sendJsonResponse} = require('services/utils');
+const {initApiRequest, getDomain, sendJsonResponse} = require('services/utils');
+const {deleteRequest} = require('services/db/controllers/requestsController');
+const {sendError} = require('services/error/errorHandler');
 const logger = require('services/logger');
 const {DYNAMIC_ENGINES} = require('services/constants');
-const addRequestId = require('express-request-id')();
 
 /**
  * Helper method to retrieve secrets by the provided URL path.
@@ -67,7 +68,6 @@ const _getCapabilities = (token, entityId, paths) => {
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
-    .use(addRequestId)
 /**
  * @swagger
  * /rest/secrets/list/{path}:
@@ -99,7 +99,6 @@ const router = require('express').Router()
  *         description: Not found.
  */
     .get('/list/*', async (req, res) => {
-        logger.audit(req, res);
         const {params = {}, query} = req;
         const urlParts = (params['0'] || '').split('/').filter(path => !!path);
         const listUrlParts = [...urlParts];
@@ -203,7 +202,6 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .get('/get/*', async (req, res) => {
-        logger.audit(req, res);
         const {entityId, token} = req.session.user;
         const apiUrl = `${getDomain()}/v1/${req.params[0]}`;
         request(initApiRequest(token, apiUrl, entityId), (error, response, body) => {
@@ -212,6 +210,50 @@ const router = require('express').Router()
                 return;
             }
             sendJsonResponse(req, res, {...body});
+        });
+    })
+    /**
+     * @swagger
+     * /rest/secrets/delete/{path}:
+     *   delete:
+     *     tags:
+     *       - Secrets
+     *     name: Delete secret values.
+     *     summary: Delete the secret value by path.
+     *     parameters:
+     *       - name: path
+     *         in: path
+     *         description: The Vault secrets path.
+     *         schema:
+     *           type: string
+     *         required: true
+     *     responses:
+     *       200:
+     *         description: Success.
+     *       400:
+     *         description: Invalid permissions or not found.
+     */
+    .delete('/delete/*', async (req, res) => {
+        const {entityId, token} = req.session.user;
+        const path = req.params[0];
+        const apiUrl = `${getDomain()}/v1/${path}`;
+        request({
+            ...initApiRequest(token, apiUrl, entityId),
+            method: 'DELETE'
+        }, (error, response) => {
+            if (error) {
+                sendError(req, res, error, apiUrl);
+                return;
+            }
+            else if (response.statusCode === 200 || response.statusCode === 204) { //204 Status Code indicates success with no response
+                deleteRequest({
+                    path
+                });
+                sendJsonResponse(req, res, {status: 'ok'});
+            }
+            else {
+                sendError(req, res, 'Could not find secret or did not have permissions to delete secret.', 400);
+            }
         });
     });
 
