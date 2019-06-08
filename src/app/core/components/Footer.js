@@ -24,18 +24,6 @@ class Footer extends Component {
     }
 
     /**
-     * Returns a static Hyper Link component
-     *
-     * @private
-     * @param {string|Object} to path to link to.
-     * @returns {React.ReactElement}
-     */
-    // eslint-disable-next-line react/display-name
-    _renderHyperLink = React.forwardRef((itemProps, ref) =>
-        <a {...itemProps} ref={ref}/>
-    );
-
-    /**
      * Required React Component lifecycle method. Returns a tree of React components that will render to HTML.
      *
      * @protected
@@ -49,14 +37,14 @@ class Footer extends Component {
             <div className={classes.footerRootContainer}>
                 <AppBar className={classes.footer} position='fixed'>
                     <div className={classes.footerTextContainer}>
-                        <Typography className={classes.text} component={this._renderHyperLink} display='inline' variant='caption' {...{href: '/rest/api', title: 'API'}}>
+                        <Typography className={classes.text} component='a' display='inline' href='/rest/api' title='API' variant='caption'>
                             API
                         </Typography>
                         <Typography className={classes.textSeparator} display='inline' variant='caption'>
                             |
                         </Typography>
-                        <Typography className={classes.textActiveDomain} display='inline' variant='caption'>
-                            {`${activeVaultDomain}`}
+                        <Typography className={classes.text} component='a' display='inline' href={activeVaultDomain} title='Vault Domain' variant='caption'>
+                            {activeVaultDomain}
                         </Typography>
                         <Typography className={classes.textSeparator} display='inline' variant='caption'>
                             |
@@ -144,11 +132,6 @@ const _styles = () => ({
     },
     footerTextContainer: {
         flexDirection: 'row'
-    },
-    textActiveDomain: {
-        color: COLORS.GREY,
-        fontStyle: 'italic',
-        fontSize: 10
     },
     textSeparator: {
         color: COLORS.DARK_GREY,
