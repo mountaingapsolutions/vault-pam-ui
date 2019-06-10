@@ -1,5 +1,4 @@
 /* global afterAll, beforeEach, expect, it, jest */
-import {createMemoryHistory} from 'history';
 import React from 'react';
 import renderer from 'react-test-renderer';
 import {applyMiddleware, combineReducers, createStore} from 'redux';
@@ -39,6 +38,14 @@ const _configureStore = (initialState) => {
     );
 };
 
+let _mockHistory = {
+    location: {
+        pathname: ''
+    },
+    listen: jest.fn(),
+    push: jest.fn()
+};
+
 /**
  * Renders an instance of Login for testing.
  *
@@ -48,8 +55,8 @@ const _configureStore = (initialState) => {
  */
 const _getInstance = (initialState) => {
     return <Provider store={_configureStore(initialState)}>
-        <Router history={createMemoryHistory()}>
-            <Login/>
+        <Router history={_mockHistory}>
+            <Login history={_mockHistory}/>
         </Router>
     </Provider>;
 };
@@ -61,6 +68,7 @@ afterAll(() => {
 beforeEach(() => {
     jest.clearAllMocks();
     sessionAction.login.mockImplementation(() => () => new Promise((resolve) => resolve({})));
+    sessionAction.setToken.mockImplementation(() => () => new Promise((resolve) => resolve({})));
     systemAction.getConfig.mockImplementation(() => () => new Promise((resolve) => resolve({})));
 });
 
