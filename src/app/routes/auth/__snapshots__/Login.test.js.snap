@@ -330,29 +330,31 @@ exports[`renders correctly 1`] = `
         className="Footer-footerTextContainer-175"
       >
         <a
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-178"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-177"
           href="/rest/api"
           title="API"
         >
           API
         </a>
         <span
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-177"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-176"
         >
           |
         </span>
-        <span
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textActiveDomain-176"
+        <a
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-177"
+          href=""
+          title="Vault Domain"
         >
           
-        </span>
+        </a>
         <span
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-177"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-textSeparator-176"
         >
           |
         </span>
         <span
-          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-178"
+          className="MuiTypography-root MuiTypography-caption MuiTypography-displayInline Footer-text-177"
         >
           Vault 
         </span>
