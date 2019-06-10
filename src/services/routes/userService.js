@@ -1,6 +1,7 @@
+const {safeWrap, unwrap} = require('@mountaingapsolutions/objectutil');
 const request = require('request');
 const logger = require('services/logger');
-const {initApiRequest, getDomain, sendJsonResponse} = require('services/utils');
+const {asyncRequest, initApiRequest, getDomain, sendJsonResponse} = require('services/utils');
 const {sendError} = require('services/error/errorHandler');
 
 /**
@@ -89,25 +90,28 @@ const _login = (req, username, password) => {
  * @param {string} [id] The entity id.
  * @returns {Promise}
  */
-const getUser = (req, id) => {
-    return new Promise((resolve, reject) => {
-        const domain = getDomain();
-        const {entityId: sessionUserEntityId, token: sessionUserToken} = req.session.user;
-        let apiRequest;
-        // If entity id is provided, use the session user token to handle proper permissions. Otherwise, use the admin token to fetch the session user data.
-        if (id) {
-            apiRequest = initApiRequest(sessionUserToken, `${domain}/v1/identity/entity/id/${id}`, sessionUserEntityId);
-        } else {
-            apiRequest = initApiRequest(sessionUserToken, `${domain}/v1/identity/entity/id/${sessionUserEntityId}`, sessionUserEntityId, true);
-        }
-        request(apiRequest, (error, response) => {
-            if (error) {
-                reject(error);
-            } else {
-                resolve(response);
+const getUser = async (req, id) => {
+    const domain = getDomain();
+    const {entityId: sessionUserEntityId, token: sessionUserToken} = req.session.user;
+    let apiRequest;
+    // If entity id is provided, use the session user token to handle proper permissions. Otherwise, use the admin token to fetch the session user data.
+    if (id) {
+        apiRequest = initApiRequest(sessionUserToken, `${domain}/v1/identity/entity/id/${id}`, sessionUserEntityId);
+    } else {
+        apiRequest = initApiRequest(sessionUserToken, `${domain}/v1/identity/entity/id/${sessionUserEntityId}`, sessionUserEntityId, true);
+    }
+    const userResponse = await asyncRequest(apiRequest);
+    if (Array.isArray(unwrap(safeWrap(userResponse.body).data.aliases))) {
+        const userpassAlias = userResponse.body.data.aliases.filter((alias) => alias.mount_type === 'userpass' && alias.name)[0];
+        if (userpassAlias) {
+            const userpassResponse = await getUserpass(req, userpassAlias.name);
+            // Inject the policies array from userpass.
+            if (Array.isArray(unwrap(safeWrap(userpassResponse.body).data.policies))) {
+                userpassAlias.policies = userpassResponse.body.data.policies;
             }
-        });
-    });
+        }
+    }
+    return userResponse;
 };
 
 /**
@@ -117,17 +121,9 @@ const getUser = (req, id) => {
  * @param {string} name The user name.
  * @returns {Promise}
  */
-const getUserByName = (req, name) => {
-    return new Promise((resolve, reject) => {
-        const {entityId, token} = req.session.user;
-        request(initApiRequest(token, `${getDomain()}/v1/identity/entity/name/${name}`, entityId), (error, response) => {
-            if (error) {
-                reject(error);
-            } else {
-                resolve(response);
-            }
-        });
-    });
+const getUserByName = async (req, name) => {
+    const {entityId, token} = req.session.user;
+    return await asyncRequest(initApiRequest(token, `${getDomain()}/v1/identity/entity/name/${name}`, entityId));
 };
 
 /**
@@ -220,17 +216,9 @@ const saveUser = (req, userData) => {
  * @param {string} name The user data to save.
  * @returns {Promise}
  */
-const getUserpass = (req, name) => {
-    return new Promise((resolve, reject) => {
-        const {entityId, token} = req.session.user;
-        request(initApiRequest(token, `${getDomain()}/v1/auth/userpass/users/${name}`, entityId), (error, response) => {
-            if (error) {
-                reject(error);
-            } else {
-                resolve(response);
-            }
-        });
-    });
+const getUserpass = async (req, name) => {
+    const {entityId, token} = req.session.user;
+    return await asyncRequest(initApiRequest(token, `${getDomain()}/v1/auth/userpass/users/${name}`, entityId));
 };
 
 /**
@@ -391,6 +379,10 @@ const router = require('express').Router()
      *         application/json:
      *           schema:
      *             $ref: '#/definitions/user'
+     *           example:
+     *             name: john.doe
+     *             password: password
+     *             policies: ["base-policy"]
      *           type: object
      *           required:
      *             - name
