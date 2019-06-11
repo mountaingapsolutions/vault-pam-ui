@@ -359,6 +359,13 @@ const _cancelRequest = (req) => {
                     });
                     return;
                 }
+            } else if (type === REQUEST_TYPES.DYNAMIC_REQUEST) {
+                deleteRequest({
+                    entityId,
+                    path,
+                    type
+                });
+                approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             } else {
                 cancelRequest(req, path);
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
