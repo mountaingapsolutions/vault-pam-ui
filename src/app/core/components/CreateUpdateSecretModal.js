@@ -6,6 +6,7 @@ import {
     DialogContent,
     DialogTitle,
     Divider,
+    FormControlLabel,
     FormHelperText,
     Grid,
     IconButton,
@@ -15,6 +16,7 @@ import {
     ListItem,
     ListItemSecondaryAction,
     Paper,
+    Switch,
     TextField,
     Tooltip,
     Typography
@@ -33,6 +35,7 @@ import {connect} from 'react-redux';
 
 import secretAction from 'app/core/actions/secretAction';
 import Button from 'app/core/components/Button';
+import CodeEditorArea from 'app/core/components/CodeEditorArea';
 
 import {createInProgressSelector} from 'app/util/actionStatusSelector';
 
@@ -42,6 +45,7 @@ import {createInProgressSelector} from 'app/util/actionStatusSelector';
 class CreateUpdateSecretModal extends Component {
 
     _defaultState = {
+        displayAsJson: false,
         errors: {},
         loaded: false,
         newPaths: [''],
@@ -66,11 +70,13 @@ class CreateUpdateSecretModal extends Component {
             ...this._defaultState
         };
 
+        this._copySecret = this._copySecret.bind(this);
         this._createNewPath = this._createNewPath.bind(this);
         this._onPathValueChange = this._onPathValueChange.bind(this);
         this._onSubmit = this._onSubmit.bind(this);
         this._onValueChange = this._onValueChange.bind(this);
         this._resetState = this._resetState.bind(this);
+        this._setSecretsFromJson = this._setSecretsFromJson.bind(this);
         this._togglePasswordVisibility = this._togglePasswordVisibility.bind(this);
     }
 
@@ -112,6 +118,38 @@ class CreateUpdateSecretModal extends Component {
             };
         }
         return null;
+    }
+
+    /**
+     * Copies the KV secrets to clipboard.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _copySecret(event) {
+        event.preventDefault();
+        const {displayAsJson, secrets} = this.state;
+
+        const clipboard = document.createElement('textarea');
+        const secretsToCopy = [...secrets].filter((secret) => !!secret.key);
+        if (displayAsJson) {
+            const secretsJsonFormat = toObject(secretsToCopy, 'key', (secret) => secret.value);
+            clipboard.value = JSON.stringify(secretsJsonFormat, null, 4);
+        } else {
+            clipboard.value = secretsToCopy.reduce((previous, secret) => {
+                return `${previous}${secret.key}=${secret.value}\r\n`;
+            }, '');
+        }
+        clipboard.style.position = 'absolute';
+        clipboard.style.left = '-9999px';
+        clipboard.style.width = 0;
+        clipboard.style.height = 0;
+        // Append to the modal itself, as text underneath the modal is unselectable.
+        const parentContainer = document.getElementById('create-new-folder-modal');
+        parentContainer.appendChild(clipboard);
+        clipboard.select();
+        document.execCommand('copy');
+        parentContainer.removeChild(clipboard);
     }
 
     /**
@@ -344,6 +382,29 @@ class CreateUpdateSecretModal extends Component {
     }
 
     /**
+     * If valid JSON, remaps the JSON from the editor back onto state.
+     *
+     * @private
+     * @param {string} jsonString The JSON string value from the code editor.
+     */
+    _setSecretsFromJson(jsonString) {
+        try {
+            const json = JSON.parse(jsonString);
+            this.setState({
+                secrets: Object.keys(json).map((key) => {
+                    return {
+                        key,
+                        value: json[key],
+                        showPassword: false
+                    };
+                })
+            });
+        } catch (err) {
+            console.warn('Invalid JSON provided: ', err);
+        }
+    }
+
+    /**
      * Renders a loader.
      *
      * @private
@@ -368,7 +429,7 @@ class CreateUpdateSecretModal extends Component {
      */
     _renderPathsInput() {
         const {classes, initialPath, mode} = this.props;
-        const {errors, newPaths} = this.state;
+        const {displayAsJson, errors, newPaths} = this.state;
         const paths = initialPath.split('/');
         return <Paper className={classes.marginBottom} elevation={1}>
             <div className={classes.pathRoot}>
@@ -439,6 +500,32 @@ class CreateUpdateSecretModal extends Component {
             </div>
             {errors.currentPath &&
             <FormHelperText error className={classes.pathError}>{errors.currentPath}</FormHelperText>}
+            <div className={classes.buttonRow}>
+                <FormControlLabel
+                    checked={displayAsJson}
+                    classes={{
+                        label: classes.fontSizeSmall
+                    }}
+                    control={
+                        <Switch
+                            checked={displayAsJson}
+                            color='primary'
+                            inputProps={{
+                                'aria-label': 'Display as JSON'
+                            }}
+                            onChange={() => {
+                                this.setState({
+                                    displayAsJson: !displayAsJson
+                                });
+                            }}/>
+                    }
+                    label='JSON'
+                    value={displayAsJson}
+                />
+                <Button color='default' variant='text' onClick={this._copySecret}>
+                    Copy
+                </Button>
+            </div>
         </Paper>;
     }
 
@@ -541,6 +628,21 @@ class CreateUpdateSecretModal extends Component {
     }
 
     /**
+     * Renders the secrets input area using the CodeEditorArea component.
+     *
+     * @private
+     * @returns {React.ReactElement}
+     */
+    _renderSecretsListWithCodeEditor() {
+        const {secrets} = this.state;
+        const secretsToCopy = [...secrets].filter((secret) => !!secret.key);
+        const secretsJsonFormat = toObject(secretsToCopy, 'key', (secret) => secret.value);
+        return <Paper elevation={1}>
+            <CodeEditorArea value={JSON.stringify(secretsJsonFormat, null, 4)} onUnload={this._setSecretsFromJson}/>
+        </Paper>;
+    }
+
+    /**
      * Renders the secrets input area using custom input base inputs.
      *
      * @private
@@ -629,6 +731,24 @@ class CreateUpdateSecretModal extends Component {
     }
 
     /**
+     * If displaying secrets in JSON mode, do not wrap in a form element. Otherwise, this will result in a NPE stemming from Material UI.
+     *
+     * @private
+     * @param {React.ReactElement} children The child elements.
+     * @returns {React.ReactElement}
+     */
+    _renderContentContainer(children) {
+        const {displayAsJson} = this.state;
+        if (displayAsJson) {
+            return children;
+        } else {
+            return <form autoComplete='off' onSubmit={this._onSubmit}>
+                {children}
+            </form>;
+        }
+    }
+
+    /**
      * Required React Component lifecycle method. Returns a tree of React components that will render to HTML.
      *
      * @override
@@ -637,7 +757,7 @@ class CreateUpdateSecretModal extends Component {
      */
     render() {
         const {classes, mode, onClose, open} = this.props;
-        const {loaded, saving} = this.state;
+        const {displayAsJson, loaded, saving} = this.state;
         let title;
         switch (mode) {
             case 'read':
@@ -649,41 +769,52 @@ class CreateUpdateSecretModal extends Component {
             default:
                 title = 'Create Secret';
         }
+        const showLoader = mode !== 'create' && !loaded || saving;
+        let contentArea;
+        if (showLoader) {
+            contentArea = this._renderLoadingProgress();
+        } else if (displayAsJson) {
+            contentArea = this._renderSecretsListWithCodeEditor();
+        } else {
+            contentArea = this._renderSecretsListWithInputBase();
+        }
         return <Dialog fullWidth maxWidth='md' open={open} onClose={() => onClose(mode === 'read')} onExit={this._resetState}>
-            <form autoComplete='off' onSubmit={this._onSubmit}>
-                <DialogTitle id='create-new-folder-modal'>
-                    {title}
-                </DialogTitle>
-                <DialogContent>
-                    {this._renderPathsInput()}
-                    {mode !== 'create' && !loaded || saving ? this._renderLoadingProgress() : this._renderSecretsListWithInputBase()}
-                </DialogContent>
-                {
-                    mode === 'read' ?
-                        <DialogActions>
-                            <Button onClick={() => onClose(true)}>
-                                Close
-                            </Button>
-                        </DialogActions>
-                        :
-                        <DialogActions>
-                            <Button variant='text' onClick={() => onClose(false)}>
-                                Cancel
-                            </Button>
-                            <Button disabled={saving} type='submit' onClick={this._onSubmit}>
-                                {mode === 'create' ? 'Create' : 'Save'}
-                            </Button>
-                        </DialogActions>
-                }
-                {/* Trick to prevent browser save password popup. See https://stackoverflow.com/questions/32369/disable-browser-save-password-functionality. */}
-                <div className={classes.hidden}>
-                    {/* And for whatever reason, it took 4 of these hidden fields to fully suppress it. */}
-                    <input readOnly type='password' value='hidden'/>
-                    <input readOnly type='password' value='hidden'/>
-                    <input readOnly type='password' value='hidden'/>
-                    <input readOnly type='password' value='hidden'/>
-                </div>
-            </form>
+            {
+                this._renderContentContainer(<React.Fragment>
+                    <DialogTitle id='create-new-folder-modal'>
+                        {title}
+                    </DialogTitle>
+                    <DialogContent>
+                        {this._renderPathsInput()}
+                        {contentArea}
+                    </DialogContent>
+                    {
+                        mode === 'read' ?
+                            <DialogActions>
+                                <Button onClick={() => onClose(true)}>
+                                    Close
+                                </Button>
+                            </DialogActions>
+                            :
+                            <DialogActions>
+                                <Button variant='text' onClick={() => onClose(false)}>
+                                    Cancel
+                                </Button>
+                                <Button disabled={saving || displayAsJson} type='submit' onClick={this._onSubmit}>
+                                    {mode === 'create' ? 'Create' : 'Save'}
+                                </Button>
+                            </DialogActions>
+                    }
+                    {/* Trick to prevent browser save password popup. See https://stackoverflow.com/questions/32369/disable-browser-save-password-functionality. */}
+                    <div className={classes.hidden}>
+                        {/* And for whatever reason, it took 4 of these hidden fields to fully suppress it. */}
+                        <input readOnly type='password' value='hidden'/>
+                        <input readOnly type='password' value='hidden'/>
+                        <input readOnly type='password' value='hidden'/>
+                        <input readOnly type='password' value='hidden'/>
+                    </div>
+                </React.Fragment>)
+            }
         </Dialog>;
     }
 }
@@ -781,6 +912,14 @@ const _styles = (theme) => ({
     confirmPathContainer: {
         display: 'flex',
         marginLeft: 'auto'
+    },
+    buttonRow: {
+        padding: '0 10px'
+    },
+    fontSizeSmall: {
+        color: 'rgba(0, 0, 0, 0.87)',
+        fontSize: '0.8125rem',
+        fontWeight: 500
     },
     iconButton: {
         padding: 10
