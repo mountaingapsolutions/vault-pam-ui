@@ -383,7 +383,8 @@ class NotificationsModal extends Component {
                                         id,
                                         isOwnRequest,
                                         name,
-                                        path
+                                        path,
+                                        type
                                     };
                                     return <React.Fragment key={`${path}-${i}`}>
                                         <ListItem alignItems='flex-start'>
