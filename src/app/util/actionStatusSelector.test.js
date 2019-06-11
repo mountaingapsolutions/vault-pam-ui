@@ -6,13 +6,18 @@ it('create errors selector', () => {
     const actionsUsed = [
         'foo'
     ];
-    const state = {
+    let state = {
         errors: {
             foo: 'bar'
         }
     };
-
     expect(createErrorsSelector(actionsUsed)(state) === state.errors.foo).toBeTruthy();
+
+    state = {
+        errors: {}
+    };
+    expect(createErrorsSelector(actionsUsed)(state) === '').toBeTruthy();
+
 });
 
 it('create inProgress selector', () => {
