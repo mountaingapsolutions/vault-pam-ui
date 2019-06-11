@@ -70,7 +70,7 @@ export default (previousState = {
         case secretAction.ACTION_TYPES.LIST_LEASE:
             return {
                 ...previousState,
-                leaseList: (action.data || {}).data || {}
+                leaseList: action.data || {}
             };
         case secretAction.ACTION_TYPES.LIST_APPROVERS:
             return {

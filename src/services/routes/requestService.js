@@ -567,8 +567,8 @@ const router = require('express').Router()
         const promises = [];
         // Retrieve requests.
         (await _getRequests(req)).forEach((requestRecord) => {
-            const {referenceData, type} = requestRecord.dataValues;
-            const {accessor} = referenceData || {};
+            const {referenceData, responses, type} = requestRecord.dataValues;
+            const {accessor, leaseId} = referenceData || {};
             if (accessor && type === REQUEST_TYPES.CONTROL_GROUP) {
                 // For Control Group requests, also validate the accessor.
                 const accessorValidationPromise = require('vault-pam-premium').validateAccessor(accessor);
@@ -589,6 +589,35 @@ const router = require('express').Router()
                     }
                 });
                 promises.push(accessorValidationPromise);
+            } else if (leaseId && type === REQUEST_TYPES.DYNAMIC_REQUEST) {
+                if (responses && responses.some(response => response.type === 'OPENED')) {
+                    logger.warn(`lease-id ${leaseId} has been opened. Deleting request from database.`);
+                    deleteRequest({
+                        referenceData: {
+                            leaseId
+                        }
+                    });
+                } else {
+                    // For Dynamic requests, also validate the lease id.
+                    const leaseIdValidationPromise = require('vault-pam-premium').validateLeaseId(leaseId);
+                    leaseIdValidationPromise.then((response) => {
+                        const requestData = response.body.data;
+                        if (!requestData) {
+                            logger.warn(`Invalid lease-id ${leaseId}. Deleting from database.`);
+                            deleteRequest({
+                                referenceData: {
+                                    leaseId
+                                }
+                            });
+                        } else {
+                            requests.push(_remapSecretsRequest({
+                                requestData,
+                                ...requestRecord
+                            }));
+                        }
+                    });
+                    promises.push(leaseIdValidationPromise);
+                }
             } else {
                 requests.push(_remapSecretsRequest(requestRecord));
             }
@@ -708,6 +737,9 @@ const router = require('express').Router()
                 groups.forEach((groupName) => {
                     approverGroupPromises.push(_getUsersByGroupName(req, groupName));
                 });
+            } else if (type === REQUEST_TYPES.DYNAMIC_REQUEST) {
+                await require('vault-pam-premium').checkDynamicRequest(path);
+                approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             } else {
                 approverGroupPromises.push(_getUsersByGroupName(req, 'pam-approver'));
             }
@@ -961,16 +993,17 @@ const router = require('express').Router()
                             logger.info(`Emit read-approved-request path ${path} to ${groupName}.`);
                             notificationsManager.getInstance().to(groupName).emit('read-approved-request', path);
                         });
-                    } else {
-                        //DYNAMIC SECRET, UPDATE STATUS TO OPENED
+                    } else if (req.app.locals.features['dynamic-requests'] && type === REQUEST_TYPES.DYNAMIC_REQUEST) {
                         await openRequest({path, entityId});
+                    } else {
+                        throw new ServiceResponseError('Invalid request', 400);
                     }
                     sendJsonResponse(req, res, response.body, response.statusCode);
                 } else {
-                    sendError(req, res, 'Invalid request');
+                    throw new ServiceResponseError('Invalid request', 400);
                 }
             } else {
-                sendError(req, res, 'Invalid request');
+                throw new ServiceResponseError('Invalid request', 400);
             }
         } catch (err) {
             sendError(req, res, err.message, null, err.statusCode);
