@@ -7,7 +7,7 @@ const {router: auditServiceRouter} = require('services/routes/auditService');
 const {router: secretsServiceRouter} = require('services/routes/secretsService');
 const {router: userServiceRouter} = require('services/routes/userService');
 const {router: requestServiceRouter} = require('services/routes/requestService');
-const {router: dynamicSecretServicRoute} = require('services/routes/dynamicSecretRequestService');
+const {router: dynamicSecretServiceRouter} = require('services/routes/dynamicSecretService');
 const {initApiRequest, getDomain, sendJsonResponse, setSessionData} = require('services/utils');
 const {sendError} = require('services/error/errorHandler');
 const logger = require('services/logger');
@@ -186,7 +186,7 @@ const authenticatedRoutes = require('express').Router()
     .use('/secret', requestServiceRouter)
     .use('/secrets', secretsServiceRouter)
     .use('/log', logger.router)
-    .use('/dynamic', dynamicSecretServicRoute)
+    .use('/dynamic', dynamicSecretServiceRouter)
     .get('/session', (req, res) => {
         const {'x-vault-token': token} = req.headers;
         _sendTokenValidationResponse(token, req, res);
