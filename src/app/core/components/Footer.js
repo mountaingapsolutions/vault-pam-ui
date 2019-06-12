@@ -1,6 +1,6 @@
 import {AppBar, Typography} from '@material-ui/core';
 import {COLORS} from 'app/core/assets/Styles';
-import {withStyles} from '@material-ui/core/styles/index';
+import {withStyles} from '@material-ui/core/styles';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';

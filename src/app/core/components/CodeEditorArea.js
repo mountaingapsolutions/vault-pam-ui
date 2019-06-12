@@ -1,5 +1,6 @@
+import {CircularProgress} from '@material-ui/core';
+import {withStyles} from '@material-ui/core/styles';
 import include from '@mountaingapsolutions/include';
-
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 
@@ -21,7 +22,8 @@ class CodeEditorArea extends Component {
         this.ref = React.createRef();
 
         this.state = {
-            editor: null
+            editor: null,
+            inProgress: !window.CodeMirror
         };
     }
 
@@ -31,14 +33,19 @@ class CodeEditorArea extends Component {
      * @private
      */
     _initializeEditor() {
+        // Make sure inProgress gets set to false first, so that the textarea will be rendered in the next cycle.
         this.setState({
-            editor: window.CodeMirror.fromTextArea(this.ref.current, {
-                gutters: ['CodeMirror-lint-markers'],
-                lineNumbers: true,
-                lint: true,
-                mode: 'javascript',
-                theme: 'material'
-            })
+            inProgress: false
+        }, () => {
+            this.setState({
+                editor: window.CodeMirror.fromTextArea(this.ref.current, {
+                    gutters: ['CodeMirror-lint-markers'],
+                    lineNumbers: true,
+                    lint: true,
+                    mode: 'javascript',
+                    theme: 'material'
+                })
+            });
         });
     }
 
@@ -99,10 +106,14 @@ class CodeEditorArea extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {readOnly, value} = this.props;
-        return <textarea readOnly={readOnly} ref={this.ref} value={value} onChange={() => {
-            // No-op.
-        }}/>;
+        const {classes, readOnly, value} = this.props;
+        const {inProgress} = this.state;
+        return inProgress ?
+            <CircularProgress className={classes.progress}/>
+            :
+            <textarea readOnly={readOnly} ref={this.ref} value={value} onChange={() => {
+                // No-op.
+            }}/>;
     }
 }
 
@@ -112,9 +123,14 @@ CodeEditorArea.defaultProps = {
 };
 
 CodeEditorArea.propTypes = {
+    classes: PropTypes.object.isRequired,
     onUnload: PropTypes.func,
     readOnly: PropTypes.bool,
     value: PropTypes.string
 };
 
-export default CodeEditorArea;
+export default withStyles({
+    progress: {
+        padding: 20
+    }
+})(CodeEditorArea);

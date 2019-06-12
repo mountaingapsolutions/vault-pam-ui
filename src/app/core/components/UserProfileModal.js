@@ -24,7 +24,7 @@ import {
     Visibility,
     VisibilityOff
 } from '@material-ui/icons';
-import {withStyles} from '@material-ui/core/styles/index';
+import {withStyles} from '@material-ui/core/styles';
 import md5 from 'md5';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
