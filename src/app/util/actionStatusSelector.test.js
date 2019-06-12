@@ -17,7 +17,6 @@ it('create errors selector', () => {
         errors: {}
     };
     expect(createErrorsSelector(actionsUsed)(state) === '').toBeTruthy();
-
 });
 
 it('create inProgress selector', () => {

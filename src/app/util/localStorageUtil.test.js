@@ -9,17 +9,6 @@ it('sets and gets a valid item', () => {
     expect(localStorageUtil.getItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN) === foo).toBeTruthy();
 });
 
-
-it('sets an invalid item', () => {
-    let message = false;
-    try {
-        localStorageUtil.setItem(foo, foo);
-    } catch (e) {
-        message = e.message;
-    }
-    expect(message).toBeTruthy();
-});
-
 it('removes an item', () => {
     localStorageUtil.setItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN, foo);
     localStorageUtil.removeItem(localStorageUtil.KEY_NAMES.VAULT_TOKEN);
