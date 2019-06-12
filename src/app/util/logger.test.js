@@ -44,7 +44,7 @@ it('fetches data from server when server returns a successful response', () => {
         expect(res).toEqual(DATA);
     });
     // check response headers and data
-    expect(fetch.mock.calls.length).toEqual(1);
+    expect(fetch.mock.calls).toHaveLength(1);
     expect(fetch.mock.calls[0][0]).toEqual(path);
     expect(fetch.mock.calls[0][1].method).toEqual('POST');
     expect(fetch.mock.calls[0][1].headers).toMatchObject(response);
@@ -60,7 +60,7 @@ it('server returns an error response', () => {
         expect(err.message).toBe('Cannot read property \'size\' of null');
     });
     // check response headers and data
-    expect(fetch.mock.calls.length).toEqual(1);
+    expect(fetch.mock.calls).toHaveLength(1);
     expect(fetch.mock.calls[0][0]).toEqual(path);
     expect(fetch.mock.calls[0][1].method).toEqual('POST');
     expect(fetch.mock.calls[0][1].headers).toMatchObject(response);
@@ -68,40 +68,40 @@ it('server returns an error response', () => {
 
 it('map data in an object', () => {
     const dataString = JSON.stringify(DATA);
-    expect(logger._mapToObject(DATA) === DATA).toBeTruthy();
-    expect(logger._mapToObject(dataString).message === dataString).toBeTruthy();
+    expect(logger._mapToObject(DATA) === DATA).toBe(true);
+    expect(logger._mapToObject(dataString).message === dataString).toBe(true);
 });
 
 it('print logger successful', () => {
     logger.print(DATA);
-    expect(fetch.mock.calls.length).toEqual(1);
-    expect(fetch.mock.calls[0][1].body === JSON.stringify(DATA)).toBeTruthy();
+    expect(fetch.mock.calls).toHaveLength(1);
+    expect(fetch.mock.calls[0][1].body).toEqual(JSON.stringify(DATA));
 });
 
 it('info logger successful', () => {
     logger.info(DATA);
     const responseData = {...DATA, level: 'info'};
-    expect(fetch.mock.calls.length).toEqual(1);
-    expect(fetch.mock.calls[0][1].body === JSON.stringify(responseData)).toBeTruthy();
+    expect(fetch.mock.calls).toHaveLength(1);
+    expect(fetch.mock.calls[0][1].body).toEqual(JSON.stringify(responseData));
 });
 
 it('log logger successful', () => {
     logger.log(DATA);
     const responseData = {...DATA, level: 'info'};
-    expect(fetch.mock.calls.length).toEqual(1);
-    expect(fetch.mock.calls[0][1].body === JSON.stringify(responseData)).toBeTruthy();
+    expect(fetch.mock.calls).toHaveLength(1);
+    expect(fetch.mock.calls[0][1].body).toEqual(JSON.stringify(responseData));
 });
 
 it('warn logger successful', () => {
     logger.warn(DATA);
     const responseData = {...DATA, level: 'warn'};
-    expect(fetch.mock.calls.length).toEqual(1);
-    expect(fetch.mock.calls[0][1].body === JSON.stringify(responseData)).toBeTruthy();
+    expect(fetch.mock.calls).toHaveLength(1);
+    expect(fetch.mock.calls[0][1].body).toEqual(JSON.stringify(responseData));
 });
 
 it('erroe logger successful', () => {
     logger.error(DATA);
     const responseData = {...DATA, level: 'error'};
-    expect(fetch.mock.calls.length).toEqual(1);
-    expect(fetch.mock.calls[0][1].body === JSON.stringify(responseData)).toBeTruthy();
+    expect(fetch.mock.calls).toHaveLength(1);
+    expect(fetch.mock.calls[0][1].body).toEqual(JSON.stringify(responseData));
 });

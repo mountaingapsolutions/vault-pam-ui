@@ -195,10 +195,10 @@ it('renders the default profile icon if email is not present', () => {
 
 it('renders the default profile icon if image load fails', () => {
     const testInstance = renderer.create(_getInstance()).root;
-    expect(testInstance.findAllByType(AccountCircle).length).toBe(0);
+    expect(testInstance.findAllByType(AccountCircle)).toHaveLength(0);
     // Force the image onError.
     testInstance.findAllByType('img')[1].props.onError();
-    expect(testInstance.findAllByType(AccountCircle).length).toBe(1);
+    expect(testInstance.findAllByType(AccountCircle)).toHaveLength(1);
 });
 
 it('displays a root user warning for root users', () => {
@@ -263,8 +263,8 @@ it('renders the expected mount icons from type', () => {
     const images = testInstance.findAllByType('img');
     expect(images[2].props.src).toBe('/assets/aws-icon.svg');
     expect(images[3].props.src).toBe('/assets/azure-icon.svg');
-    expect(testInstance.findAllByType(LockOpen).length).toBe(2);
-    expect(testInstance.findAllByType(List).length).toBe(1);
+    expect(testInstance.findAllByType(LockOpen)).toHaveLength(2);
+    expect(testInstance.findAllByType(List)).toHaveLength(1);
 });
 
 it('navigates to the expected secrets path from click', () => {
