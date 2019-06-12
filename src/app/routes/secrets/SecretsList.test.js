@@ -1,5 +1,5 @@
 /* global afterAll, beforeEach, expect, it, jest */
-import {IconButton} from '@material-ui/core';
+import {IconButton, ListItem} from '@material-ui/core';
 import React from 'react';
 import renderer from 'react-test-renderer';
 import {applyMiddleware, combineReducers, createStore} from 'redux';
@@ -125,6 +125,7 @@ beforeEach(() => {
 
     secretAction.deleteRequest.mockImplementation(() => () => new Promise((resolve) => resolve({})));
     secretAction.deleteSecrets.mockImplementation(() => () => new Promise((resolve) => resolve({})));
+    secretAction.getSecrets.mockImplementation(() => () => new Promise((resolve) => resolve({})));
     secretAction.listMounts.mockImplementation(() => () => new Promise((resolve) => resolve({})));
     secretAction.listSecretsAndCapabilities.mockImplementation(() => () => new Promise((resolve) => resolve({})));
     secretAction.openApprovedSecret.mockImplementation(() => () => new Promise((resolve) => resolve({})));
@@ -150,10 +151,9 @@ it('list secret mounts after component mounting', () => {
 });
 
 it('clicking a secret mount and listing its sub-mount', () => {
-
     const testInstance = renderer.create(_getInstance()).root;
 
-    const mountBtn = testInstance.findAllByType(IconButton)[0].props;
+    const mountBtn = testInstance.findAllByType(ListItem)[0].props;
     mountBtn.onClick({preventDefault: jest.fn()});
 
     return new Promise((resolve) => {
@@ -173,6 +173,10 @@ it('deleting a secret mount', () => {
     newState.secretReducer.secretsPaths.secrets[0].name = MOUNT_NO_SUB_DIRECTORY;
 
     const testInstance = renderer.create(_getInstance(newState)).root;
+
+    //LIST COMPONENT - DELETE FUNCTIONALITY
+    const mountBtn = testInstance.findAllByType(ListItem)[0].props;
+    mountBtn.onClick({preventDefault: jest.fn()});
 
     //ICON BUTTON COMPONENT - DELETE FUNCTIONALITY
     const iconDeleteBtn = testInstance.findAllByType(IconButton)[0].props;
@@ -201,6 +205,10 @@ it('unwraps control-groups approved secret request', () => {
 
     const testInstance = renderer.create(_getInstance(newState)).root;
 
+    //LIST COMPONENT - OPEN FUNCTIONALITY
+    const mountBtn = testInstance.findAllByType(ListItem)[0].props;
+    mountBtn.onClick({preventDefault: jest.fn()});
+
     //ICON BUTTON COMPONENT - OPEN FUNCTIONALITY
     const iconBtnOpen = testInstance.findAllByType(IconButton)[0].props;
     iconBtnOpen.onClick({preventDefault: jest.fn()});
@@ -222,11 +230,51 @@ it('unwraps control-groups approved secret request', () => {
     });
 });
 
-it('setting secret data', () => {
+it('open approved secret request', () => {
     let newState = {...DEFAULT_MOCK_STATE};
+    newState.secretReducer.secretsPaths.secrets[0].capabilities.pop();
     newState.secretReducer.secretsPaths.secrets[0].data.wrap_info = null;
 
     const testInstance = renderer.create(_getInstance(newState)).root;
+
+    const mountBtn = testInstance.findAllByType(ListItem)[0].props;
+    mountBtn.onClick({preventDefault: jest.fn()});
+
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            expect(secretAction.openApprovedSecret).toHaveBeenCalledTimes(1);
+            expect(secretAction.listSecretsAndCapabilities).toHaveBeenCalledTimes(1);
+            resolve();
+        }, 0);
+    });
+});
+
+it('get secrets, with update capabilities', () => {
+    let newState = {...DEFAULT_MOCK_STATE};
+    newState.secretReducer.secretsPaths.secrets[0].capabilities.push('update');
+
+    const testInstance = renderer.create(_getInstance(newState)).root;
+
+    const mountBtn = testInstance.findAllByType(ListItem)[0].props;
+    mountBtn.onClick({preventDefault: jest.fn()});
+
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            expect(secretAction.getSecrets).toHaveBeenCalledTimes(1);
+            expect(secretAction.listSecretsAndCapabilities).toHaveBeenCalledTimes(1);
+            resolve();
+        }, 0);
+    });
+});
+
+it('setting secret data', () => {
+    let newState = {...DEFAULT_MOCK_STATE};
+
+    const testInstance = renderer.create(_getInstance(newState)).root;
+
+    //LIST COMPONENT - OPEN FUNCTIONALITY
+    const mountBtn = testInstance.findAllByType(ListItem)[0].props;
+    mountBtn.onClick({preventDefault: jest.fn()});
 
     //ICON BUTTON COMPONENT - OPEN FUNCTIONALITY
     const iconBtnOpen = testInstance.findAllByType(IconButton)[0].props;
@@ -247,6 +295,10 @@ it('cancelling secret request', () => {
     newState.secretReducer.secretsRequests[0].approved = false;
 
     const testInstance = renderer.create(_getInstance(newState)).root;
+
+    //LIST COMPONENT - CANCEL FUNCTIONALITY
+    const mountBtn = testInstance.findAllByType(ListItem)[0].props;
+    mountBtn.onClick({preventDefault: jest.fn()});
 
     //ICON BUTTON COMPONENT - CANCEL FUNCTIONALITY
     const iconBtnCancel = testInstance.findAllByType(IconButton)[0].props;
@@ -276,6 +328,10 @@ it('requesting a secret', () => {
 
     const testInstance = renderer.create(_getInstance(newState)).root;
 
+    //LIST COMPONENT - OPEN FUNCTIONALITY
+    const mountBtn = testInstance.findAllByType(ListItem)[0].props;
+    mountBtn.onClick({preventDefault: jest.fn()});
+
     //ICON BUTTON COMPONENT - OPEN FUNCTIONALITY
     const iconOpenBtn = testInstance.findAllByType(IconButton)[0].props;
     iconOpenBtn.onClick({preventDefault: jest.fn()});
@@ -296,4 +352,3 @@ it('requesting a secret', () => {
     });
 
 });
-
