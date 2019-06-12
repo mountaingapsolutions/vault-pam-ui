@@ -400,7 +400,9 @@ class CreateUpdateSecretModal extends Component {
                 })
             });
         } catch (err) {
+            /* eslint-disable no-console */
             console.warn('Invalid JSON provided: ', err);
+            /* eslint-enable no-console */
         }
     }
 
@@ -634,11 +636,12 @@ class CreateUpdateSecretModal extends Component {
      * @returns {React.ReactElement}
      */
     _renderSecretsListWithCodeEditor() {
+        const {mode} = this.props;
         const {secrets} = this.state;
         const secretsToCopy = [...secrets].filter((secret) => !!secret.key);
         const secretsJsonFormat = toObject(secretsToCopy, 'key', (secret) => secret.value);
         return <Paper elevation={1}>
-            <CodeEditorArea value={JSON.stringify(secretsJsonFormat, null, 4)} onUnload={this._setSecretsFromJson}/>
+            <CodeEditorArea readOnly={mode === 'read'} value={JSON.stringify(secretsJsonFormat, null, 4)} onUnload={this._setSecretsFromJson}/>
         </Paper>;
     }
 

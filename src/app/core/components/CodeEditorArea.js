@@ -37,12 +37,14 @@ class CodeEditorArea extends Component {
         this.setState({
             inProgress: false
         }, () => {
+            const {readOnly} = this.props;
             this.setState({
                 editor: window.CodeMirror.fromTextArea(this.ref.current, {
                     gutters: ['CodeMirror-lint-markers'],
                     lineNumbers: true,
                     lint: true,
                     mode: 'javascript',
+                    readOnly,
                     theme: 'material'
                 })
             });
