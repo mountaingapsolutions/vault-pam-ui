@@ -21,7 +21,7 @@ const {api, config, login, logout, authenticatedRoutes} = require('services/rout
 // Overcome the DEPTH_ZERO_SELF_SIGNED_CERT error.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-const {checkPremiumFeatures, getSessionMiddleware, validateDomain} = require('services/utils');
+const {checkFeatures, getSessionMiddleware, validateDomain} = require('services/utils');
 if (!process.env.VAULT_DOMAIN) {
     logger.error('No Vault domain configured.');
     process.exit(9);
@@ -119,5 +119,5 @@ const _startServer = () => {
                 });
         });
 
-    checkPremiumFeatures(app);
+    checkFeatures(app);
 };

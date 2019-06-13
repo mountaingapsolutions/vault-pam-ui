@@ -389,10 +389,17 @@ Main.propTypes = {
  * @returns {Object}
  */
 const _mapStateToProps = (state) => {
+    const secretsData = {
+        ...state.secretReducer
+    };
+    const showCubbyhole = unwrap(safeWrap(state.systemReducer).config.features.cubbyhole);
+    if (Array.isArray(unwrap(safeWrap(secretsData).secretsMounts.data)) && !showCubbyhole) {
+        secretsData.secretsMounts.data = secretsData.secretsMounts.data.filter((mount) => mount.type !== 'cubbyhole');
+    }
     return {
         ...state.localStorageReducer,
         ...state.sessionReducer,
-        ...state.secretReducer,
+        ...secretsData,
         ...state.systemReducer,
         ...state.userReducer
     };

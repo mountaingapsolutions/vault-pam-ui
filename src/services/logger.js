@@ -36,16 +36,16 @@ const _logger = createLogger({
  * @returns {Object}
  */
 const _hashObject = (obj) => {
-    const {VAULT_API_TOKEN: apiToken} = process.env;
+    const {AUDIT_SALT: auditSalt} = process.env;
     const hashedObject = {};
     Object.keys(obj).forEach(key => {
         const objProp = obj[key];
         typeof objProp === 'string' ?
             // eslint-disable-next-line new-cap
-            hashedObject[key] = cryptoJs.HmacSHA256(obj[key], apiToken).toString(cryptoJs.enc.Hex) :
+            hashedObject[key] = cryptoJs.HmacSHA256(obj[key], auditSalt).toString(cryptoJs.enc.Hex) :
             Array.isArray(objProp) ? hashedObject[key] = objProp.map((prop) => {
                 // eslint-disable-next-line new-cap
-                return typeof prop === 'string' ? cryptoJs.HmacSHA256(obj[key], apiToken).toString(cryptoJs.enc.Hex) : prop;
+                return typeof prop === 'string' ? cryptoJs.HmacSHA256(obj[key], auditSalt).toString(cryptoJs.enc.Hex) : prop;
             }) :
                 objProp !== null && typeof objProp === 'object' && objProp.constructor === Object && Object.entries(objProp).length > 0 ?
                     hashedObject[key] = _hashObject(objProp)

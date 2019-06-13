@@ -1,5 +1,4 @@
 const chalk = require('chalk');
-const request = require('request');
 const {asyncRequest, initApiRequest, getDomain, sendJsonResponse} = require('services/utils');
 const {deleteRequest} = require('services/db/controllers/requestsController');
 const {sendError} = require('services/error/errorHandler');
@@ -45,25 +44,22 @@ const _getSecretsByPath = async (token, apiUrl, entityId) => {
  * @param {Array} paths The array of paths to check.
  * @returns {Promise}
  */
-const _getCapabilities = (token, entityId, paths) => {
+const _getCapabilities = async (token, entityId, paths) => {
     const apiUrl = `${getDomain()}/v1/sys/capabilities-self`;
     logger.log(`Checking capabilities with paths ${chalk.yellow.bold(JSON.stringify(paths))}.`);
-    return new Promise((resolve) => {
-        request({
+    try {
+        const response = await asyncRequest({
             ...initApiRequest(token, apiUrl, entityId),
             method: 'POST',
             json: {
                 paths
             }
-        }, (error, response, capabilities) => {
-            if (error) {
-                logger.error(`Error in retrieving capabilities (${apiUrl}): ${error.toString()}`);
-                resolve({});
-                return;
-            }
-            resolve(capabilities || {});
         });
-    });
+        return response.body || {};
+    } catch (error) {
+        logger.error(`Error in retrieving capabilities (${apiUrl}): ${error.toString()}`);
+        return {};
+    }
 };
 
 /* eslint-disable new-cap */
@@ -197,13 +193,10 @@ const router = require('express').Router()
                 if (canRead && !key.endsWith('/') && !isDynamicEngine) {
                     promises.push(new Promise((secretResolve) => {
                         const getSecretApiUrl = `${domain}/v1/${key}`;
-                        request(initApiRequest(token, getSecretApiUrl, requesterEntityId), (error, response, body) => {
-                            if (error) {
-                                logger.error(error);
-                            }
-                            if (body) {
-                                secret.data = body;
-                                const {wrap_info: wrapInfo} = body;
+                        asyncRequest(initApiRequest(token, getSecretApiUrl, requesterEntityId)).then((response) => {
+                            if (response.body) {
+                                secret.data = response.body;
+                                const {wrap_info: wrapInfo} = response.body;
                                 if (wrapInfo) {
                                     try {
                                         // Just immediately revoke the accessor. A new one will be generated upon a user requesting access. The initial wrap_info accessor is only to inform the user that this secret is wrapped.
@@ -216,6 +209,10 @@ const router = require('express').Router()
                                 logger.error(`No response body returned from ${getSecretApiUrl}`);
                                 secret.data = {};
                             }
+                            secretResolve();
+                        }).catch((error) => {
+                            logger.error(error);
+                            secret.data = {};
                             secretResolve();
                         });
                     }));
@@ -255,13 +252,12 @@ const router = require('express').Router()
     .get('/get/*', async (req, res) => {
         const {entityId, token} = req.session.user;
         const apiUrl = `${getDomain()}/v1/${req.params[0]}`;
-        request(initApiRequest(token, apiUrl, entityId), (error, response, body) => {
-            if (error) {
-                sendError(req, res, error, apiUrl);
-                return;
-            }
-            sendJsonResponse(req, res, {...body});
-        });
+        try {
+            const response = await asyncRequest(initApiRequest(token, apiUrl, entityId));
+            sendJsonResponse(req, res, response.body);
+        } catch (error) {
+            sendError(req, res, error, apiUrl);
+        }
     })
     /**
      * @swagger
@@ -288,21 +284,25 @@ const router = require('express').Router()
         const {entityId, token} = req.session.user;
         const path = req.params[0];
         const apiUrl = `${getDomain()}/v1/${path}`;
-        request({
-            ...initApiRequest(token, apiUrl, entityId),
-            method: 'DELETE'
-        }, (error, response) => {
-            if (error) {
-                sendError(req, res, error, apiUrl);
-            } else if (response.statusCode === 200 || response.statusCode === 204) { // 204 Status Code indicates success with no response.
+
+        try {
+            const response = await asyncRequest({
+                ...initApiRequest(token, apiUrl, entityId),
+                method: 'DELETE'
+            });
+            if (response.statusCode === 200 || response.statusCode === 204) { // 204 Status Code indicates success with no response.
                 deleteRequest({
                     path
                 });
-                sendJsonResponse(req, res, {status: 'ok'});
+                sendJsonResponse(req, res, {
+                    status: 'ok'
+                });
             } else {
                 sendError(req, res, 'Could not find secret or did not have permissions to delete secret.', 400);
             }
-        });
+        } catch (error) {
+            sendError(req, res, error, apiUrl);
+        }
     });
 
 module.exports = {
