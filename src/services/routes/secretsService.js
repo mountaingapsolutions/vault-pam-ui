@@ -1,6 +1,6 @@
 const chalk = require('chalk');
 const request = require('request');
-const {initApiRequest, getDomain, sendJsonResponse} = require('services/utils');
+const {asyncRequest, initApiRequest, getDomain, sendJsonResponse} = require('services/utils');
 const {deleteRequest} = require('services/db/controllers/requestsController');
 const {sendError} = require('services/error/errorHandler');
 const logger = require('services/logger');
@@ -15,24 +15,25 @@ const {DYNAMIC_ENGINES} = require('services/constants');
  * @param {string} [entityId] the user's entity id
  * @returns {Promise}
  */
-const _getSecretsByPath = (token, apiUrl, entityId) => {
+const _getSecretsByPath = async (token, apiUrl, entityId) => {
     logger.log(`Listing secrets from ${chalk.yellow.bold(apiUrl)}.`);
-    return new Promise((resolve) => {
-        request(initApiRequest(token, apiUrl, entityId), async (error, response, body) => {
-            if (error) {
-                logger.error(`Error in retrieving secrets (${apiUrl}): ${error.toString()}`);
-                resolve([]);
-                return;
-            }
-            const {statusCode} = response;
+    try {
+        const response = await asyncRequest(initApiRequest(token, apiUrl, entityId));
+        const {statusCode} = response;
+        if (response.body) {
+            const {body} = response;
             if (statusCode !== 200 && statusCode !== 404) {
                 logger.error(`Error in retrieving secrets (${apiUrl}) (status code: ${statusCode}): ${body && JSON.stringify(body)}`);
-                resolve([]);
-                return;
+                return [];
             }
-            resolve(((body || {}).data || {}).keys || []);
-        });
-    });
+            return (body.data || {}).keys || [];
+        } else {
+            logger.error(response.body);
+        }
+    } catch (error) {
+        logger.error(`Error in retrieving secrets (${apiUrl}): ${error.toString()}`);
+    }
+    return [];
 };
 
 /**
@@ -70,12 +71,11 @@ const router = require('express').Router()
 /* eslint-enable new-cap */
 /**
  * @swagger
- * /rest/secrets/list/{path}:
- *   get:
+ * /rest/secrets/{path}:
+ *   post:
  *     tags:
  *       - Secrets
- *     name: List secrets.
- *     summary: Retrieves the list of secrets by path.
+ *     summary: Creates or updates secrets.
  *     parameters:
  *       - name: path
  *         in: path
@@ -83,21 +83,72 @@ const router = require('express').Router()
  *         schema:
  *           type: string
  *         required: true
- *       - name: version
- *         in: query
- *         description: The version of the Vault KV secrets engine.
- *         schema:
- *           type: integer
- *           minimum: 1
- *           maximum: 2
- *           default: 2
- *         required: true
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
  *     responses:
  *       200:
- *         description: Success.
- *       404:
- *         description: Not found.
+ *         description: Created or updated secrets data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Bad request.
+ *       403:
+ *         description: Unauthorized.
  */
+    .post('/*', async (req, res) => {
+        const {entityId, token} = req.session.user;
+        const {params = {}} = req;
+        const path = params['0'] || '';
+        const apiUrl = `${getDomain()}/v1/${path}`;
+        const response = await asyncRequest({
+            ...initApiRequest(token, apiUrl, entityId),
+            method: 'POST',
+            json: req.body
+        });
+        const {body, statusCode} = response;
+        if (body && statusCode === 200) {
+            deleteRequest({
+                path
+            });
+        }
+        res.status(statusCode).json(body);
+    })
+    /**
+     * @swagger
+     * /rest/secrets/list/{path}:
+     *   get:
+     *     tags:
+     *       - Secrets
+     *     name: List secrets.
+     *     summary: Retrieves the list of secrets by path.
+     *     parameters:
+     *       - name: path
+     *         in: path
+     *         description: The Vault secrets path.
+     *         schema:
+     *           type: string
+     *         required: true
+     *       - name: version
+     *         in: query
+     *         description: The version of the Vault KV secrets engine.
+     *         schema:
+     *           type: integer
+     *           minimum: 1
+     *           maximum: 2
+     *           default: 2
+     *         required: true
+     *     responses:
+     *       200:
+     *         description: Success.
+     *       404:
+     *         description: Not found.
+     */
     .get('/list/*', async (req, res) => {
         const {params = {}, query} = req;
         const urlParts = (params['0'] || '').split('/').filter(path => !!path);
@@ -243,15 +294,12 @@ const router = require('express').Router()
         }, (error, response) => {
             if (error) {
                 sendError(req, res, error, apiUrl);
-                return;
-            }
-            else if (response.statusCode === 200 || response.statusCode === 204) { //204 Status Code indicates success with no response
+            } else if (response.statusCode === 200 || response.statusCode === 204) { // 204 Status Code indicates success with no response.
                 deleteRequest({
                     path
                 });
                 sendJsonResponse(req, res, {status: 'ok'});
-            }
-            else {
+            } else {
                 sendError(req, res, 'Could not find secret or did not have permissions to delete secret.', 400);
             }
         });

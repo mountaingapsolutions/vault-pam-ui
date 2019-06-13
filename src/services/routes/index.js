@@ -193,7 +193,7 @@ const authenticatedRoutes = require('express').Router()
     })
     .use((req, res) => {
         sendJsonResponse(req, res, {
-            errors: ['These are\'t the droids you\'re looking for.']
+            errors: ['These aren\'t the droids you\'re looking for.']
         }, 400);
     });
 
