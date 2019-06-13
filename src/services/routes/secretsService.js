@@ -107,7 +107,6 @@ const _deleteRequestAndNotifyUsers = (req, path, emailTemplateName) => {
                 }
             });
         });
-        console.warn('DELETE REQUEST ', path);
         deleteRequest({
             path
         });
