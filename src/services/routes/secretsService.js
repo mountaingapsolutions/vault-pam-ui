@@ -1,9 +1,12 @@
+const {safeWrap, unwrap} = require('@mountaingapsolutions/objectutil');
 const chalk = require('chalk');
+const notificationsManager = require('services/notificationsManager');
 const {asyncRequest, initApiRequest, getDomain, sendJsonResponse} = require('services/utils');
-const {deleteRequest} = require('services/db/controllers/requestsController');
+const {deleteRequest, getRequests} = require('services/db/controllers/requestsController');
+const {sendMailFromTemplate} = require('services/mail/smtpClient');
 const {sendError} = require('services/error/errorHandler');
 const logger = require('services/logger');
-const {DYNAMIC_ENGINES} = require('services/constants');
+const {DYNAMIC_ENGINES, REQUEST_TYPES} = require('services/constants');
 
 /**
  * Helper method to retrieve secrets by the provided URL path.
@@ -62,6 +65,55 @@ const _getCapabilities = async (token, entityId, paths) => {
     }
 };
 
+/**
+ * Deletes the secrets request and notifies the relevant parties.
+ *
+ * @private
+ * @param {Object} req The HTTP request object.
+ * @param {string} path The secrets path.
+ * @param {string} emailTemplateName The email template name.
+ */
+const _deleteRequestAndNotifyUsers = (req, path, emailTemplateName) => {
+    if (String(path.split('/')[1]) === 'metadata') {
+        // Renaming V2 path from metadata to data.
+        logger.info(`KV v2 path deletion found: ${path}. Normalizing /metadata/ back to /data/.`);
+        path = path.replace('/metadata/', '/data/');
+    }
+    const {entityId, token} = req.session.user;
+    getRequests({
+        path
+    }).then((requests) => {
+        requests.forEach((request) => {
+            const {entityId: requesterEntityId, referenceData, type} = request.dataValues;
+            notificationsManager.getInstance().to(requesterEntityId).emit('cancel-request', path);
+            if (type === REQUEST_TYPES.CONTROL_GROUP) {
+                if (referenceData && referenceData.accessor) {
+                    require('vault-pam-premium').deleteRequest(entityId, referenceData.accessor, path).then((deleteResponse) => {
+                        deleteResponse.group.forEach((groupName) => {
+                            notificationsManager.getInstance().to(groupName).emit('cancel-request', path);
+                        });
+                    });
+                }
+            } else {
+                notificationsManager.getInstance().to('pam-approver').emit('cancel-request', path);
+            }
+            asyncRequest(initApiRequest(token, `${getDomain()}/v1/identity/entity/id/${requesterEntityId}`, entityId, true)).then((userResponse) => {
+                const email = unwrap(safeWrap(userResponse.body).data.metadata.email);
+                if (email) {
+                    sendMailFromTemplate(req, emailTemplateName, {
+                        to: email,
+                        secretsPath: path
+                    });
+                }
+            });
+        });
+        console.warn('DELETE REQUEST ', path);
+        deleteRequest({
+            path
+        });
+    });
+};
+
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
@@ -109,9 +161,7 @@ const router = require('express').Router()
         });
         const {body, statusCode} = response;
         if (body && statusCode === 200) {
-            deleteRequest({
-                path
-            });
+            _deleteRequestAndNotifyUsers(req, path, 'secrets-updated');
         }
         res.status(statusCode).json(body);
     })
@@ -291,9 +341,7 @@ const router = require('express').Router()
                 method: 'DELETE'
             });
             if (response.statusCode === 200 || response.statusCode === 204) { // 204 Status Code indicates success with no response.
-                deleteRequest({
-                    path
-                });
+                _deleteRequestAndNotifyUsers(req, path, 'secrets-deleted');
                 sendJsonResponse(req, res, {
                     status: 'ok'
                 });

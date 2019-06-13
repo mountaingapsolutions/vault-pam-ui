@@ -135,11 +135,58 @@ const secretsRequestRejectionTemplate = (req, emailData) => {
     };
 };
 
+/**
+ * Returns the secrets deleted template.
+ *
+ * @param {Object} req The HTTP request object.
+ * @param {Object} emailData The email data map.
+ * @returns {Object}
+ */
+const secretsDeletedTemplate = (req, emailData) => {
+    const {firstName, lastName, username} = req.session.user;
+    const name = firstName && lastName ? `${firstName} ${lastName}` : username;
+    const {to, secretsPath} = emailData;
+    return {
+        from: _getSenderFromRequest(req),
+        to,
+        subject: `[Vault PAM] Secrets access removed - ${secretsPath}`,
+        html: _createTemplate('Secrets access removed',
+            `<p style="color: #000;">
+                 <b>${name}</b> has deleted <b>${secretsPath}</b>.
+             </p>`)
+    };
+};
+
+/**
+ * Returns the secrets updated template.
+ *
+ * @param {Object} req The HTTP request object.
+ * @param {Object} emailData The email data map.
+ * @returns {Object}
+ */
+const secretsUpdatedTemplate = (req, emailData) => {
+    const {firstName, lastName, username} = req.session.user;
+    const name = firstName && lastName ? `${firstName} ${lastName}` : username;
+    const {to, secretsPath} = emailData;
+    return {
+        from: _getSenderFromRequest(req),
+        to,
+        subject: `[Vault PAM] Secrets access removed - ${secretsPath}`,
+        html: _createTemplate('Secrets access removed',
+            `<p style="color: #000;">
+                 <b>${name}</b> has updated <b>${secretsPath}</b>.
+                 You are receiving this email, because you have a pending or approved request to <b>${secretsPath}</b>.
+                 Initiate a new request to obtain access again.
+             </p>`)
+    };
+};
+
 module.exports = {
-    secretsRequestTemplate,
     'approve-request': secretsRequestApprovalTemplate,
     'cancel-request': secretsRequestCancellationTemplate,
     'create-request': secretsRequestTemplate,
-    'reject-request': secretsRequestRejectionTemplate
+    'reject-request': secretsRequestRejectionTemplate,
+    'secrets-deleted': secretsDeletedTemplate,
+    'secrets-updated': secretsUpdatedTemplate
 };
 
