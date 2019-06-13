@@ -1,4 +1,5 @@
 /* global afterAll, beforeEach, expect, it, jest */
+
 import {createMemoryHistory} from 'history';
 import React from 'react';
 import renderer from 'react-test-renderer';
@@ -13,6 +14,7 @@ import systemReducer from 'app/core/reducers/systemReducer';
 import Auth from './Auth';
 import reduxThunk from 'redux-thunk';
 
+jest.mock('app/routes/auth/Login');
 jest.mock('app/core/actions/systemAction');
 
 /**
