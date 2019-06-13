@@ -231,11 +231,6 @@ it('renders the lock icon if Vault is sealed', () => {
     const testInstance = renderer.create(_getInstance({
         ...DEFAULT_MOCK_STATE,
         systemReducer: {
-            config: {
-                features: {
-                    cubbyhole: true
-                }
-            },
             sealStatus: {
                 sealed: true
             }
@@ -247,6 +242,14 @@ it('renders the lock icon if Vault is sealed', () => {
 it('renders the expected mount icons from type', () => {
     const testInstance = renderer.create(_getInstance({
         ...DEFAULT_MOCK_STATE,
+        systemReducer: {
+            config: {
+                features: {
+                    cubbyhole: true
+                }
+            },
+            sealStatus: {}
+        },
         secretReducer: {
             secretsMounts: {
                 data: [{
