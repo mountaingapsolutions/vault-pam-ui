@@ -64,9 +64,9 @@ const router = require('express').Router()
 
             const {input} = req.body;
             if (typeof input === 'string') {
-                const {VAULT_API_TOKEN: apiToken} = process.env;
+                const {AUDIT_SALT: auditSalt} = process.env;
                 // eslint-disable-next-line new-cap
-                sendJsonResponse(req, res, cryptoJs.HmacSHA256(input, apiToken).toString(cryptoJs.enc.Hex));
+                sendJsonResponse(req, res, cryptoJs.HmacSHA256(input, auditSalt).toString(cryptoJs.enc.Hex));
             } else {
                 sendError(req, res, 'Invalid input type. Input must be of type string');
             }
