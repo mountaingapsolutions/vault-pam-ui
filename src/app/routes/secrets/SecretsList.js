@@ -431,6 +431,9 @@ class SecretsList extends Component {
         const {mount, path} = params;
         const paths = path ? [mount].concat(path.split('/')) : [mount];
         const buttonClassName = `${classes.disableMinWidth} ${classes.disablePadding}`;
+        const engineType = this._getEngineTypeFromMount(mount);
+        const isKv = engineType === 'kv' || engineType === 'cubbyhole';
+        const showCreateSecretButton = isKv && (secretsPaths.capabilities || []).some(capability => capability === 'create' || capability === 'root');
         return <CardContent>{
             mount && <List disablePadding>
                 <ListItem disableGutters className={classes.disablePadding}>
@@ -456,8 +459,7 @@ class SecretsList extends Component {
                         })
                     }</Breadcrumbs>
                     {
-                        (secretsPaths.capabilities || []).some(capability => capability === 'create' || capability === 'root') &&
-                        <React.Fragment>
+                        showCreateSecretButton && <React.Fragment>
                             <Fab
                                 aria-label='new'
                                 className={classes.fab}
