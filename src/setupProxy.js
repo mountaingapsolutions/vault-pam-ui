@@ -1,5 +1,5 @@
 const {api, config, login, authenticatedRoutes} = require('services/routes');
-const {checkPremiumFeatures, getSessionMiddleware} = require('services/utils');
+const {checkFeatures, getSessionMiddleware} = require('services/utils');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 
@@ -14,5 +14,5 @@ module.exports = (app) => {
     app.post('/login', login);
     app.use('/rest', authenticatedRoutes);
 
-    checkPremiumFeatures(app);
+    checkFeatures(app);
 };

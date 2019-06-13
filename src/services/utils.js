@@ -51,14 +51,15 @@ const asyncRequest = (options) => {
 };
 
 /**
- * Checks for premium features and injects it app.local to be used throughout the application lifecycle.
+ * Checks for features and injects it app.local to be used throughout the application lifecycle.
  *
  * @param {Object} app The top-level Express application.
  */
-const checkPremiumFeatures = (app) => {
+const checkFeatures = (app) => {
     const features = app.locals.features ? {
         ...app.locals.features
     } : {};
+    features.cubbyhole = String(process.env.ENABLE_CUBBYHOLE).toLowerCase() === 'true';
     try {
         const {validate} = require('vault-pam-premium');
         logger.log(chalk.bold.green('Premium features available.'));
@@ -163,7 +164,7 @@ const validateDomain = async (domain) => {
 
 module.exports = {
     asyncRequest,
-    checkPremiumFeatures,
+    checkFeatures,
     initApiRequest,
     getDomain,
     getSessionMiddleware,
