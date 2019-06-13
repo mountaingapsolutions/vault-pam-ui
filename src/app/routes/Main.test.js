@@ -231,6 +231,11 @@ it('renders the lock icon if Vault is sealed', () => {
     const testInstance = renderer.create(_getInstance({
         ...DEFAULT_MOCK_STATE,
         systemReducer: {
+            config: {
+                features: {
+                    cubbyhole: true
+                }
+            },
             sealStatus: {
                 sealed: true
             }
