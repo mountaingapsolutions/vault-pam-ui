@@ -1,8 +1,37 @@
 const request = require('request');
-const {initApiRequest, getDomain} = require('services/utils');
+const {initApiRequest, getDomain, sendJsonResponse} = require('services/utils');
 const {sendError} = require('services/error/errorHandler');
-const {REQUEST_TYPES} = require('services/constants');
-const {getRequests, revokeRequest} = require('services/db/controllers/requestsController');
+const {revokeRequest} = require('services/db/controllers/requestsController');
+const logger = require('services/logger');
+
+/**
+ * Get lease information
+ *
+ * @param {Object} req The HTTP request object.
+ * @param {Object} key lease key to lookup
+ * @returns {Promise}
+ */
+const _getLease = (req, key) => {
+    return new Promise((resolve, reject) => {
+        const {VAULT_API_TOKEN: apiToken} = process.env;
+        const {mount, role} = req.query;
+        const apiUrl = `${getDomain()}/v1/sys/leases/lookup`;
+        const leaseId = `${mount}/creds/${role}/${key}`;
+        request({
+            ...initApiRequest(apiToken, apiUrl),
+            method: 'PUT',
+            json: {
+                lease_id: leaseId
+            }
+        }, (error, response) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(response);
+            }
+        });
+    });
+};
 
 /**
  * Get active lease of certain role.
@@ -10,7 +39,7 @@ const {getRequests, revokeRequest} = require('services/db/controllers/requestsCo
  * @param {Object} req The HTTP request object.
  * @returns {Promise}
  */
-const _getLease = req => {
+const _getLeaseList = req => {
     return new Promise((resolve, reject) => {
         const domain = getDomain();
         const {mount, role} = req.query;
@@ -54,29 +83,6 @@ const _revokeLease = lease_id => {
     });
 };
 
-/**
- * Retrieves entity lists.
- *
- * @returns {Promise}
- */
-const _getEntityIdInfo = () => {
-    return new Promise((resolve, reject) => {
-        const domain = getDomain();
-        const {VAULT_API_TOKEN: apiToken} = process.env;
-        const apiUrl = `${domain}/v1/identity/entity/id?list=true`;
-        request({
-            ...initApiRequest(apiToken, apiUrl),
-            method: 'GET'
-        }, (error, response) => {
-            if (error) {
-                reject(error);
-            } else {
-                resolve(response.body);
-            }
-        });
-    });
-};
-
 /* eslint-disable new-cap */
 const router = require('express').Router()
 /* eslint-enable new-cap */
@@ -108,34 +114,30 @@ const router = require('express').Router()
      *         description: Not found.
      */
     .get('/lease', async (req, res) => {
-        const {mount, role} = req.query;
-        const enginePath = `${mount}/${role}`;
         try {
-            const response = await _getLease(req);
-            const leaseKeys = ((response.body || {}).data || {}).keys || [];
-            const dynamicRequests = await getRequests({
-                type: REQUEST_TYPES.DYNAMIC_REQUEST
-            });
-            const {data = {}} = await _getEntityIdInfo();
-            const {key_info} = data;
+            const promises = [];
+            const leaseList = await _getLeaseList(req);
+            const leaseKeys = ((leaseList.body || {}).data || {}).keys || [];
             let mappedData = {};
             leaseKeys.forEach(key => {
-                const requestData = dynamicRequests.find(dbReq => {
-                    const {path, referenceData = {}} = dbReq.dataValues;
-                    const leaseId = ((referenceData || {}).leaseId || '').split('/') || [];
-                    const isLease = leaseId[leaseId.length - 1] === key;
-                    const isSameMount = path === enginePath;
-                    return isLease && isSameMount;
+                const getLeasePromise = _getLease(req, key);
+                getLeasePromise.then((response) => {
+                    const requestData = (response.body || {}).data;
+                    mappedData[key] = {
+                        expireTime: `Expires ${new Date(requestData.expire_time).toLocaleString()}`,
+                        leaseId: requestData.id
+                    };
                 });
-                if (requestData) {
-                    const {id, entityId, path, responses} = requestData.dataValues;
-                    const {entityId: approverId} = responses[0];
-                    const {name} = key_info[entityId];
-                    mappedData[key] = {approverId, requestId: id, leaseId: `${mount}/creds/${role}/${key}`, requesterName: name, entityId, path};
-                }
+                promises.push(getLeasePromise);
             });
-            response.body.data = mappedData;
-            res.status(response.statusCode).json(response.body);
+            Promise.all(promises)
+                .then(() => {
+                    sendJsonResponse(req, res, mappedData);
+                })
+                .catch((err) => {
+                    logger.error(err.toString(), req, res, null, err);
+                    sendJsonResponse(req, res, [], 500);
+                });
         } catch (err) {
             sendError(req.originalUrl, res, err);
         }

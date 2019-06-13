@@ -117,7 +117,7 @@ deploy_standard:
   stage: deploy
   <<: *branch_definition
   variables:
-    EB_APP_ENV: "development-standard"
+    EB_APP_ENV: "internal-mgs"
   script:
     - source build_vars
     - export BUILD_VERSION

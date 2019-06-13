@@ -1,4 +1,4 @@
-import {clone, updateIn, updateOrAppend} from '@mountaingapsolutions/objectutil';
+import {clone, safeWrap, unwrap, updateIn, updateOrAppend} from '@mountaingapsolutions/objectutil';
 import secretAction from 'app/core/actions/secretAction';
 
 /**
@@ -30,7 +30,7 @@ export default (previousState = {
                 secrets: (action.data || {}).data || {}
             };
         case secretAction.ACTION_TYPES.LIST_MOUNTS:
-            const mounts = (action.data || {}).data || {};
+            const mounts = unwrap(safeWrap(action).data.data.secret) || {};
             return {
                 ...previousState,
                 secretsMounts: {data: Object.keys(mounts).map(key => {
@@ -70,7 +70,7 @@ export default (previousState = {
         case secretAction.ACTION_TYPES.LIST_LEASE:
             return {
                 ...previousState,
-                leaseList: (action.data || {}).data || {}
+                leaseList: action.data || {}
             };
         case secretAction.ACTION_TYPES.LIST_APPROVERS:
             return {

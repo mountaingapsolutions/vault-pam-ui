@@ -186,14 +186,15 @@ class NotificationsModal extends Component {
      */
     _renderRequestDetails(selectedRequest) {
         const {approvers, classes, inProgress} = this.props;
-        const {approved, creationTime, path, requestEntity} = selectedRequest;
+        const {approved, authorizations, creationTime, path, requestEntity} = selectedRequest;
         const {name} = requestEntity || {};
-        const namesList = approvers.map(approver => {
+        const availableApprovers = approvers.map(approver => {
             if (approver.metadata) {
                 return `${approver.metadata.firstName} ${approver.metadata.lastName}`;
             }
             return approver.name;
         });
+        const actualApprovers = authorizations.map((authorization) => authorization.name);
         return inProgress ?
             <Grid container justify='center'>
                 <Grid item>
@@ -255,16 +256,31 @@ class NotificationsModal extends Component {
                 </ListItem>
                 <ListItem alignItems='flex-start'>
                     <ListItemText
-                        primary={'Approvers:'}
+                        primary={'Available Approvers:'}
                         secondary={
                             <React.Fragment>
                                 <Typography className={classes.block} color='textSecondary' component='span'>
-                                    {namesList.join(', ')}
+                                    {availableApprovers.join(', ')}
                                 </Typography>
                             </React.Fragment>
                         }
                     />
                 </ListItem>
+                {
+                    actualApprovers.length > 0 &&
+                    <ListItem alignItems='flex-start'>
+                        <ListItemText
+                            primary={'Approvers:'}
+                            secondary={
+                                <React.Fragment>
+                                    <Typography className={classes.block} color='textSecondary' component='span'>
+                                        {actualApprovers.join(', ')}
+                                    </Typography>
+                                </React.Fragment>
+                            }
+                        />
+                    </ListItem>
+                }
             </GridList>;
     }
 
@@ -383,7 +399,8 @@ class NotificationsModal extends Component {
                                         id,
                                         isOwnRequest,
                                         name,
-                                        path
+                                        path,
+                                        type
                                     };
                                     return <React.Fragment key={`${path}-${i}`}>
                                         <ListItem alignItems='flex-start'>

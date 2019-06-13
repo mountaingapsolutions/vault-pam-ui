@@ -268,9 +268,7 @@ it('get secrets, with update capabilities', () => {
 });
 
 it('setting secret data', () => {
-    let newState = {...DEFAULT_MOCK_STATE};
-
-    const testInstance = renderer.create(_getInstance(newState)).root;
+    const testInstance = renderer.create(_getInstance()).root;
 
     //LIST COMPONENT - OPEN FUNCTIONALITY
     const mountBtn = testInstance.findAllByType(ListItem)[0].props;

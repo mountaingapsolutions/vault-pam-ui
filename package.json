@@ -9,7 +9,7 @@
     "url": "git@github.com:mountaingapsolutions/vault-pam-ui.git"
   },
   "dependencies": {
-    "@mountaingapsolutions/objectutil": "^1.1.0",
+    "@mountaingapsolutions/objectutil": "^1.1.1",
     "app-module-path": "^2.2.0",
     "body-parser": "^1.19.0",
     "chalk": "^2.4.2",
@@ -25,6 +25,7 @@
     "express-session": "^1.16.1",
     "hcl-to-json": "^0.1.1",
     "hsts": "^2.2.0",
+    "jest-fetch-mock": "^2.1.2",
     "md5": "^2.2.1",
     "nodemailer": "^6.2.1",
     "pg": "^7.11.0",
@@ -43,6 +44,7 @@
     "@loadable/component": "^5.10.1",
     "@material-ui/core": "^4.0.1",
     "@material-ui/icons": "^4.0.1",
+    "@mountaingapsolutions/include": "^1.0.0",
     "@svgr/webpack": "^4.3.0",
     "archiver": "^3.0.0",
     "babel-core": "7.0.0-bridge.0",
@@ -109,7 +111,6 @@
     "build": "GENERATE_SOURCEMAP=false node scripts/build.js",
     "postbuild": "mkdir dist && mv build dist/build && npm run copyappfiles && node scripts/dist.js",
     "copyappfiles": "cp .env dist/ || : && cp package.json dist/ && cp robots.txt dist/ && cp src/productionServer.js dist/ && cp -R src/services dist",
-    "installpremium": "npm install bitbucket:mountaingapsolutions/vault-pam-premium --no-save && echo Successfully installed premium features. || echo Failed to install. Premium features will not be available.",
     "lint": "eslint --ext .js,.jsx --format table .",
     "test": "node scripts/test.js",
     "startpm2prod": "pm2-runtime start productionServer.js"

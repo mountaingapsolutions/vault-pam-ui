@@ -431,6 +431,9 @@ class SecretsList extends Component {
         const {mount, path} = params;
         const paths = path ? [mount].concat(path.split('/')) : [mount];
         const buttonClassName = `${classes.disableMinWidth} ${classes.disablePadding}`;
+        const engineType = this._getEngineTypeFromMount(mount);
+        const isKv = engineType === 'kv' || engineType === 'cubbyhole';
+        const showCreateSecretButton = isKv && (secretsPaths.capabilities || []).some(capability => capability === 'create' || capability === 'root');
         return <CardContent>{
             mount && <List disablePadding>
                 <ListItem disableGutters className={classes.disablePadding}>
@@ -456,8 +459,7 @@ class SecretsList extends Component {
                         })
                     }</Breadcrumbs>
                     {
-                        (secretsPaths.capabilities || []).some(capability => capability === 'create' || capability === 'root') &&
-                        <React.Fragment>
+                        showCreateSecretButton && <React.Fragment>
                             <Fab
                                 aria-label='new'
                                 className={classes.fab}
@@ -647,10 +649,10 @@ class SecretsList extends Component {
                 buttonTitle='Revoke'
                 isLoading={leaseModalInProgress}
                 items={leaseList}
-                listTitle={`Active lease in ${dynamicEnginePath}`}
+                listTitle={`Active leases in ${dynamicEnginePath}`}
                 open={showLeaseListModal}
-                primaryTextPropName='requesterName'
-                secondaryTextPropName='leaseId'
+                primaryTextPropName='leaseId'
+                secondaryTextPropName='expireTime'
                 onClick={item => this._revokeLease(item)}
                 onClose={() => this._toggleLeaseListModal()}
             />
@@ -716,8 +718,6 @@ const _mapStateToProps = (state, ownProps) => {
         const mountPath = `${mount}/${currentPath}`;
         const isWrapped = !!wrapInfo;
         let isApproved = false;
-        let isOpened = false;
-        let isDynamicAndCanOpen = false;
         const requiresRequest = !capabilities.includes('read') && !name.endsWith('/') || isWrapped;
         let activeRequest;
         let secondaryText;
@@ -728,15 +728,13 @@ const _mapStateToProps = (state, ownProps) => {
             const secretsPath = `${mount}${isV2 ? '/data/' : '/'}${currentPath}`;
             activeRequest = secretsRequests.find((request) => request.path === secretsPath);
             if (activeRequest) {
-                const {approved, authorizations, creationTime, opened} = activeRequest;
-                isOpened = opened;
-                isDynamicAndCanOpen = isDynamicSecret ? !isOpened : true;
-                isApproved = approved && isDynamicAndCanOpen;
+                const {approved, authorizations, creationTime} = activeRequest;
+                isApproved = approved;
                 if (isApproved) {
                     const namesList = authorizations.map((authorization) => authorization.name);
                     authorizationsText = `Approved by ${namesList.join(', ')}.`;
                 }
-                if (creationTime && isDynamicAndCanOpen) {
+                if (creationTime) {
                     secondaryText += ` (Requested at ${new Date(creationTime).toLocaleString()})`;
                 }
             }
@@ -748,7 +746,7 @@ const _mapStateToProps = (state, ownProps) => {
             canUpdate: capabilities.some(capability => capability === 'update' || capability === 'root'),
             isApproved,
             isDynamicSecret,
-            isPending: !!activeRequest && !isApproved && isDynamicAndCanOpen,
+            isPending: !!activeRequest && !isApproved,
             isWrapped,
             name,
             requiresRequest,

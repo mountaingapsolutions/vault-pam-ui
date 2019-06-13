@@ -247,7 +247,7 @@ const revokeRequest = async (requestParams) => {
 };
 
 /**
- * Revoke a lease from the approver's perspective
+ * Open a lease from the requester's perspective
  *
  * @param {Object} requestParams The request parameters.
  * @returns {Promise}

@@ -101,7 +101,7 @@ class SecretAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     listMounts() {
-        return this._dispatchGet(this.ACTION_TYPES.LIST_MOUNTS, '/api/v1/sys/mounts');
+        return this._dispatchGet(this.ACTION_TYPES.LIST_MOUNTS, '/api/v1/sys/internal/ui/mounts');
     }
 
     /**
@@ -161,20 +161,18 @@ class SecretAction extends _Actions {
      * @returns {function} Redux dispatch function.
      */
     requestSecret(requestData) {
-        return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/secret/request', {
-            ...requestData
-        });
+        return this._dispatchPost(this.ACTION_TYPES.REQUEST_SECRET, '/rest/secret/request', requestData);
     }
 
     /**
-     * Returns a list of key names at the specified location
+     * Create or update secrets.
      *
      * @param {string} path Specifies the path of the secrets to list.
      * @param {Object} secrets The secrets key value map to save.
      * @returns {function} Redux dispatch function.
      */
     saveSecret(path, secrets) {
-        return this._dispatchPost(this.ACTION_TYPES.SAVE_SECRET, `/api/v1/${this._encodePath(path)}`, secrets);
+        return this._dispatchPost(this.ACTION_TYPES.SAVE_SECRET, `/rest/secrets/${this._encodePath(path)}`, secrets);
     }
 
     /**

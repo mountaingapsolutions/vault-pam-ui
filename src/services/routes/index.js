@@ -7,7 +7,7 @@ const {router: auditServiceRouter} = require('services/routes/auditService');
 const {router: secretsServiceRouter} = require('services/routes/secretsService');
 const {router: userServiceRouter} = require('services/routes/userService');
 const {router: requestServiceRouter} = require('services/routes/requestService');
-const {router: dynamicSecretServicRoute} = require('services/routes/dynamicSecretRequestService');
+const {router: dynamicSecretServiceRouter} = require('services/routes/dynamicSecretService');
 const {initApiRequest, getDomain, sendJsonResponse, setSessionData} = require('services/utils');
 const {sendError} = require('services/error/errorHandler');
 const logger = require('services/logger');
@@ -48,9 +48,9 @@ const api = (req, res) => {
  */
 const config = (req, res) => {
     _disableCache(res);
-    const {SHOW_BUILD_NUMBER: showBuildNumber, EB_VERSION: buildNumber} = process.env;
+    const {EB_VERSION: buildNumber} = process.env;
     sendJsonResponse(req, res, {
-        build: {showBuildNumber, buildNumber},
+        build: {buildNumber},
         domain: process.env.VAULT_DOMAIN,
         features: req.app.locals.features || {},
     });
@@ -186,14 +186,14 @@ const authenticatedRoutes = require('express').Router()
     .use('/secret', requestServiceRouter)
     .use('/secrets', secretsServiceRouter)
     .use('/log', logger.router)
-    .use('/dynamic', dynamicSecretServicRoute)
+    .use('/dynamic', dynamicSecretServiceRouter)
     .get('/session', (req, res) => {
         const {'x-vault-token': token} = req.headers;
         _sendTokenValidationResponse(token, req, res);
     })
     .use((req, res) => {
         sendJsonResponse(req, res, {
-            errors: ['These are\'t the droids you\'re looking for.']
+            errors: ['These aren\'t the droids you\'re looking for.']
         }, 400);
     });
 

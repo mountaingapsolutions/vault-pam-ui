@@ -13,7 +13,7 @@ import {
     Typography
 } from '@material-ui/core';
 import Button from 'app/core/components/Button';
-import {withStyles} from '@material-ui/core/styles/index';
+import {withStyles} from '@material-ui/core/styles';
 
 /**
  * Generic list modal.
