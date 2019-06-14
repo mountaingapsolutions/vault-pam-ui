@@ -10,11 +10,8 @@ import {
     FormHelperText,
     Grid,
     IconButton,
-    InputAdornment,
     InputBase,
-    List,
-    ListItem,
-    ListItemSecondaryAction,
+    MenuItem,
     Paper,
     Switch,
     TextField,
@@ -37,6 +34,8 @@ import secretAction from 'app/core/actions/secretAction';
 import Button from 'app/core/components/Button';
 import CodeEditorArea from 'app/core/components/CodeEditorArea';
 
+import constants from 'app/util/constants';
+
 import {createInProgressSelector} from 'app/util/actionStatusSelector';
 
 /**
@@ -54,7 +53,8 @@ class CreateUpdateSecretModal extends Component {
             key: '',
             value: '',
             showPassword: false
-        }]
+        }],
+        selectedRoleType: ''
     };
 
     /**
@@ -74,6 +74,7 @@ class CreateUpdateSecretModal extends Component {
         this._createNewPath = this._createNewPath.bind(this);
         this._onPathValueChange = this._onPathValueChange.bind(this);
         this._onSubmit = this._onSubmit.bind(this);
+        this._onSelectChange = this._onSelectChange.bind(this);
         this._onValueChange = this._onValueChange.bind(this);
         this._resetState = this._resetState.bind(this);
         this._setSecretsFromJson = this._setSecretsFromJson.bind(this);
@@ -424,6 +425,64 @@ class CreateUpdateSecretModal extends Component {
     }
 
     /**
+     * Handle for when a select change is triggered.
+     *
+     * @private
+     * @param {SyntheticMouseEvent} event The event.
+     */
+    _onSelectChange(event) {
+        event.preventDefault();
+        const {value} = event.target;
+        this.setState({selectedRoleType: value});
+    }
+
+    /**
+     * Renders the add role text inputs.
+     *
+     * @private
+     * @returns {React.ReactElement}
+     */
+    _renderRoleFields() {
+        const {classes} = this.props;
+        return <Grid container>
+            <Grid item className={classes.margin} xs={12}>
+                <TextField
+                    fullWidth
+                    required
+                    label='Role Name'
+                    margin='dense'
+                    variant='outlined'
+                    onChange={this._onValueChange}/>
+            </Grid>
+            <Grid item className={classes.margin} xs={12}>
+                <TextField
+                    fullWidth
+                    required
+                    select
+                    label='Credential type'
+                    margin='normal'
+                    value={this.state.selectedRoleType}
+                    variant='outlined'
+                    onChange={this._onSelectChange}>
+                    {constants.AWS_CREDENTIAL_TYPES.map(option =>
+                        <MenuItem key={option.value} value={option.value}>
+                            {option.label}
+                        </MenuItem>
+                    )}
+                </TextField>
+            </Grid>
+            <Grid item className={classes.margin} xs={12}>
+                <TextField
+                    fullWidth
+                    label='Policy ARNs'
+                    margin='dense'
+                    variant='outlined'
+                    onChange={this._onValueChange}/>
+            </Grid>
+        </Grid>;
+    }
+
+    /**
      * Renders the paths input field.
      *
      * @private
@@ -502,7 +561,7 @@ class CreateUpdateSecretModal extends Component {
             </div>
             {errors.currentPath &&
             <FormHelperText error className={classes.pathError}>{errors.currentPath}</FormHelperText>}
-            <div className={classes.buttonRow}>
+            {mode === 'createRole' ? this._renderRoleFields() : <div className={classes.buttonRow}>
                 <FormControlLabel
                     checked={displayAsJson}
                     classes={{
@@ -527,105 +586,7 @@ class CreateUpdateSecretModal extends Component {
                 <Button color='default' variant='text' onClick={this._copySecret}>
                     Copy
                 </Button>
-            </div>
-        </Paper>;
-    }
-
-    /**
-     * Renders the secrets input area.
-     *
-     * @private
-     * @returns {React.ReactElement}
-     */
-    _renderSecretsList() {
-        const {classes, mode} = this.props;
-        const {errors, secrets} = this.state;
-
-        return <Paper elevation={1}>
-            <List>
-                {secrets.map((secret, i) => {
-                    const {key = '', value = '', showPassword} = secret;
-                    const keyKey = `key-${i}`;
-                    const keyError = errors[keyKey];
-                    const valueKey = `value-${i}`;
-                    const valueError = errors[valueKey];
-                    return <ListItem className={classes.listItem} key={`secret-${i}`}>
-                        <Grid container spacing={2}>
-                            <Grid item className={classes.marginRight} xs={4}>
-                                <TextField
-                                    fullWidth
-                                    required
-                                    error={!!keyError}
-                                    helperText={keyError}
-                                    label='Key'
-                                    margin='dense'
-                                    name={keyKey}
-                                    value={key}
-                                    variant='outlined'
-                                    onChange={this._onValueChange}/>
-                            </Grid>
-                            <Grid item xs={7}>
-                                <TextField
-                                    fullWidth
-                                    required
-                                    error={!!valueError}
-                                    helperText={valueError}
-                                    InputProps={{
-                                        endAdornment: <InputAdornment position='end'>
-                                            <IconButton
-                                                aria-label='Toggle password visibility'
-                                                className={classes.iconButton}
-                                                onClick={(e) => {
-                                                    this._togglePasswordVisibility(e, `toggle-${i}`);
-                                                }}
-                                            >
-                                                {showPassword ? <VisibilityOffIcon/> : <VisibilityIcon/>}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    }}
-                                    label='Value'
-                                    margin='dense'
-                                    name={valueKey}
-                                    type={showPassword ? 'text' : 'password'}
-                                    value={value}
-                                    variant='outlined'
-                                    onChange={this._onValueChange}/>
-                            </Grid>
-                        </Grid>
-                        {
-                            mode !== 'read' && <ListItemSecondaryAction>
-                                {i === secrets.length - 1 ?
-                                    <IconButton aria-label='Add' className={classes.iconButton} onClick={() => {
-                                        const updatedSecrets = [...secrets];
-                                        updatedSecrets.push({
-                                            key: '',
-                                            value: ''
-                                        });
-                                        this.setState({
-                                            secrets: updatedSecrets
-                                        });
-                                    }}>
-                                        <NoteAddIcon/>
-                                    </IconButton>
-                                    :
-                                    <IconButton aria-label='Delete' className={classes.iconButton} onClick={() => {
-                                        const updatedErrors = {...errors};
-                                        delete updatedErrors[keyKey];
-                                        delete updatedErrors[valueKey];
-                                        const updatedSecrets = [...secrets];
-                                        updatedSecrets.splice(i, 1);
-                                        this.setState({
-                                            errors: updatedErrors,
-                                            secrets: updatedSecrets
-                                        });
-                                    }}>
-                                        <DeleteIcon/>
-                                    </IconButton>}
-                            </ListItemSecondaryAction>
-                        }
-                    </ListItem>;
-                })}
-            </List>
+            </div>}
         </Paper>;
     }
 
@@ -769,14 +730,17 @@ class CreateUpdateSecretModal extends Component {
             case 'update':
                 title = 'Edit Secret';
                 break;
+            case 'createRole':
+                title = 'Create Role';
+                break;
             default:
                 title = 'Create Secret';
         }
-        const showLoader = mode !== 'create' && !loaded || saving;
+        const showLoader = mode !== 'create' && mode !== 'createRole' && !loaded || saving;
         let contentArea;
         if (showLoader) {
             contentArea = this._renderLoadingProgress();
-        } else if (displayAsJson) {
+        } else if (displayAsJson || mode === 'createRole') {
             contentArea = this._renderSecretsListWithCodeEditor();
         } else {
             contentArea = this._renderSecretsListWithInputBase();
@@ -832,7 +796,7 @@ CreateUpdateSecretModal.propTypes = {
     error: PropTypes.string,
     initialPath: PropTypes.string.isRequired,
     inProgress: PropTypes.bool,
-    mode: PropTypes.oneOf(['', 'create', 'read', 'update']),
+    mode: PropTypes.oneOf(['', 'create', 'createRole', 'read', 'update']),
     onClose: PropTypes.func.isRequired,
     open: PropTypes.bool,
     saveSecret: PropTypes.func.isRequired,
@@ -966,6 +930,10 @@ const _styles = (theme) => ({
     },
     hidden: {
         display: 'none'
+    },
+    margin: {
+        marginLeft: 10,
+        marginRight: 10
     }
 });
 

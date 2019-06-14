@@ -432,8 +432,9 @@ class SecretsList extends Component {
         const paths = path ? [mount].concat(path.split('/')) : [mount];
         const buttonClassName = `${classes.disableMinWidth} ${classes.disablePadding}`;
         const engineType = this._getEngineTypeFromMount(mount);
-        const isKv = engineType === 'kv' || engineType === 'cubbyhole';
-        const showCreateSecretButton = isKv && (secretsPaths.capabilities || []).some(capability => capability === 'create' || capability === 'root');
+        const isDynamicSecret = constants.DYNAMIC_ENGINES.some(engine => engine === engineType);
+        const showCreateSecretButton = (secretsPaths.capabilities || []).some(capability => capability === 'create' || capability === 'root');
+        const mode = isDynamicSecret ? 'createRole' : 'create';
         return <CardContent>{
             mount && <List disablePadding>
                 <ListItem disableGutters className={classes.disablePadding}>
@@ -465,10 +466,10 @@ class SecretsList extends Component {
                                 className={classes.fab}
                                 color='primary' size='medium'
                                 variant='extended'
-                                onClick={() => this._toggleCreateUpdateSecretModal(paths.join('/'), 'create', true)}
+                                onClick={() => this._toggleCreateUpdateSecretModal(paths.join('/'), mode, true)}
                             >
                                 <AddIcon className={classes.marginRight}/>
-                                Create Secret
+                                Create {isDynamicSecret ? 'Role' : 'Secret'}
                             </Fab>
                         </React.Fragment>
                     }

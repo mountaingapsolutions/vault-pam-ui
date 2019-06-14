@@ -41,6 +41,11 @@ class Constants {
             {label: 'GitHub', type: 'github'},
             {label: 'Okta', type: 'okta'}
         ];
+        this.AWS_CREDENTIAL_TYPES = [
+            {label: 'IAM User', value: 'iam_user'},
+            {label: 'Assumed Role', value: 'assume_role'},
+            {label: 'Federation Token', value: 'federal_token'}
+        ];
     }
 }
 
