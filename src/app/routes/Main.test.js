@@ -55,7 +55,7 @@ const DEFAULT_MOCK_STATE = {
  * Configures the application store by invoking Redux's createStore method.
  *
  * @private
- * @param {Object} [initialState] = The initial state.
+ * @param {Object} [initialState] The initial state.
  * @returns {Object}
  */
 const _configureStore = (initialState = {}) => {
@@ -86,7 +86,7 @@ let _mockHistory = {
  * Renders an instance of Main for testing.
  *
  * @private
- * @param {Object} [initialState] = The initial state.
+ * @param {Object} [initialState] The initial state.
  * @returns {ReactElement}
  */
 const _getInstance = (initialState) => {

@@ -4,7 +4,7 @@ import React from 'react';
 import renderer from 'react-test-renderer';
 import {applyMiddleware, combineReducers, createStore} from 'redux';
 import {Provider} from 'react-redux';
-import {Router} from 'react-router-dom';
+import {Route, Router} from 'react-router-dom';
 
 import secretReducer from 'app/core/reducers/secretReducer';
 import sessionReducer from 'app/core/reducers/sessionReducer';
@@ -20,9 +20,7 @@ import reduxThunk from 'redux-thunk';
 jest.mock('app/core/actions/secretAction');
 jest.mock('app/core/components/ConfirmationModal');
 jest.mock('app/core/components/CreateUpdateSecretModal');
-
-const MOUNT_NO_SUB_DIRECTORY = 'mockMount';
-const MOUNT_WITH_SUB_DIRECTORY = `${MOUNT_NO_SUB_DIRECTORY}/`;
+jest.mock('app/core/components/ListModal');
 
 const DEFAULT_SECRET_REDUCER_STATE = {
     secretReducer: {
@@ -35,38 +33,82 @@ const DEFAULT_SECRET_REDUCER_STATE = {
     }
 };
 
-const MOCK_SERCRETS_MOUNTS = {secretsMounts: {
-    data: [{options: {},
-        type: 'mockType',
-        name: MOUNT_WITH_SUB_DIRECTORY}]}};
-
-const MOCK_SECRETS_PATHS = {secretsPaths: {secrets: [
-    {name: MOUNT_WITH_SUB_DIRECTORY,
-        capabilities: ['read'],
-        data: {wrap_info: {
-            token: 'mocktoken234124kjh',
-            accessor: 'testaccessor',
-            creation_time: '2019-06-06T19:07:52Z',
-            creation_path: 'mockName/data/test/mockUser'}}}]}};
-
-const MOCK_SECRETS_REQUESTS = {secretsRequests: [
-    {approved: true,
-        creationTime: '2019-05-30T19:55:01.833Z',
-        authorizations: [
-            {id: 78,
-                type: 'APPROVED',
-                name: 'testadmin'}],
-        isWrapped: false,
-        id: 39,
-        opened: false,
-        path: 'undefined/mockMount', //TODO undefined -> having issue passing the mount through Router
-        type: 'standard-request'}]};
-
 const DEFAULT_MOCK_STATE = {
     secretReducer: {
-        ...MOCK_SERCRETS_MOUNTS,
-        ...MOCK_SECRETS_PATHS,
-        ...MOCK_SECRETS_REQUESTS
+        secretsMounts: {
+            data: [{
+                options: {
+                    version: '1'
+                },
+                type: 'kv',
+                name: 'Mock-KV-v1-Mount/'
+            }, {
+                options: {
+                    version: '2'
+                },
+                type: 'kv',
+                name: 'Mock-KV-v2-Mount/'
+            }, {
+                type: 'aws',
+                name: 'Mock-AWS-Mount/'
+            }, {
+                type: 'azure',
+                name: 'Mock-Azure-Mount/'
+            }]
+        },
+        secretsPaths: {
+            secrets: [{
+                name: 'test-secret-data',
+                capabilities: ['create', 'delete', 'list', 'read', 'update'],
+                data: {}
+            }, {
+                name: 'test-secret-path/',
+                capabilities: ['list']
+            }, {
+                name: 'test-secret-data-read-only',
+                capabilities: ['read']
+            }, {
+                name: 'test-secret-data-read-only-with-data',
+                capabilities: ['read'],
+                data: {}
+            }, {
+                name: 'approved-test-data',
+                capabilities: []
+            }, {
+                name: 'approved-wrapped-test-data',
+                capabilities: [],
+                data: {
+                    wrap_info: {}
+                }
+            }, {
+                name: 'test-secret-data-that-requires-request',
+                capabilities: []
+            }, {
+                name: 'test-secret-data-with-pending-request',
+                capabilities: []
+            }]
+        },
+        secretsRequests: [{
+            approved: true,
+            authorizations: [],
+            path: 'Mock-AWS-Mount/approved-test-data',
+            type: 'dynamic-request'
+        }, {
+            approved: true,
+            authorizations: [],
+            path: 'Mock-KV-v1-Mount/approved-wrapped-test-data',
+            type: 'control-group'
+        }, {
+            approved: true,
+            authorizations: [],
+            path: 'Mock-KV-v1-Mount/approved-test-data',
+            type: 'standard-request'
+        }, {
+            approved: false,
+            authorizations: [],
+            path: 'Mock-KV-v1-Mount/test-secret-data-with-pending-request',
+            type: 'standard-request'
+        }]
     }
 };
 
@@ -74,7 +116,7 @@ const DEFAULT_MOCK_STATE = {
  * Configures the application store by invoking Redux's createStore method.
  *
  * @private
- * @param {Object} [initialState] = The initial state.
+ * @param {Object} [initialState] The initial state.
  * @returns {Object}
  */
 const _configureStore = (initialState = {}) => {
@@ -93,25 +135,26 @@ const _configureStore = (initialState = {}) => {
     );
 };
 
-let _mockHistory = {
-    location: {
-        pathname: ''
-    },
-    listen: jest.fn(),
-    push: jest.fn()
-};
-
 /**
  * Renders an instance of Auth for testing.
  *
  * @private
- * @param {Object} [initialState] = The initial state.
+ * @param {Object} [initialState] The initial state.
+ * @param {string} [pathname] The path name.
  * @returns {ReactElement}
  */
-const _getInstance = (initialState) => {
+const _getInstance = (initialState, pathname = '/secrets/Mock-KV-v1-Mount/test-path') => {
+    const mockHistory = {
+        location: {
+            pathname
+        },
+        listen: jest.fn(),
+        push: jest.fn()
+    };
+
     return <Provider store={_configureStore(initialState)}>
-        <Router history={_mockHistory}>
-            <SecretsList/>
+        <Router history={mockHistory}>
+            <Route component={SecretsList} path='/secrets/:mount/:path*'/>
         </Router>
     </Provider>;
 };
@@ -125,6 +168,7 @@ beforeEach(() => {
 
     secretAction.deleteRequest.mockImplementation(() => () => new Promise((resolve) => resolve({})));
     secretAction.deleteSecrets.mockImplementation(() => () => new Promise((resolve) => resolve({})));
+    secretAction.getLeaseList.mockImplementation(() => () => new Promise((resolve) => resolve({})));
     secretAction.getSecrets.mockImplementation(() => () => new Promise((resolve) => resolve({})));
     secretAction.listMounts.mockImplementation(() => () => new Promise((resolve) => resolve({})));
     secretAction.listSecretsAndCapabilities.mockImplementation(() => () => new Promise((resolve) => resolve({})));
@@ -138,7 +182,7 @@ it('renders correctly', () => {
     expect(renderer.create(_getInstance()).toJSON()).toMatchSnapshot();
 });
 
-it('list secret mounts after component mounting', () => {
+it('fetches both mounts and secrets after component has mounted if no secrets mounts loaded', () => {
     renderer.create(_getInstance(DEFAULT_SECRET_REDUCER_STATE));
 
     return new Promise((resolve) => {
@@ -150,203 +194,181 @@ it('list secret mounts after component mounting', () => {
     });
 });
 
-it('clicking a secret mount and listing its sub-mount', () => {
+it('fetches just secrets after component has mounted if secrets mounts has already loaded', () => {
+    renderer.create(_getInstance());
+
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            expect(secretAction.listMounts).toHaveBeenCalledTimes(0);
+            expect(secretAction.listSecretsAndCapabilities).toHaveBeenCalledTimes(1);
+            resolve();
+        }, 0);
+    });
+});
+
+it('fetches kv v1 secrets appropriately', () => {
+    renderer.create(_getInstance(undefined, '/secrets/Mock-KV-v1-Mount/test-path'));
+
+    expect(secretAction.listSecretsAndCapabilities).toBeCalledWith('Mock-KV-v1-Mount/test-path', 1, 'kv');
+});
+
+it('fetches kv v2 secrets appropriately', () => {
+    renderer.create(_getInstance(undefined, '/secrets/Mock-KV-v2-Mount/test-path'));
+
+    expect(secretAction.listSecretsAndCapabilities).toBeCalledWith('Mock-KV-v2-Mount/test-path', 2, 'kv');
+});
+
+it('fetches aws secrets appropriately', () => {
+    renderer.create(_getInstance(undefined, '/secrets/Mock-AWS-Mount/test-path'));
+
+    expect(secretAction.listSecretsAndCapabilities).toBeCalledWith('Mock-AWS-Mount/test-path', 1, 'aws');
+});
+
+it('fetches data appropriately on clicking a secrets path', () => {
     const testInstance = renderer.create(_getInstance()).root;
 
-    const mountBtn = testInstance.findAllByType(ListItem)[0].props;
-    mountBtn.onClick({preventDefault: jest.fn()});
-
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            //WILL BE CALLED TWICE
-            //1. AFTER MOUNTING
-            //2. AFTER CLICKING THE PARENT MOUNT
-            expect(secretAction.listSecretsAndCapabilities).toHaveBeenCalledTimes(2);
-            resolve();
-        }, 0);
+    testInstance.findAllByType(ListItem)[2].props.onClick({
+        preventDefault: jest.fn()
     });
+
+    expect(secretAction.listSecretsAndCapabilities).lastCalledWith('Mock-KV-v1-Mount/test-path/test-secret-path', 1, 'kv');
 });
 
-it('deleting a secret mount', () => {
-    let newState = {...DEFAULT_MOCK_STATE};
-    newState.secretReducer.secretsPaths.secrets[0].capabilities.push('delete');
-    newState.secretReducer.secretsPaths.secrets[0].name = MOUNT_NO_SUB_DIRECTORY;
+it('retrieves lease data on clicking dynamic secrets', () => {
+    const testInstance = renderer.create(_getInstance(undefined, '/secrets/Mock-AWS-Mount/test-path')).root;
 
-    const testInstance = renderer.create(_getInstance(newState)).root;
+    testInstance.findAllByType(ListItem)[1].props.onClick({
+        preventDefault: jest.fn()
+    });
 
-    //LIST COMPONENT - DELETE FUNCTIONALITY
-    const mountBtn = testInstance.findAllByType(ListItem)[0].props;
-    mountBtn.onClick({preventDefault: jest.fn()});
+    expect(secretAction.getLeaseList).lastCalledWith('Mock-AWS-Mount', 'test-secret-data');
+});
 
-    //ICON BUTTON COMPONENT - DELETE FUNCTIONALITY
-    const iconDeleteBtn = testInstance.findAllByType(IconButton)[0].props;
-    iconDeleteBtn.onClick({preventDefault: jest.fn()});
+it('retrieves secrets data with full path on clicking kv v1 secrets', () => {
+    const testInstance = renderer.create(_getInstance(undefined, '/secrets/Mock-KV-v1-Mount/test-path')).root;
+
+    testInstance.findAllByType(ListItem)[1].props.onClick({
+        preventDefault: jest.fn()
+    });
+
+    expect(secretAction.getSecrets).lastCalledWith('Mock-KV-v1-Mount/test-path/test-secret-data');
+});
+
+it('retrieves secrets data with full path on clicking kv v2 secrets', () => {
+    const testInstance = renderer.create(_getInstance(undefined, '/secrets/Mock-KV-v2-Mount/test-path')).root;
+
+    testInstance.findAllByType(ListItem)[1].props.onClick({
+        preventDefault: jest.fn()
+    });
+
+    expect(secretAction.getSecrets).lastCalledWith('Mock-KV-v2-Mount/data/test-path/test-secret-data');
+});
+
+it('retrieves secrets data with full path on clicking secrets with read-only permission', () => {
+    const testInstance = renderer.create(_getInstance(undefined, '/secrets/Mock-KV-v2-Mount/test-path')).root;
+
+    testInstance.findAllByType(ListItem)[3].props.onClick({
+        preventDefault: jest.fn()
+    });
+
+    expect(secretAction.getSecrets).lastCalledWith('Mock-KV-v2-Mount/data/test-path/test-secret-data-read-only');
+});
+
+it('sets secrets data on clicking secrets with read-only permission if data already exists', () => {
+    const testInstance = renderer.create(_getInstance(undefined, '/secrets/Mock-KV-v2-Mount/test-path')).root;
+
+    testInstance.findAllByType(ListItem)[4].props.onClick({
+        preventDefault: jest.fn()
+    });
+
+    expect(secretAction.setSecretsData).toHaveBeenCalledTimes(1);
+});
+
+it('opens the confirmation modal on clicking an approved dynamic secrets request', () => {
+    const testInstance = renderer.create(_getInstance(undefined, '/secrets/Mock-AWS-Mount')).root;
+
+    testInstance.findAllByType(ListItem)[5].props.onClick({
+        preventDefault: jest.fn()
+    });
 
     expect(testInstance.findByType(ConfirmationModal).props.open).toBe(true);
-    expect(testInstance.findByType(ConfirmationModal).props.title).toBe(`Delete ${MOUNT_NO_SUB_DIRECTORY}?`);
-
-    //CONFIRMATION MODAL
-    const confirmationModal = testInstance.findAllByType(ConfirmationModal)[0].props;
-    confirmationModal.onClose({confirm: true});
-    expect(testInstance.findByType(ConfirmationModal).props.open).toBe(false);
-
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            expect(secretAction.deleteSecrets).toHaveBeenCalledTimes(1);
-            resolve();
-        }, 0);
-    });
 });
 
-it('unwraps control-groups approved secret request', () => {
-    let newState = {...DEFAULT_MOCK_STATE};
-    newState.secretReducer.secretsPaths.secrets[0].name = MOUNT_NO_SUB_DIRECTORY;
-    newState.secretReducer.secretsPaths.secrets[0].capabilities.pop();
+it('opens the confirmation modal on clicking an approved control group request', () => {
+    const testInstance = renderer.create(_getInstance(undefined, '/secrets/Mock-KV-v1-Mount')).root;
 
-    const testInstance = renderer.create(_getInstance(newState)).root;
-
-    //LIST COMPONENT - OPEN FUNCTIONALITY
-    const mountBtn = testInstance.findAllByType(ListItem)[0].props;
-    mountBtn.onClick({preventDefault: jest.fn()});
-
-    //ICON BUTTON COMPONENT - OPEN FUNCTIONALITY
-    const iconBtnOpen = testInstance.findAllByType(IconButton)[0].props;
-    iconBtnOpen.onClick({preventDefault: jest.fn()});
+    testInstance.findAllByType(ListItem)[6].props.onClick({
+        preventDefault: jest.fn()
+    });
 
     expect(testInstance.findByType(ConfirmationModal).props.open).toBe(true);
-    expect(testInstance.findByType(ConfirmationModal).props.title).toBe(`Open ${MOUNT_NO_SUB_DIRECTORY}?`);
-
-    //CONFIRMATION MODAL
-    const confirmationModal = testInstance.findAllByType(ConfirmationModal)[0].props;
-    confirmationModal.onClose({confirm: true});
-    expect(testInstance.findByType(ConfirmationModal).props.open).toBe(false);
-
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            expect(secretAction.unwrapSecret).toHaveBeenCalledTimes(1);
-            expect(secretAction.listSecretsAndCapabilities).toHaveBeenCalledTimes(1);
-            resolve();
-        }, 0);
-    });
 });
 
-it('open approved secret request', () => {
-    let newState = {...DEFAULT_MOCK_STATE};
-    newState.secretReducer.secretsPaths.secrets[0].capabilities.pop();
-    newState.secretReducer.secretsPaths.secrets[0].data.wrap_info = null;
+it('unwraps an approved control group request on confirmation', () => {
+    const testInstance = renderer.create(_getInstance(undefined, '/secrets/Mock-KV-v1-Mount')).root;
 
-    const testInstance = renderer.create(_getInstance(newState)).root;
-
-    const mountBtn = testInstance.findAllByType(ListItem)[0].props;
-    mountBtn.onClick({preventDefault: jest.fn()});
-
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            expect(secretAction.openApprovedSecret).toHaveBeenCalledTimes(1);
-            expect(secretAction.listSecretsAndCapabilities).toHaveBeenCalledTimes(1);
-            resolve();
-        }, 0);
+    testInstance.findAllByType(ListItem)[6].props.onClick({
+        preventDefault: jest.fn()
     });
+
+    testInstance.findByType(ConfirmationModal).props.onClose({
+        confirm: true
+    });
+    expect(secretAction.unwrapSecret).toHaveBeenCalledTimes(1);
 });
 
-it('get secrets, with update capabilities', () => {
-    let newState = {...DEFAULT_MOCK_STATE};
-    newState.secretReducer.secretsPaths.secrets[0].capabilities.push('update');
+it('retrieves secrets data on clicking an approved standard request', () => {
+    const testInstance = renderer.create(_getInstance(undefined, '/secrets/Mock-KV-v1-Mount')).root;
 
-    const testInstance = renderer.create(_getInstance(newState)).root;
-
-    const mountBtn = testInstance.findAllByType(ListItem)[0].props;
-    mountBtn.onClick({preventDefault: jest.fn()});
-
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            expect(secretAction.getSecrets).toHaveBeenCalledTimes(1);
-            expect(secretAction.listSecretsAndCapabilities).toHaveBeenCalledTimes(1);
-            resolve();
-        }, 0);
+    testInstance.findAllByType(ListItem)[5].props.onClick({
+        preventDefault: jest.fn()
     });
+
+    expect(secretAction.openApprovedSecret).toBeCalledWith('Mock-KV-v1-Mount/approved-test-data');
 });
 
-it('setting secret data', () => {
-    const testInstance = renderer.create(_getInstance()).root;
+it('opens the secrets request modal on clicking an unapproved secret', () => {
+    const testInstance = renderer.create(_getInstance(undefined, '/secrets/Mock-KV-v1-Mount')).root;
 
-    //LIST COMPONENT - OPEN FUNCTIONALITY
-    const mountBtn = testInstance.findAllByType(ListItem)[0].props;
-    mountBtn.onClick({preventDefault: jest.fn()});
-
-    //ICON BUTTON COMPONENT - OPEN FUNCTIONALITY
-    const iconBtnOpen = testInstance.findAllByType(IconButton)[0].props;
-    iconBtnOpen.onClick({preventDefault: jest.fn()});
-
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            expect(secretAction.setSecretsData).toHaveBeenCalledTimes(1);
-            expect(secretAction.listSecretsAndCapabilities).toHaveBeenCalledTimes(1);
-            resolve();
-        }, 0);
+    testInstance.findAllByType(ListItem)[7].props.onClick({
+        preventDefault: jest.fn()
     });
-});
 
-it('cancelling secret request', () => {
-    let newState = {...DEFAULT_MOCK_STATE};
-    newState.secretReducer.secretsPaths.secrets[0].capabilities.pop();
-    newState.secretReducer.secretsRequests[0].approved = false;
-
-    const testInstance = renderer.create(_getInstance(newState)).root;
-
-    //LIST COMPONENT - CANCEL FUNCTIONALITY
-    const mountBtn = testInstance.findAllByType(ListItem)[0].props;
-    mountBtn.onClick({preventDefault: jest.fn()});
-
-    //ICON BUTTON COMPONENT - CANCEL FUNCTIONALITY
-    const iconBtnCancel = testInstance.findAllByType(IconButton)[0].props;
-    iconBtnCancel.onClick({preventDefault: jest.fn()});
     expect(testInstance.findByType(ConfirmationModal).props.open).toBe(true);
-
-    //CONFIRMATION MODAL
-    const confirmationModal = testInstance.findAllByType(ConfirmationModal)[0].props;
-    expect(testInstance.findByType(ConfirmationModal).props.open).toBe(true);
-    expect(testInstance.findByType(ConfirmationModal).props.title).toBe('Cancel Privilege Access Request');
-    confirmationModal.onClose({confirm: true});
-
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            expect(secretAction.deleteRequest).toHaveBeenCalledTimes(1);
-            expect(secretAction.listSecretsAndCapabilities).toHaveBeenCalledTimes(1);
-            resolve();
-        }, 0);
-    });
-
+    expect(testInstance.findByType(ConfirmationModal).props.content).toMatch(/has been locked through standard request/i);
 });
 
-it('requesting a secret', () => {
-    let newState = {...DEFAULT_MOCK_STATE};
-    newState.secretReducer.secretsPaths.secrets[0].capabilities.pop();
-    newState.secretReducer.secretsRequests.pop();
+it('opens the request cancellation modal on clicking an unapproved pending secret', () => {
+    const testInstance = renderer.create(_getInstance(undefined, '/secrets/Mock-KV-v1-Mount')).root;
 
-    const testInstance = renderer.create(_getInstance(newState)).root;
-
-    //LIST COMPONENT - OPEN FUNCTIONALITY
-    const mountBtn = testInstance.findAllByType(ListItem)[0].props;
-    mountBtn.onClick({preventDefault: jest.fn()});
-
-    //ICON BUTTON COMPONENT - OPEN FUNCTIONALITY
-    const iconOpenBtn = testInstance.findAllByType(IconButton)[0].props;
-    iconOpenBtn.onClick({preventDefault: jest.fn()});
-    expect(testInstance.findByType(ConfirmationModal).props.open).toBe(true);
-
-    //CONFIRMATION MODAL
-    const confirmationModal = testInstance.findAllByType(ConfirmationModal)[0].props;
-    expect(testInstance.findByType(ConfirmationModal).props.open).toBe(true);
-    expect(testInstance.findByType(ConfirmationModal).props.title).toBe('Privilege Access Request');
-    confirmationModal.onClose({confirm: true});
-
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            expect(secretAction.requestSecret).toHaveBeenCalledTimes(1);
-            expect(secretAction.listSecretsAndCapabilities).toHaveBeenCalledTimes(1);
-            resolve();
-        }, 0);
+    testInstance.findAllByType(ListItem)[8].props.onClick({
+        preventDefault: jest.fn()
     });
 
+    expect(testInstance.findByType(ConfirmationModal).props.open).toBe(true);
+    expect(testInstance.findByType(ConfirmationModal).props.title).toMatch(/cancel privilege access request/i);
+});
+
+it('opens the confirmation modal on clicking the delete icon', () => {
+    const testInstance = renderer.create(_getInstance(undefined, '/secrets/Mock-KV-v1-Mount')).root;
+
+    const deleteButton = testInstance.findAllByType(IconButton).find((instance) => instance.props.title === 'Delete');
+    deleteButton.props.onClick({
+        preventDefault: jest.fn()
+    });
+    expect(testInstance.findByType(ConfirmationModal).props.open).toBe(true);
+    expect(testInstance.findByType(ConfirmationModal).props.title).toMatch(/delete/i);
+});
+
+it('deletes a secret on confirmation', () => {
+    const testInstance = renderer.create(_getInstance(undefined, '/secrets/Mock-KV-v1-Mount')).root;
+
+    const deleteButton = testInstance.findAllByType(IconButton).find((instance) => instance.props.title === 'Delete');
+    deleteButton.props.onClick({
+        preventDefault: jest.fn()
+    });
+    testInstance.findByType(ConfirmationModal).props.onClose({
+        confirm: true
+    });
+    expect(secretAction.deleteSecrets).toHaveBeenCalledTimes(1);
 });
