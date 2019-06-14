@@ -30,7 +30,7 @@ import LockOpenIcon from '@material-ui/icons/LockOpen';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
-import {Link, withRouter} from 'react-router-dom';
+import {withRouter} from 'react-router-dom';
 
 import secretAction from 'app/core/actions/secretAction';
 import Button from 'app/core/components/Button';
@@ -68,7 +68,6 @@ class SecretsList extends Component {
             showLeaseListModal: false
         };
 
-        this._onBack = this._onBack.bind(this);
         this._onNavigate = this._onNavigate.bind(this);
         this._onCreateUpdateSecretModalClose = this._onCreateUpdateSecretModalClose.bind(this);
     }
@@ -103,17 +102,6 @@ class SecretsList extends Component {
             return mount.options && mount.options.version === '2' ? 2 : 1;
         }
         return 1;
-    }
-
-    /**
-     * Handle for when back button is pressed.
-     *
-     * @private
-     * @param {SyntheticMouseEvent} event The event.
-     */
-    _onBack(event) {
-        event.preventDefault();
-        this.props.history.goBack();
     }
 
     /**
@@ -447,13 +435,13 @@ class SecretsList extends Component {
                             const currentPath = paths.slice(1, idx + 1).join('/');
                             const url = `/secrets/${mount}/${currentPath}`;
                             return idx !== paths.length - 1 ?
-                                <Link key={folder} to={url} onClick={event => {
+                                <a href={url} key={folder} onClick={event => {
                                     event.preventDefault();
                                     history.push(url);
                                     listSecretsAndCapabilities(currentPath, this._getVersionFromMount(mount));
                                 }}>
                                     <Typography color='textSecondary' variant='h6'>{folder}</Typography>
-                                </Link>
+                                </a>
                                 :
                                 <Typography color='textPrimary' key={folder} variant='h6'>{folder}</Typography>;
                         })
