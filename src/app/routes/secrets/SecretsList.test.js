@@ -95,7 +95,7 @@ const _configureStore = (initialState = {}) => {
 
 let _mockHistory = {
     location: {
-        pathname: ''
+        pathname: `/secrets/${MOUNT_NO_SUB_DIRECTORY}`
     },
     listen: jest.fn(),
     push: jest.fn()
@@ -110,7 +110,7 @@ let _mockHistory = {
  */
 const _getInstance = (initialState) => {
     return <Provider store={_configureStore(initialState)}>
-        <Router history={_mockHistory}>
+        <Router history={_mockHistory} path='/secrets/:mount/:path*'>
             <SecretsList/>
         </Router>
     </Provider>;
