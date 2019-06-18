@@ -11,7 +11,7 @@ import localStorageUtil from 'app/util/localStorageUtil';
 import constants from 'app/util/constants';
 
 import Button from 'app/core/components/Button';
-import Footer from 'app/core/components/Footer';
+//import Footer from 'app/core/components/Footer';
 import {createInProgressSelector} from 'app/util/actionStatusSelector';
 
 /**
@@ -235,7 +235,7 @@ class Login extends Component {
      * @returns {React.ReactElement}
      */
     render() {
-        const {classes, history, inProgress} = this.props;
+        const {classes, inProgress} = this.props;
         const {tabValue, errors} = this.state;
         const {form: formError} = errors;
         return <form onSubmit={this._onSubmit}>
@@ -269,14 +269,10 @@ class Login extends Component {
                 </Paper>
             </CardContent>
             <CardActions className={classes.cardAction}>
-                <Button variant='text' onClick={() => history.push('/auth/server')}>
-                    Back
-                </Button>
                 <Button type='submit' onClick={this._onSubmit}>
-                    Next
+                    Log in
                 </Button>
             </CardActions>
-            <Footer/>
         </form>;
     }
 }
@@ -347,7 +343,8 @@ const _mapDispatchToProps = (dispatch) => {
  */
 const _styles = () => ({
     cardAction: {
-        justifyContent: 'space-between'
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     contentContainer: {
         display: 'flex',
@@ -361,7 +358,7 @@ const _styles = () => ({
         backgroundColor: 'white'
     },
     formLabel: {
-        padding: '0 24px'
+        padding: '0 12px'
     },
     loader: {
         color: 'white',
